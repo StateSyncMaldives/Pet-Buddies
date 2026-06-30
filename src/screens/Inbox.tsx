@@ -1,0 +1,193 @@
+import { colors, shadow } from '../theme'
+import { useStore } from '../store/store'
+import type { Listing } from '../types'
+import { Segmented } from '../components/Segmented'
+import { PetThumb } from '../components/primitives'
+import { VerifiedBadge } from '../components/Brand'
+import { GridIcon, PersonIcon } from '../components/icons'
+
+function statusChip(status: NonNullable<Listing['status']>) {
+  switch (status) {
+    case 'pending':
+      return { label: 'Pending review', color: colors.pendingText, bg: colors.pendingBg }
+    case 'adopted':
+      return { label: 'Adopted', color: colors.adoptedText, bg: colors.adoptedBg }
+    case 'rejected':
+      return { label: 'Rejected', color: colors.rejectText, bg: colors.rejectBg }
+    default:
+      return { label: 'Live', color: colors.liveText, bg: colors.liveBg }
+  }
+}
+
+export function Inbox() {
+  const { state, listings, setInboxView, openDetail, openAdd, markAdopted } = useStore()
+  const showMine = state.inboxView === 'listings'
+
+  const myListings = state.user
+    ? listings.filter((l) => l.lister === state.user!.name)
+    : []
+  const nInq = state.inquiries.length
+
+  return (
+    <div style={{ padding: '14px 20px 110px' }}>
+      <h1 style={{ fontSize: 25, fontWeight: 700, color: colors.ink, letterSpacing: '-0.02em', margin: '6px 0 16px' }}>
+        You
+      </h1>
+
+      <div style={{ marginBottom: 22 }}>
+        <Segmented
+          options={['Inquiries', 'My listings']}
+          activeIndex={showMine ? 1 : 0}
+          onSelect={(i) => setInboxView(i === 0 ? 'inquiries' : 'listings')}
+          fontSize={14}
+        />
+      </div>
+
+      {showMine ? (
+        !state.user ? (
+          <EmptyState
+            icon={<PersonIcon size={46} stroke="#cfd4dc" strokeWidth={1.7} />}
+            text="Sign in to list a pet and manage your listings."
+            cta="List a pet"
+            onCta={openAdd}
+            pad={64}
+          />
+        ) : myListings.length === 0 ? (
+          <EmptyState
+            icon={<GridIcon size={44} stroke="#cfd4dc" strokeWidth={1.7} />}
+            text="Pets you list will appear here. New listings go through a quick review before they're live."
+            cta="List a pet"
+            onCta={openAdd}
+            pad={64}
+          />
+        ) : (
+          myListings.map((l) => {
+            const status = l.status ?? 'live'
+            const chip = statusChip(status)
+            return (
+              <div
+                key={l.id}
+                style={{ background: '#fff', borderRadius: 16, boxShadow: shadow.cardSm, padding: 13, marginBottom: 12 }}
+              >
+                <div
+                  onClick={status === 'live' ? () => openDetail(l.id) : undefined}
+                  onKeyDown={status === 'live' ? (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(l.id) } } : undefined}
+                  role={status === 'live' ? 'button' : undefined}
+                  tabIndex={status === 'live' ? 0 : undefined}
+                  aria-label={status === 'live' ? `View ${l.name}` : undefined}
+                  style={{ display: 'flex', gap: 12, alignItems: 'center', cursor: status === 'live' ? 'pointer' : 'default' }}
+                >
+                  <PetThumb species={l.species} photo={l.photo} name={l.name} size={56} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: colors.ink }}>{l.name}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: chip.color, background: chip.bg, padding: '3px 9px', borderRadius: 7, whiteSpace: 'nowrap' }}>
+                        {chip.label}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12.5, color: colors.textSecondary, marginTop: 3 }}>
+                      {(l.species === 'cat' ? l.age : `${l.breed} · ${l.age}`) + ' · ' + l.area}
+                    </div>
+                  </div>
+                </div>
+                {status === 'live' && (
+                  <button
+                    onClick={() => markAdopted(l.id)}
+                    style={{
+                      width: '100%',
+                      marginTop: 12,
+                      padding: '11px 0',
+                      borderRadius: 11,
+                      border: '1.5px solid #cfe6d3',
+                      background: '#F1F8F2',
+                      color: colors.adoptedText,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Mark as adopted
+                  </button>
+                )}
+              </div>
+            )
+          })
+        )
+      ) : (
+        <>
+          <p style={{ fontSize: 13, color: colors.faint, margin: '-6px 0 18px' }}>
+            {nInq ? `${nInq} ${nInq === 1 ? 'inquiry' : 'inquiries'} sent.` : 'No inquiries yet.'}
+          </p>
+          {nInq === 0 ? (
+            <EmptyState
+              icon={
+                <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#cfd4dc" strokeWidth="1.7" strokeLinejoin="round">
+                  <rect x="3" y="5" width="18" height="14" rx="2.5" />
+                  <path d="M3.5 7l8.5 6 8.5-6" />
+                </svg>
+              }
+              text="When you apply to adopt, your inquiries to listers show up here."
+              pad={88}
+            />
+          ) : (
+            state.inquiries.map((q) => (
+              <div
+                key={q.key}
+                onClick={() => openDetail(q.listingId)}
+                onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(q.listingId) } }}
+                role="button"
+                tabIndex={0}
+                aria-label={`View inquiry about ${q.name}`}
+                style={{ background: '#fff', borderRadius: 16, boxShadow: shadow.cardSm, padding: 14, marginBottom: 12, cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <PetThumb species={q.isCat ? 'cat' : 'bird'} size={50} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: colors.ink }}>{q.name}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: colors.pendingText, background: colors.pendingBg, padding: '3px 9px', borderRadius: 7, whiteSpace: 'nowrap' }}>
+                        {q.status}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
+                      <span style={{ fontSize: 12.5, color: colors.textSecondaryAlt }}>To {q.to}</span>
+                      {q.verified && <VerifiedBadge size={14} />}
+                    </div>
+                  </div>
+                </div>
+                <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.5, margin: '11px 0 0', background: '#F0F2F6', borderRadius: 10, padding: '10px 12px' }}>
+                  "{q.message}"
+                </p>
+              </div>
+            ))
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+function EmptyState({ icon, text, cta, onCta, pad }: {
+  icon: React.ReactNode
+  text: string
+  cta?: string
+  onCta?: () => void
+  pad: number
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingTop: pad }}>
+      {icon}
+      <p style={{ fontSize: 14, color: colors.faint, lineHeight: 1.55, maxWidth: 240, margin: cta ? '18px 0 18px' : '18px 0 0' }}>
+        {text}
+      </p>
+      {cta && onCta && (
+        <button
+          onClick={onCta}
+          style={{ padding: '12px 24px', borderRadius: 13, border: 'none', background: colors.deepBlue, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+        >
+          {cta}
+        </button>
+      )}
+    </div>
+  )
+}

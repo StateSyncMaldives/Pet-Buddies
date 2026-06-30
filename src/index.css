@@ -1,0 +1,184 @@
+:root {
+  font-family: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+  color: #232826;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* App is light-only; stop the OS from auto-tinting the status bar / controls dark. */
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #d4d8df;
+  /* Center the phone frame on large screens; fill the viewport on mobile. */
+  min-height: 100vh;
+}
+
+input,
+textarea,
+button,
+select {
+  font-family: inherit;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* Hide scrollbars on scroll regions (matches the prototype's .pbscroll). */
+.pbscroll {
+  scrollbar-width: none;
+}
+.pbscroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---- Phone stage / frame ----
+   Desktop: a centered 390×844 device mock with a dark bezel; the app body scrolls
+   inside the frame, and the nav / overlays are positioned within the frame.
+   Mobile (<=440px): the app fills the viewport and the *document* scrolls (so iOS
+   Safari collapses its toolbar), with the nav / overlays pinned to the viewport. */
+.pb-stage {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: #d4d8df;
+}
+
+.pb-phone {
+  /* Desktop mock: leave room for the cosmetic status bar. */
+  --pb-top: 50px;
+  --pb-sticky-top: 0px; /* where in-feed sticky headers pin (under the cosmetic bar on desktop) */
+  position: relative;
+  width: 390px;
+  height: 844px;
+  background: #F7F8FA;
+  border-radius: 46px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 30px 80px rgba(36, 48, 47, 0.28),
+    0 0 0 11px #1a1d1c,
+    0 0 0 13px #34403e;
+}
+
+/* Main app scroll region (desktop: scrolls inside the frame). */
+.pb-scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Floating pill nav + full-screen overlays: positioned within the frame on
+   desktop, pinned to the viewport on a real phone (see media query below). */
+.pb-nav {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 15;
+}
+.pb-overlay {
+  position: absolute;
+  top: var(--pb-top);
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+.pb-overlay-full {
+  position: absolute;
+  inset: 0;
+}
+
+@media (max-width: 440px) {
+  /* On a real phone the document background is what iOS paints behind the
+     status bar and bottom bar — make it the app background so there's no
+     gray seam in the safe areas. */
+  html,
+  body,
+  .pb-stage {
+    background: #F7F8FA;
+  }
+  .pb-stage {
+    display: block;
+    padding: 0;
+  }
+  .pb-phone {
+    /* Real device: use the actual notch/Dynamic Island inset, not a fake bar. */
+    --pb-top: env(safe-area-inset-top, 0px);
+    --pb-sticky-top: env(safe-area-inset-top, 0px);
+    display: block;
+    width: 100%;
+    height: auto; /* grow with content so the document (and the Safari bar) scrolls */
+    min-height: 100dvh;
+    border-radius: 0;
+    overflow: visible;
+    box-shadow: none;
+    padding-top: var(--pb-top); /* clear the notch */
+  }
+  /* No inner scroll on mobile — let the document scroll. */
+  .pb-scroll {
+    flex: none;
+    overflow: visible;
+  }
+  /* Pin the floating nav + overlays to the viewport instead of the frame. */
+  .pb-nav {
+    position: fixed;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  }
+  .pb-overlay,
+  .pb-overlay-full {
+    position: fixed;
+  }
+  /* The cosmetic iOS status bar is for the desktop mock only; the real phone
+     already has one, so hide it to avoid a doubled status bar. */
+  .pb-statusbar {
+    display: none !important;
+  }
+}
+
+/* Toast: within the frame on desktop, pinned to the viewport on mobile. */
+.pb-toast {
+  position: absolute;
+}
+@media (max-width: 440px) {
+  .pb-toast {
+    position: fixed;
+  }
+}
+
+/* Toast fade/slide-in. */
+@keyframes pb-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Overlay slide-up entrance for stacked full-screen views. */
+@keyframes pb-overlay-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
