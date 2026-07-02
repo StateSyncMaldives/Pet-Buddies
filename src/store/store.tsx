@@ -8,9 +8,11 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { SEED_LISTINGS } from '../data/seed'
+import { prototypeBackend, type PrototypeBackend } from '../server/runtime/prototype-backend'
+import { createInquiryViewModel, mapClinicSummaryToClinic, mapListingDetailToListing } from './view-model-mappers'
 import type {
   AuthIntent,
+  Clinic,
   InboxView,
   Inquiry,
   Listing,
@@ -19,10 +21,14 @@ import type {
   User,
 } from '../types'
 
+const DEFAULT_MOCK_USER: User = { name: 'Aishath Ali', email: 'aishath.ali@gmail.com' }
+const DEFAULT_VIEWER_ID = DEFAULT_MOCK_USER.name
+const DEFAULT_MODERATOR_ID = 'moderator-demo'
+
 /**
  * In-memory app store mirroring the prototype's logic class.
- * Replaces in-memory arrays with backend reads/writes in production; `user`
- * would come from Google auth.
+ * Uses the server-backed runtime façade so UI flows now mutate the same typed
+ * backend use cases the future TanStack Start app shell will call.
  */
 export interface ReportForm {
   kind: 'lost' | 'found'
@@ -40,6 +46,11 @@ export interface AddForm {
   breed: string
   desc: string
   tags: string[]
+}
+
+export interface ReportReceipt {
+  routedTo: string
+  referenceCode: string
 }
 
 export interface AppState {
@@ -61,16 +72,13 @@ export interface AppState {
   installed: boolean
   installDismissed: boolean
   toast: string
-  // Report form + its success screen
   rep: ReportForm
   reportDone: boolean
-  // Add form + its success screen
+  reportReceipt: ReportReceipt | null
   add: AddForm
   addDone: boolean
   addedName: string
 }
-
-const MOCK_USER: User = { name: 'Aishath Ali', email: 'aishath.ali@gmail.com' }
 
 const emptyAdd: AddForm = {
   species: 'cat',
@@ -84,7 +92,6 @@ const emptyAdd: AddForm = {
 
 const emptyRep: ReportForm = { kind: 'lost', species: 'cat', area: '', desc: '', photo: false }
 
-// First-launch flags persist across reloads (README §Onboarding / §Install).
 const LS_KEY = 'petbuddies.flags'
 function loadFlags(): { onboarded: boolean; installed: boolean; installDismissed: boolean } {
   try {
@@ -96,13 +103,13 @@ function loadFlags(): { onboarded: boolean; installed: boolean; installDismissed
   return { onboarded: false, installed: false, installDismissed: false }
 }
 
-function initialState(): AppState {
+function initialState(initialSaved: string[]): AppState {
   const flags = loadFlags()
   return {
     species: 'cat',
     query: '',
     tags: [],
-    saved: [],
+    saved: [...initialSaved],
     applied: [],
     overlay: null,
     detailId: null,
@@ -119,6 +126,7 @@ function initialState(): AppState {
     toast: '',
     rep: { ...emptyRep },
     reportDone: false,
+    reportReceipt: null,
     add: { ...emptyAdd },
     addDone: false,
     addedName: '',
@@ -132,7 +140,7 @@ function inquiryDraft(name: string): string {
 export interface Store {
   state: AppState
   listings: Listing[]
-  // browse
+  clinics: Clinic[]
   setSpecies: (species: Species) => void
   setQuery: (query: string) => void
   toggleTag: (tag: string) => void
@@ -140,62 +148,74 @@ export interface Store {
   toggleSave: (id: string) => void
   openDetail: (id: string) => void
   closeDetail: () => void
-  // auth
   openAuth: (intent: AuthIntent, applyId?: string) => void
   closeAuth: () => void
   googleSignIn: () => void
   signOut: () => void
-  // apply / inquiry
   applyToAdopt: (id: string) => void
   setInquiryMessage: (msg: string) => void
   cancelInquiry: () => void
   sendInquiry: () => void
   reportListing: () => void
-  // add listing
   openAdd: () => void
   closeAdd: () => void
   patchAdd: (p: Partial<AddForm>) => void
   toggleAddTag: (tag: string) => void
   submitListing: () => void
-  // moderator
   openMod: () => void
   closeMod: () => void
   approveListing: (id: string) => void
   rejectListing: (id: string) => void
-  // my listings
   markAdopted: (id: string) => void
-  // report
   patchRep: (p: Partial<ReportForm>) => void
   useMyLocation: () => void
   toggleRepPhoto: () => void
   submitReport: () => void
   resetReport: () => void
-  // vets
   callClinic: (name: string) => void
   directionsClinic: () => void
-  // inbox
   setInboxView: (view: InboxView) => void
-  // onboarding
   obNext: () => void
   obSkip: () => void
-  // install
   installAdd: () => void
   installDismiss: () => void
-  // misc
   showToast: (msg: string) => void
+}
+
+export interface StoreProviderProps {
+  children: ReactNode
+  backend?: PrototypeBackend
+  viewerId?: string
+  mockUser?: User
+  moderatorId?: string
+}
+
+function createInitialHydration(backend: PrototypeBackend, viewerId: string) {
+  const hydration = backend.hydrateAppShell({ viewerId })
+  return {
+    listings: hydration.listings.map(mapListingDetailToListing),
+    clinics: hydration.clinics.map(mapClinicSummaryToClinic),
+    saved: hydration.listings.filter((listing) => listing.savedByViewer).map((listing) => listing.id),
+  }
 }
 
 const StoreContext = createContext<Store | null>(null)
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppState>(initialState)
-  // Listings are stateful so status changes (approve / mark-adopted / add) re-render.
-  const [listings, setListings] = useState<Listing[]>(() => SEED_LISTINGS.map((l) => ({ ...l })))
+export function StoreProvider({
+  children,
+  backend = prototypeBackend,
+  viewerId = DEFAULT_VIEWER_ID,
+  mockUser = DEFAULT_MOCK_USER,
+  moderatorId = DEFAULT_MODERATOR_ID,
+}: StoreProviderProps) {
+  const hydration = useMemo(() => createInitialHydration(backend, viewerId), [backend, viewerId])
+  const [state, setState] = useState<AppState>(() => initialState(hydration.saved))
+  const [listings, setListings] = useState<Listing[]>(() => hydration.listings.map((listing) => ({ ...listing, tags: [...listing.tags] })))
+  const [clinics] = useState<Clinic[]>(() => hydration.clinics.map((clinic) => ({ ...clinic, services: [...clinic.services] })))
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const patch = useCallback((p: Partial<AppState>) => setState((s) => ({ ...s, ...p })), [])
 
-  // Persist first-launch flags.
   useEffect(() => {
     try {
       localStorage.setItem(
@@ -220,9 +240,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [patch],
   )
 
-  const setStatus = useCallback((id: string, status: NonNullable<Listing['status']>) => {
-    setListings((ls) => ls.map((l) => (l.id === id ? { ...l, status } : l)))
+  const syncListing = useCallback((listing: Listing) => {
+    setListings((current) => {
+      const index = current.findIndex((item) => item.id === listing.id)
+      if (index === -1) return [listing, ...current]
+      return current.map((item) => (item.id === listing.id ? listing : item))
+    })
   }, [])
+
+  const transitionListing = useCallback(
+    (id: string, action: 'approved' | 'rejected' | 'adopted') => {
+      const result = backend.moderateListing({
+        listingId: id,
+        actorUserId: moderatorId,
+        request: { action },
+      })
+      if (!result.ok) {
+        showToast(result.error.message)
+        return null
+      }
+      const listing = mapListingDetailToListing(result.data.listing)
+      syncListing(listing)
+      return listing
+    },
+    [backend, moderatorId, showToast, syncListing],
+  )
 
   const store = useMemo<Store>(() => {
     const setAdd = (p: Partial<AddForm>) => setState((s) => ({ ...s, add: { ...s.add, ...p } }))
@@ -231,6 +273,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return {
       state,
       listings,
+      clinics,
       setSpecies: (species) => patch({ species, tags: [] }),
       setQuery: (query) => patch({ query }),
       toggleTag: (tag) =>
@@ -239,33 +282,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           tags: s.tags.includes(tag) ? s.tags.filter((t) => t !== tag) : [...s.tags, tag],
         })),
       clearFilters: () => patch({ tags: [], query: '' }),
-      toggleSave: (id) =>
+      toggleSave: (id) => {
+        const result = backend.toggleSavedListing({ listingId: id, viewerId })
+        if (!result.ok) {
+          showToast(result.error.message)
+          return
+        }
         setState((s) => ({
           ...s,
-          saved: s.saved.includes(id) ? s.saved.filter((x) => x !== id) : [...s.saved, id],
-        })),
+          saved: result.data.saved ? [...new Set([...s.saved, id])] : s.saved.filter((savedId) => savedId !== id),
+        }))
+      },
       openDetail: (id) => patch({ overlay: 'detail', detailId: id }),
       closeDetail: () => patch({ overlay: null, detailId: null }),
-
-      openAuth: (intent, applyId) =>
-        patch({ overlay: 'auth', authIntent: intent, pendingApplyId: applyId ?? null }),
+      openAuth: (intent, applyId) => patch({ overlay: 'auth', authIntent: intent, pendingApplyId: applyId ?? null }),
       closeAuth: () => patch({ overlay: null }),
       googleSignIn: () =>
         setState((s) => {
           if (s.authIntent === 'apply' && s.pendingApplyId) {
-            const d = listings.find((l) => l.id === s.pendingApplyId)
+            const listing = listings.find((item) => item.id === s.pendingApplyId)
             return {
               ...s,
-              user: MOCK_USER,
+              user: mockUser,
               overlay: 'inquiry',
-              inquiry: { listingId: s.pendingApplyId, message: inquiryDraft(d?.name ?? '') },
+              inquiry: { listingId: s.pendingApplyId, message: inquiryDraft(listing?.name ?? '') },
               pendingApplyId: null,
               authIntent: 'add',
             }
           }
           return {
             ...s,
-            user: MOCK_USER,
+            user: mockUser,
             overlay: 'add',
             addDone: false,
             addedName: '',
@@ -273,46 +320,51 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }
         }),
       signOut: () => patch({ user: null, overlay: null }),
-
-      // Auth-gated: signed-in opens the inquiry composer; otherwise sign-in runs first.
       applyToAdopt: (id) =>
         setState((s) => {
-          const d = listings.find((l) => l.id === id)
+          const listing = listings.find((item) => item.id === id)
           if (s.user) {
-            return { ...s, overlay: 'inquiry', inquiry: { listingId: id, message: inquiryDraft(d?.name ?? '') } }
+            return { ...s, overlay: 'inquiry', inquiry: { listingId: id, message: inquiryDraft(listing?.name ?? '') } }
           }
           return { ...s, overlay: 'auth', authIntent: 'apply', pendingApplyId: id }
         }),
       setInquiryMessage: (msg) => setState((s) => ({ ...s, inquiry: { ...s.inquiry, message: msg } })),
       cancelInquiry: () => setState((s) => ({ ...s, overlay: s.detailId ? 'detail' : null })),
-      sendInquiry: () =>
-        setState((s) => {
-          const id = s.inquiry.listingId
-          const d = listings.find((l) => l.id === id)
-          if (!d || !id) return s
-          const who = d.org ?? d.lister ?? 'the lister'
-          const entry: Inquiry = {
-            key: 'q' + Date.now(),
-            listingId: id,
-            name: d.name,
-            to: d.org ? d.org : `Listed by ${d.lister}`,
-            verified: d.verified,
-            message: s.inquiry.message,
-            isCat: d.species === 'cat',
-            isBird: d.species === 'bird',
-            tint: d.tint,
-            status: 'Awaiting reply',
-          }
-          showToast('Inquiry sent to ' + who)
-          return {
-            ...s,
-            inquiries: [entry, ...s.inquiries],
-            applied: [...new Set([...s.applied, id])],
-            overlay: 'detail',
-          }
-        }),
-      reportListing: () => showToast('Listing reported — thank you'),
+      sendInquiry: () => {
+        const listingId = state.inquiry.listingId
+        const listing = listings.find((item) => item.id === listingId)
+        if (!listingId || !listing || !state.user) return
 
+        const result = backend.createInquiry({
+          viewerId,
+          request: {
+            listingId,
+            message: state.inquiry.message,
+          },
+        })
+        if (!result.ok) {
+          showToast(result.error.message)
+          return
+        }
+
+        const recipient = listing.org ?? listing.lister ?? 'the lister'
+        const inquiryEntry = createInquiryViewModel({
+          key: result.data.inquiry.id,
+          listing,
+          message: state.inquiry.message,
+          recipient,
+          verified: listing.verified,
+        })
+
+        setState((s) => ({
+          ...s,
+          inquiries: [inquiryEntry, ...s.inquiries],
+          applied: [...new Set([...s.applied, listingId])],
+          overlay: 'detail',
+        }))
+        showToast(`Inquiry sent to ${recipient}`)
+      },
+      reportListing: () => showToast('Listing reported — thank you'),
       openAdd: () =>
         setState((s) =>
           s.user
@@ -326,81 +378,94 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...s,
           add: {
             ...s.add,
-            tags: s.add.tags.includes(tag)
-              ? s.add.tags.filter((t) => t !== tag)
-              : [...s.add.tags, tag],
+            tags: s.add.tags.includes(tag) ? s.add.tags.filter((t) => t !== tag) : [...s.add.tags, tag],
           },
         })),
-      submitListing: () =>
-        setState((s) => {
-          const a = s.add
-          if (!a.name.trim()) {
-            showToast('Add a name first')
-            return s
-          }
-          const item: Listing = {
-            id: 'u' + Date.now(),
-            species: a.species,
-            name: a.name,
-            age: a.age || 'Unknown age',
-            sex: 'Unknown',
-            area: a.area || 'Malé',
-            tags: a.tags.slice(),
-            org: null,
-            lister: s.user?.name ?? 'You',
-            verified: false,
-            tint: a.species === 'cat' ? '#EFEAF7' : '#E3F3EC',
-            status: 'pending',
-            story: a.desc || '',
-            breed: a.species === 'bird' ? a.breed : undefined,
-          }
-          setListings((ls) => [...ls, item])
-          return { ...s, addDone: true, addedName: a.name }
-        }),
+      submitListing: () => {
+        const add = state.add
+        if (!add.name.trim()) {
+          showToast('Add a name first')
+          return
+        }
 
+        const result = backend.createListing({
+          actorUserId: state.user?.name ?? null,
+          request: {
+            species: add.species,
+            birdSpecies: add.species === 'bird' ? (add.breed as 'Budgerigar' | 'Cockatiel' | 'Lovebird' | 'Finch' | 'Canary') : undefined,
+            name: add.name.trim(),
+            ageText: add.age.trim() || 'Unknown age',
+            sex: 'unknown',
+            areaLabel: add.area.trim() || 'Malé',
+            story: add.desc.trim(),
+            tagIds: add.tags.map((tag) => backend.getTagId(tag)),
+            imageObjectKeys: [],
+          },
+        })
+        if (!result.ok) {
+          showToast(result.error.message)
+          return
+        }
+
+        syncListing(mapListingDetailToListing(result.data.listing))
+        patch({ addDone: true, addedName: result.data.listing.name })
+      },
       openMod: () => patch({ overlay: 'mod' }),
       closeMod: () => patch({ overlay: null }),
       approveListing: (id) => {
-        const d = listings.find((l) => l.id === id)
-        setStatus(id, 'live')
-        showToast((d?.name ?? 'Listing') + ' is now live')
+        const listing = transitionListing(id, 'approved')
+        if (listing) showToast(`${listing.name} is now live`)
       },
       rejectListing: (id) => {
-        const d = listings.find((l) => l.id === id)
-        setStatus(id, 'rejected')
-        showToast((d?.name ?? 'Listing') + ' rejected')
+        const listing = transitionListing(id, 'rejected')
+        if (listing) showToast(`${listing.name} rejected`)
       },
-
       markAdopted: (id) => {
-        const d = listings.find((l) => l.id === id)
-        setStatus(id, 'adopted')
-        showToast((d?.name ?? 'Listing') + ' marked as adopted')
+        const listing = transitionListing(id, 'adopted')
+        if (listing) showToast(`${listing.name} marked as adopted`)
       },
-
       patchRep: setRep,
       useMyLocation: () => setRep({ area: 'Maafannu, Malé' }),
       toggleRepPhoto: () => setState((s) => ({ ...s, rep: { ...s.rep, photo: true } })),
-      submitReport: () => patch({ reportDone: true }),
-      resetReport: () => patch({ reportDone: false, rep: { ...emptyRep } }),
-
+      submitReport: () => {
+        const result = backend.createReport({
+          request: {
+            reportKind: state.rep.kind,
+            species: state.rep.species,
+            birdSpecies: state.rep.species === 'bird' ? 'Budgerigar' : undefined,
+            reporterName: state.user?.name,
+            reporterEmail: state.user?.email,
+            areaLabel: state.rep.area.trim() || 'Maafannu, Malé',
+            description: state.rep.desc.trim() || 'No additional description provided.',
+            photoObjectKey: state.rep.photo ? 'report-photo/demo-upload.jpg' : undefined,
+          },
+        })
+        if (!result.ok) {
+          showToast(result.error.message)
+          return
+        }
+        patch({
+          reportDone: true,
+          reportReceipt: {
+            routedTo: backend.getOrganizationName(result.data.report.routedToOrganizationId) ?? 'Partner organisation',
+            referenceCode: result.data.report.referenceCode,
+          },
+        })
+      },
+      resetReport: () => patch({ reportDone: false, reportReceipt: null, rep: { ...emptyRep } }),
       callClinic: (name) => showToast(`Calling ${name}…`),
       directionsClinic: () => showToast('Opening directions…'),
-
       setInboxView: (view) => patch({ inboxView: view }),
-
-      obNext: () =>
-        setState((s) => (s.obStep >= 2 ? { ...s, onboarded: true } : { ...s, obStep: s.obStep + 1 })),
+      obNext: () => setState((s) => (s.obStep >= 2 ? { ...s, onboarded: true } : { ...s, obStep: s.obStep + 1 })),
       obSkip: () => patch({ onboarded: true }),
-
       installAdd: () => {
         patch({ installed: true })
         showToast('Added to your Home Screen')
       },
       installDismiss: () => patch({ installDismissed: true }),
-
       showToast,
     }
-  }, [state, listings, patch, showToast, setStatus])
+  }, [backend, viewerId, mockUser, state, listings, clinics, patch, showToast, syncListing, transitionListing])
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>
 }
@@ -411,17 +476,13 @@ export function useStore(): Store {
   return ctx
 }
 
-/** Display meta line for a listing: cats → "age · sex", birds → "breed · age". */
 export function listMeta(l: Listing): string {
   return l.species === 'cat' ? `${l.age} · ${l.sex}` : `${l.breed} · ${l.age}`
 }
 
-/** Detail meta line: includes the area's city. */
 export function detailMeta(l: Listing): string {
   const city = l.area.split(',')[0]
-  return l.species === 'cat'
-    ? `${l.age} · ${l.sex} · ${city}`
-    : `${l.breed} · ${l.age} · ${city}`
+  return l.species === 'cat' ? `${l.age} · ${l.sex} · ${city}` : `${l.breed} · ${l.age} · ${city}`
 }
 
 export function orgLine(l: Listing): string {

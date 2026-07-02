@@ -1,0 +1,307 @@
+import type {
+  AdoptionInquiryRecord,
+  ModerationEventRecord,
+  OrganizationRecord,
+  TagRecord,
+  UserRecord,
+} from '../../../backend/contracts'
+import type {
+  BirdSpecies,
+  ClinicSummary,
+  CreateInquiryRequest,
+  CreateListingRequest,
+  CreateLostFoundReportRequest,
+  ListingDetail,
+  UpdateListingModerationRequest,
+} from '../contracts/api'
+import { createSeedClinicRepository } from '../domain/clinics/clinic-repository'
+import { createClinicService } from '../domain/clinics/clinic-service'
+import { createCreateInquiryUseCase } from '../domain/inquiries/create-inquiry'
+import { createCreateListingUseCase } from '../domain/listings/create-listing'
+import { createListingService } from '../domain/listings/listing-service'
+import type { ListingAggregate } from '../domain/listings/listing-mapper'
+import { toListingDetail } from '../domain/listings/listing-mapper'
+import { createModerateListingUseCase } from '../domain/listings/moderate-listing'
+import { createInMemoryListingRepository } from '../domain/listings/listing-repository'
+import { createToggleSavedListingUseCase } from '../domain/listings/toggle-saved-listing'
+import { createCreateReportUseCase } from '../domain/reports/create-report'
+import { getClinics } from '../http/clinics/get-clinics'
+import { postInquiry } from '../http/inquiries/post-inquiry'
+import { getListingDetail } from '../http/listings/get-listing-detail'
+import { postListing } from '../http/listings/post-listing'
+import { postSaveListing } from '../http/listings/post-save-listing'
+import { postListingAction } from '../http/moderation/post-listing-action'
+import { postReport } from '../http/reports/post-report'
+import { SEED_LISTINGS } from '../../data/seed'
+
+const SEEDED_AT = '2026-07-02T08:00:00.000Z'
+const PHOTO_KEY_PREFIX = 'seed/'
+
+const ORGANIZATION_PRESETS = {
+  'Maldives Cat Rescue': {
+    id: 'org-cat-rescue',
+    slug: 'maldives-cat-rescue',
+    kind: 'rescue',
+    areaLabel: 'Greater Malé',
+    isVerified: true,
+  },
+  'Feline Welfare Organization': {
+    id: 'org-feline-welfare',
+    slug: 'feline-welfare-organization',
+    kind: 'ngo',
+    areaLabel: 'Greater Malé',
+    isVerified: true,
+  },
+  'Zoophilist Society Maldives': {
+    id: 'org-bird-rescue',
+    slug: 'zoophilist-society-maldives',
+    kind: 'ngo',
+    areaLabel: 'Greater Malé',
+    isVerified: true,
+  },
+} as const satisfies Record<string, { id: string; slug: string; kind: OrganizationRecord['kind']; areaLabel: string; isVerified: boolean }>
+
+export interface HydratedAppShell {
+  listings: ListingDetail[]
+  clinics: ClinicSummary[]
+}
+
+export interface PrototypeBackend {
+  hydrateAppShell(input: { viewerId: string }): HydratedAppShell
+  getListingDetail(input: { slugOrId: string }): ReturnType<typeof getListingDetail>
+  toggleSavedListing(input: { listingId: string; viewerId: string }): ReturnType<typeof postSaveListing>
+  createInquiry(input: { request: CreateInquiryRequest; viewerId: string }): ReturnType<typeof postInquiry>
+  createListing(input: { request: CreateListingRequest; actorUserId: string | null }): ReturnType<typeof postListing>
+  moderateListing(input: {
+    listingId: string
+    actorUserId: string
+    request: UpdateListingModerationRequest
+  }): ReturnType<typeof postListingAction>
+  createReport(input: { request: CreateLostFoundReportRequest }): ReturnType<typeof postReport>
+  getOrganizationName(id: string): string | null
+  getTagId(label: string): string
+}
+
+export function createPrototypeBackend(): PrototypeBackend {
+  const organizations = new Map<string, OrganizationRecord>()
+  const organizationsByName = new Map<string, OrganizationRecord>()
+  const usersByName = new Map<string, UserRecord>()
+  const tags = new Map<string, TagRecord>()
+  const moderationEvents: ModerationEventRecord[] = []
+  const inquiries: AdoptionInquiryRecord[] = []
+  const reports: Array<{ id: string }> = []
+  let counter = 0
+
+  const nextId = (prefix: string) => `${prefix}-${++counter}`
+  const now = () => new Date(Date.UTC(2026, 6, 2, 12, 0, counter % 60, 0)).toISOString()
+
+  const listingRepository = createInMemoryListingRepository({
+    listings: SEED_LISTINGS.map((listing) => seedListingToAggregate(listing)),
+  })
+  const listingService = createListingService({ repository: listingRepository })
+  const clinicService = createClinicService({ repository: createSeedClinicRepository() })
+  const toggleSavedListing = createToggleSavedListingUseCase({ repository: listingRepository })
+  const moderateListing = createModerateListingUseCase({
+    repository: listingRepository,
+    now,
+    generateEventId: () => nextId('mod-event'),
+    saveModerationEvent: (event) => moderationEvents.push(event),
+  })
+  const createInquiry = createCreateInquiryUseCase({
+    repository: listingRepository,
+    now,
+    generateId: () => nextId('inquiry'),
+    saveInquiry: (inquiry) => inquiries.push(inquiry),
+  })
+  const createReport = createCreateReportUseCase({
+    now,
+    generateId: () => nextId('report'),
+    generateReferenceCode: () => `MV${1200 + ++counter}`,
+    saveReport: (report) => reports.push({ id: report.id }),
+  })
+  const createListing = createCreateListingUseCase({
+    repository: listingRepository,
+    now,
+    generateId: () => nextId('listing'),
+    generateSlug: slugify,
+    toPublicImageUrl: (objectKey) => objectKey,
+  })
+
+  function seedListingToAggregate(listing: (typeof SEED_LISTINGS)[number]): ListingAggregate {
+    const organization = listing.org ? ensureOrganization(listing.org) : null
+    const listedByUser = listing.org ? null : ensureUser(listing.lister ?? 'Community member')
+    const listingId = listing.id
+    const species = listing.species
+    return {
+      listing: {
+        id: listingId,
+        slug: listingId,
+        species,
+        birdSpecies: listing.breed as BirdSpecies | undefined,
+        name: listing.name,
+        ageText: listing.age,
+        sex: normalizeSex(listing.sex),
+        areaLabel: listing.area,
+        story: listing.story,
+        status: listing.status ?? 'live',
+        listedByUserId: listedByUser?.id ?? null,
+        organizationId: organization?.id ?? null,
+        publishedAt: listing.status === 'pending' ? null : SEEDED_AT,
+        adoptedAt: listing.status === 'adopted' ? SEEDED_AT : null,
+        rejectedAt: listing.status === 'rejected' ? SEEDED_AT : null,
+        rejectedReason: null,
+        createdAt: SEEDED_AT,
+        updatedAt: SEEDED_AT,
+      },
+      images: listing.photo
+        ? [
+            {
+              id: `${listingId}-image-0`,
+              listingId,
+              objectKey: `${PHOTO_KEY_PREFIX}${listingId}`,
+              publicUrl: listing.photo,
+              sortOrder: 0,
+              width: null,
+              height: null,
+              createdAt: SEEDED_AT,
+            },
+          ]
+        : [],
+      tags: listing.tags.map((tagLabel) => ensureTag(tagLabel, species)),
+      organization,
+      listedByUser,
+      savedByViewer: false,
+    }
+  }
+
+  function ensureOrganization(name: string): OrganizationRecord {
+    const existing = organizationsByName.get(name)
+    if (existing) return existing
+    const preset = ORGANIZATION_PRESETS[name as keyof typeof ORGANIZATION_PRESETS]
+    const organization: OrganizationRecord = {
+      id: preset?.id ?? `org-${slugify(name)}`,
+      slug: preset?.slug ?? slugify(name),
+      name,
+      kind: preset?.kind ?? 'community',
+      description: null,
+      areaLabel: preset?.areaLabel ?? 'Greater Malé',
+      contactEmail: null,
+      contactPhone: null,
+      isVerified: preset?.isVerified ?? false,
+      verifiedAt: preset?.isVerified ? SEEDED_AT : null,
+      createdAt: SEEDED_AT,
+      updatedAt: SEEDED_AT,
+    }
+    organizations.set(organization.id, organization)
+    organizationsByName.set(name, organization)
+    return organization
+  }
+
+  function ensureUser(displayName: string): UserRecord {
+    const existing = usersByName.get(displayName)
+    if (existing) return existing
+    const slug = slugify(displayName)
+    const user: UserRecord = {
+      id: `user-${slug}`,
+      googleSub: `sub-${slug}`,
+      email: `${slug}@example.com`,
+      displayName,
+      avatarUrl: null,
+      globalRole: 'user',
+      createdAt: SEEDED_AT,
+      updatedAt: SEEDED_AT,
+    }
+    usersByName.set(displayName, user)
+    return user
+  }
+
+  function ensureTag(label: string, species: 'cat' | 'bird'): TagRecord {
+    const id = slugify(label)
+    const existing = tags.get(id)
+    if (existing) return existing
+    const tag: TagRecord = {
+      id,
+      slug: id,
+      label,
+      speciesScope: species,
+      createdAt: SEEDED_AT,
+    }
+    tags.set(id, tag)
+    return tag
+  }
+
+  function hydrateAppShell(input: { viewerId: string }): HydratedAppShell {
+    const clinicsResult = getClinics({ clinicService })
+    return {
+      listings: listingRepository.listAll(input.viewerId).map((aggregate) => toListingDetail(aggregate)),
+      clinics: clinicsResult.ok ? clinicsResult.data.items : [],
+    }
+  }
+
+  return {
+    hydrateAppShell,
+    getListingDetail(input) {
+      return getListingDetail({ params: input, listingService })
+    },
+    toggleSavedListing(input) {
+      return postSaveListing({ params: { listingId: input.listingId }, viewerId: input.viewerId, toggleSavedListing })
+    },
+    createInquiry(input) {
+      return postInquiry({ request: input.request, viewerId: input.viewerId, createInquiry })
+    },
+    createListing(input) {
+      const organization = input.request.organizationId ? organizations.get(input.request.organizationId) ?? null : null
+      return postListing({
+        request: input.request,
+        actorUserId: input.actorUserId,
+        organization: organization
+          ? {
+              id: organization.id,
+              slug: organization.slug,
+              name: organization.name,
+              kind: organization.kind,
+              areaLabel: organization.areaLabel,
+              isVerified: organization.isVerified,
+            }
+          : null,
+        tags: input.request.tagIds
+          .map((tagId) => tags.get(tagId))
+          .filter((tag): tag is TagRecord => Boolean(tag)),
+        createListing,
+      })
+    },
+    moderateListing(input) {
+      return postListingAction({
+        listingId: input.listingId,
+        actorUserId: input.actorUserId,
+        request: input.request,
+        moderateListing,
+      })
+    },
+    createReport(input) {
+      return postReport({ request: input.request, createReport })
+    },
+    getOrganizationName(id) {
+      return organizations.get(id)?.name ?? null
+    },
+    getTagId(label) {
+      return slugify(label)
+    },
+  }
+}
+
+export const prototypeBackend = createPrototypeBackend()
+
+function normalizeSex(value: string): 'male' | 'female' | 'unknown' {
+  const lowered = value.toLowerCase()
+  if (lowered === 'male') return 'male'
+  if (lowered === 'female') return 'female'
+  return 'unknown'
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}

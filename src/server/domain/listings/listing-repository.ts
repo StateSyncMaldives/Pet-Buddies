@@ -8,6 +8,7 @@ export interface ToggleSavedListingInput {
 
 export interface ListingRepository {
   browse(query: BrowseListingsQuery): ListingAggregate[]
+  listAll(viewerId?: string): ListingAggregate[]
   getById(id: string): ListingAggregate | null
   getBySlug(slug: string): ListingAggregate | null
   create(aggregate: ListingAggregate): ListingAggregate
@@ -28,9 +29,12 @@ export function createInMemoryListingRepository(input: {
     slugToId.set(aggregate.listing.slug, aggregate.listing.id)
   }
 
+  const listAll = (viewerId?: string) =>
+    Array.from(listings.values()).map((aggregate) => withSavedState(aggregate, viewerId ? savedByViewer.get(viewerId) : undefined))
+
   return {
     browse(query) {
-      return Array.from(listings.values())
+      return listAll()
         .filter((aggregate) => {
           if (query.species && aggregate.listing.species !== query.species) {
             return false
@@ -38,8 +42,8 @@ export function createInMemoryListingRepository(input: {
 
           return true
         })
-        .map((aggregate) => withSavedState(aggregate, savedByViewer.get('viewer-1')))
     },
+    listAll,
     getById(id) {
       const aggregate = listings.get(id)
       return aggregate ? cloneAggregate(aggregate) : null

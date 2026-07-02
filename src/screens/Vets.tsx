@@ -1,9 +1,8 @@
 import { colors, shadow } from '../theme'
 import { useStore } from '../store/store'
-import { SEED_CLINICS } from '../data/seed'
 
 export function Vets() {
-  const { callClinic, directionsClinic } = useStore()
+  const { clinics, callClinic, directionsClinic } = useStore()
 
   return (
     <div style={{ padding: '14px 20px 110px' }}>
@@ -14,31 +13,31 @@ export function Vets() {
         For cats &amp; birds in Greater Malé.
       </p>
 
-      {SEED_CLINICS.map((cl) => (
-        <div key={cl.name} style={{ background: '#fff', borderRadius: 20, boxShadow: shadow.card, padding: 20, marginBottom: 16 }}>
+      {clinics.map((clinic) => (
+        <div key={clinic.name} style={{ background: '#fff', borderRadius: 20, boxShadow: shadow.card, padding: 20, marginBottom: 16 }}>
           <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
-            <div style={{ width: 52, height: 52, borderRadius: 14, background: cl.tint, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: clinic.tint, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round">
                 <line x1="12" y1="6" x2="12" y2="18" />
                 <line x1="6" y1="12" x2="18" y2="12" />
               </svg>
             </div>
             <div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: colors.ink }}>{cl.name}</div>
-              <div style={{ fontSize: 12.5, color: colors.textSecondaryAlt, marginTop: 2 }}>{cl.area}</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: colors.ink }}>{clinic.name}</div>
+              <div style={{ fontSize: 12.5, color: colors.textSecondaryAlt, marginTop: 2 }}>{clinic.area}</div>
             </div>
           </div>
-          <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.5, margin: '0 0 13px' }}>{cl.note}</p>
+          <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.5, margin: '0 0 13px' }}>{clinic.note}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-            {cl.services.map((s) => (
-              <span key={s} style={{ background: colors.paper, color: '#6b7280', fontSize: 11.5, fontWeight: 600, padding: '4px 9px', borderRadius: 7 }}>
-                {s}
+            {clinic.services.map((service) => (
+              <span key={service} style={{ background: colors.paper, color: '#6b7280', fontSize: 11.5, fontWeight: 600, padding: '4px 9px', borderRadius: 7 }}>
+                {service}
               </span>
             ))}
           </div>
           <div style={{ display: 'flex', gap: 9 }}>
             <button
-              onClick={() => callClinic(cl.name)}
+              onClick={() => callClinic(clinic.name)}
               style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', borderRadius: 12, border: 'none', background: colors.deepBlue, color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
