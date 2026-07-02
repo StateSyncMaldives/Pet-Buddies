@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { colors } from '../theme'
 import { useStore } from '../store/store'
 import { listMeta } from '../store/store'
+import { getDetailPath } from '../router/paths'
 
 const HERO_H = 188
 const INTERVAL = 4500
@@ -40,7 +42,8 @@ const PROMOS: Promo[] = [
  * detail) with promo / sponsor slides. Swipeable; pauses while the user touches.
  */
 export function Hero() {
-  const { listings, openDetail, showToast } = useStore()
+  const navigate = useNavigate()
+  const { listings, showToast } = useStore()
 
   // Featured = first few live listings that have a real photo.
   const featured = listings
@@ -113,7 +116,7 @@ export function Hero() {
             >
               {l ? (
                 <button
-                  onClick={() => openDetail(l.id)}
+                  onClick={() => navigate({ to: getDetailPath(l.id) })}
                   aria-label={`Featured: ${l.name}`}
                   style={{
                     position: 'relative',

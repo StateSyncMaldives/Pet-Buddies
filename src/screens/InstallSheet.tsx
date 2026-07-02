@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react'
+import { useRouterState } from '@tanstack/react-router'
+import { getTabFromPathname } from '../router/paths'
 import { colors, font, z } from '../theme'
 import { useStore } from '../store/store'
 
@@ -10,6 +12,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function InstallSheet() {
   const { state, installAdd, installDismiss } = useStore()
+  const pathname = useRouterState({ select: (routerState) => routerState.location.pathname })
   const deferred = useRef<BeforeInstallPromptEvent | null>(null)
 
   // Capture the real install prompt so "Add to Home Screen" can trigger it.
@@ -23,7 +26,11 @@ export function InstallSheet() {
   }, [])
 
   const visible =
-    state.onboarded && !state.installed && !state.installDismissed && !state.overlay && state.tab === 'browse'
+    state.onboarded &&
+    !state.installed &&
+    !state.installDismissed &&
+    !state.overlay &&
+    getTabFromPathname(pathname) === 'browse'
   if (!visible) return null
 
   const onAdd = async () => {

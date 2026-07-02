@@ -1,6 +1,7 @@
+import { Link, useRouterState } from '@tanstack/react-router'
 import { colors } from '../theme'
-import { useStore } from '../store/store'
 import type { Tab } from '../types'
+import { ROUTE_PATHS, getTabFromPathname } from '../router/paths'
 import { CrossIcon, GridIcon, HeartIcon, PersonIcon, PinIcon } from './icons'
 
 const TABS: { tab: Tab; label: string }[] = [
@@ -27,7 +28,9 @@ function TabIcon({ tab, color }: { tab: Tab; color: string }) {
 }
 
 export function BottomNav() {
-  const { state, setTab } = useStore()
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const activeTab = getTabFromPathname(pathname)
+
   return (
     <nav
       className="pb-nav"
@@ -45,13 +48,14 @@ export function BottomNav() {
       }}
     >
       {TABS.map(({ tab, label }) => {
-        const active = state.tab === tab
+        const active = activeTab === tab
         const color = active ? colors.navActive : colors.navInactive
         return (
-          <button
+          <Link
             key={tab}
-            onClick={() => setTab(tab)}
-            aria-current={active}
+            to={ROUTE_PATHS[tab]}
+            preload="intent"
+            aria-current={active ? 'page' : undefined}
             style={{
               background: 'none',
               border: 'none',
@@ -62,11 +66,12 @@ export function BottomNav() {
               padding: '5px 13px',
               borderRadius: 16,
               cursor: 'pointer',
+              textDecoration: 'none',
             }}
           >
             <TabIcon tab={tab} color={color} />
             <span style={{ fontSize: 10.5, fontWeight: 600, color }}>{label}</span>
-          </button>
+          </Link>
         )
       })}
     </nav>

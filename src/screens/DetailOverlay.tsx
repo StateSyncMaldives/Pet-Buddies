@@ -1,11 +1,13 @@
+import { useNavigate } from '@tanstack/react-router'
 import { colors, shadow, z } from '../theme'
 import { detailMeta, useStore } from '../store/store'
 import { PersonIcon, ChevronLeftIcon, HeartIcon, PinIcon, ShareIcon } from '../components/icons'
 import { PetPhoto, VerifiedBadge } from '../components/Brand'
-import { petUrl } from '../petLink'
+import { getDetailPath, ROUTE_PATHS } from '../router/paths'
 
 export function DetailOverlay() {
-  const { state, listings, toggleSave, closeDetail, applyToAdopt, reportListing, showToast } = useStore()
+  const navigate = useNavigate()
+  const { state, listings, toggleSave, applyToAdopt, reportListing, showToast } = useStore()
   if (state.overlay !== 'detail' || !state.detailId) return null
 
   const listing = listings.find((l) => l.id === state.detailId)
@@ -17,7 +19,7 @@ export function DetailOverlay() {
   const orgRole = listing.org ? 'Verified partner organisation' : 'Individual lister'
 
   const onShare = async () => {
-    const url = petUrl(listing.id)
+    const url = `${location.origin}${getDetailPath(listing.id)}`
     const text = `Meet ${listing.name} — ${detailMeta(listing)}. Looking for a home in ${listing.area}.`
     try {
       if (navigator.share) {
@@ -43,7 +45,6 @@ export function DetailOverlay() {
       }}
     >
       <div className="pbscroll" style={{ flex: 1, overflowY: 'auto' }}>
-        {/* Hero */}
         <div
           style={{
             position: 'relative',
@@ -62,11 +63,7 @@ export function DetailOverlay() {
             silhouetteWidth={listing.species === 'cat' ? 190 : 170}
             silhouetteHeight={160}
           />
-          <button
-            onClick={closeDetail}
-            aria-label="Back"
-            style={circleBtn('left')}
-          >
+          <button onClick={() => navigate({ to: ROUTE_PATHS.browse })} aria-label="Back" style={circleBtn('left')}>
             <ChevronLeftIcon size={18} />
           </button>
           <button
@@ -94,11 +91,8 @@ export function DetailOverlay() {
           <h1 style={{ fontSize: 27, fontWeight: 700, color: colors.ink, letterSpacing: '-0.02em', margin: 0 }}>
             {listing.name}
           </h1>
-          <div style={{ fontSize: 14, color: colors.textSecondary, marginTop: 4 }}>
-            {detailMeta(listing)}
-          </div>
+          <div style={{ fontSize: 14, color: colors.textSecondary, marginTop: 4 }}>{detailMeta(listing)}</div>
 
-          {/* Tags */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '18px 0 22px' }}>
             {listing.tags.map((t) => (
               <span
@@ -117,7 +111,6 @@ export function DetailOverlay() {
             ))}
           </div>
 
-          {/* Org row */}
           <div
             style={{
               display: 'flex',
@@ -153,14 +146,9 @@ export function DetailOverlay() {
             </div>
           </div>
 
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: colors.ink, margin: '0 0 9px' }}>
-            About {listing.name}
-          </h2>
-          <p style={{ fontSize: 14.5, color: '#565b63', lineHeight: 1.65, margin: '0 0 22px' }}>
-            {listing.story}
-          </p>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: colors.ink, margin: '0 0 9px' }}>About {listing.name}</h2>
+          <p style={{ fontSize: 14.5, color: '#565b63', lineHeight: 1.65, margin: '0 0 22px' }}>{listing.story}</p>
 
-          {/* Privacy note */}
           <div
             style={{
               display: 'flex',
@@ -174,8 +162,7 @@ export function DetailOverlay() {
           >
             <PinIcon size={18} stroke={colors.faint} style={{ flex: 'none' }} />
             <span style={{ fontSize: 12.5, color: '#6b7280', lineHeight: 1.45 }}>
-              General area: <strong style={{ color: colors.ink }}>{listing.area}</strong>. Exact
-              location is shared after your inquiry.
+              General area: <strong style={{ color: colors.ink }}>{listing.area}</strong>. Exact location is shared after your inquiry.
             </span>
           </div>
 
@@ -196,7 +183,6 @@ export function DetailOverlay() {
         </div>
       </div>
 
-      {/* Sticky footer */}
       <div
         style={{
           padding: '14px 22px calc(22px + env(safe-area-inset-bottom, 0px))',

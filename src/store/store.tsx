@@ -16,7 +16,6 @@ import type {
   Listing,
   Overlay,
   Species,
-  Tab,
   User,
 } from '../types'
 
@@ -44,7 +43,6 @@ export interface AddForm {
 }
 
 export interface AppState {
-  tab: Tab
   species: Species
   query: string
   tags: string[]
@@ -101,7 +99,6 @@ function loadFlags(): { onboarded: boolean; installed: boolean; installDismissed
 function initialState(): AppState {
   const flags = loadFlags()
   return {
-    tab: 'browse',
     species: 'cat',
     query: '',
     tags: [],
@@ -135,8 +132,6 @@ function inquiryDraft(name: string): string {
 export interface Store {
   state: AppState
   listings: Listing[]
-  // navigation
-  setTab: (tab: Tab) => void
   // browse
   setSpecies: (species: Species) => void
   setQuery: (query: string) => void
@@ -236,8 +231,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return {
       state,
       listings,
-      setTab: (tab) => patch({ tab }),
-
       setSpecies: (species) => patch({ species, tags: [] }),
       setQuery: (query) => patch({ query }),
       toggleTag: (tag) =>
@@ -388,7 +381,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       useMyLocation: () => setRep({ area: 'Maafannu, Malé' }),
       toggleRepPhoto: () => setState((s) => ({ ...s, rep: { ...s.rep, photo: true } })),
       submitReport: () => patch({ reportDone: true }),
-      resetReport: () => patch({ reportDone: false, rep: { ...emptyRep }, tab: 'browse' }),
+      resetReport: () => patch({ reportDone: false, rep: { ...emptyRep } }),
 
       callClinic: (name) => showToast(`Calling ${name}…`),
       directionsClinic: () => showToast('Opening directions…'),

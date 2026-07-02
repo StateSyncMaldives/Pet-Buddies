@@ -11,6 +11,7 @@ export interface ListingRepository {
   getById(id: string): ListingAggregate | null
   getBySlug(slug: string): ListingAggregate | null
   create(aggregate: ListingAggregate): ListingAggregate
+  save(aggregate: ListingAggregate): ListingAggregate
   updateStatus(id: string, status: ListingStatus): ListingAggregate | null
   toggleSavedListing(input: ToggleSavedListingInput): boolean
 }
@@ -48,6 +49,12 @@ export function createInMemoryListingRepository(input: {
       return id ? this.getById(id) : null
     },
     create(aggregate) {
+      const cloned = cloneAggregate(aggregate)
+      listings.set(cloned.listing.id, cloned)
+      slugToId.set(cloned.listing.slug, cloned.listing.id)
+      return cloneAggregate(cloned)
+    },
+    save(aggregate) {
       const cloned = cloneAggregate(aggregate)
       listings.set(cloned.listing.id, cloned)
       slugToId.set(cloned.listing.slug, cloned.listing.id)
