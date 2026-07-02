@@ -6,3 +6,6 @@ dist-ssr
 .vite
 .vercel
 .superpowers/
+.impeccable/
+.claude/
+*.tsbuildinfo

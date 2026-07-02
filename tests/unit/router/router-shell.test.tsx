@@ -19,8 +19,8 @@ function renderAt(
 ) {
   window.localStorage.setItem('petbuddies.flags', JSON.stringify(flags))
 
-  const router = createAppRouter({ initialEntries: [path] })
   const { backend, session } = createAppRuntime()
+  const router = createAppRouter({ context: { backend, viewerId: session.viewerId }, initialEntries: [path] })
 
   render(
     <StoreProvider backend={backend} viewerId={session.viewerId} mockUser={session.mockUser} moderatorId={session.moderatorId}>
@@ -142,5 +142,13 @@ describe('app router shell', () => {
 
     expect(await screen.findByRole('heading', { name: 'Mishka' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Back' })).toBeTruthy()
+  })
+
+  it('renders the not-found shell for a direct load of an unknown listing id', async () => {
+    const router = renderAt('/browse/listings/does-not-exist')
+
+    expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeTruthy()
+    expect(router.state.location.pathname).toBe('/browse/listings/does-not-exist')
+    expect(screen.queryByText('Find a buddy')).toBeNull()
   })
 })

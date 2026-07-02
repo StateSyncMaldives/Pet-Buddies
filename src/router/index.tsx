@@ -1,10 +1,12 @@
+import { useEffect } from 'react'
 import {
   RouterProvider,
-  createRootRoute,
+  createRootRouteWithContext,
   createRoute,
   createRouter,
   createBrowserHistory,
   createMemoryHistory,
+  notFound,
   redirect,
 } from '@tanstack/react-router'
 
@@ -14,7 +16,14 @@ import { Report } from '../screens/Report'
 import { Vets } from '../screens/Vets'
 import { Inbox } from '../screens/Inbox'
 import { Saved } from '../screens/Saved'
+import type { PrototypeBackend } from '../server/runtime/prototype-backend'
+import { useStore } from '../store/store'
 import { DETAIL_ROUTE_PATH, ROUTE_PATHS } from './paths'
+
+export interface AppRouterContext {
+  backend: PrototypeBackend
+  viewerId: string
+}
 
 function DefaultNotFound() {
   return (
@@ -27,7 +36,7 @@ function DefaultNotFound() {
   )
 }
 
-const rootRoute = createRootRoute({
+const rootRoute = createRootRouteWithContext<AppRouterContext>()({
   component: App,
   notFoundComponent: DefaultNotFound,
 })
@@ -46,10 +55,42 @@ const browseRoute = createRoute({
   component: Browse,
 })
 
+/**
+ * Syncs the store's detail overlay from the route's listingId param. The
+ * loader has already validated the listing exists before this component
+ * mounts; the store remains the render source for mutable listing state
+ * (saved flags, status) shown inside the overlay.
+ */
+function BrowseDetailRoute() {
+  const { listingId } = browseDetailRoute.useParams()
+  const { openDetail, closeDetail } = useStore()
+
+  // `openDetail`/`closeDetail` are recreated every time any store state
+  // changes (the store object itself is rebuilt on each update), so they
+  // are not stable dependencies. Only `listingId` should retrigger the
+  // open; the close is scoped to this component's actual unmount.
+  useEffect(() => {
+    openDetail(listingId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listingId])
+
+  useEffect(() => {
+    return () => closeDetail()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return <Browse />
+}
+
 const browseDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: DETAIL_ROUTE_PATH,
-  component: Browse,
+  loader: ({ context, params }) => {
+    const result = context.backend.getListingDetail({ slugOrId: params.listingId })
+    if (!result.ok) throw notFound()
+    return result.data.item
+  },
+  component: BrowseDetailRoute,
 })
 
 const reportRoute = createRoute({
@@ -78,16 +119,23 @@ const savedRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([indexRoute, browseRoute, browseDetailRoute, reportRoute, vetsRoute, youRoute, savedRoute])
 
-export function createAppRouter({ initialEntries }: { initialEntries?: string[] } = {}) {
+export function createAppRouter({
+  context,
+  initialEntries,
+}: {
+  context: AppRouterContext
+  initialEntries?: string[]
+}) {
   return createRouter({
     routeTree,
+    context,
     history: initialEntries ? createMemoryHistory({ initialEntries }) : createBrowserHistory(),
     defaultPreload: 'intent',
   })
 }
 
-export function AppRouterProvider() {
-  const router = createAppRouter()
+export function AppRouterProvider({ backend, viewerId }: AppRouterContext) {
+  const router = createAppRouter({ context: { backend, viewerId } })
   return <RouterProvider router={router} />
 }
 

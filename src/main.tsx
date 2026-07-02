@@ -15,7 +15,7 @@ createRoot(document.getElementById('root')!).render(
       mockUser={runtime.session.mockUser}
       moderatorId={runtime.session.moderatorId}
     >
-      <AppRouterProvider />
+      <AppRouterProvider backend={runtime.backend} viewerId={runtime.session.viewerId} />
     </StoreProvider>
   </StrictMode>,
 )
