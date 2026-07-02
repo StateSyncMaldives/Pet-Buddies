@@ -1,11 +1,14 @@
+import { useNavigate } from '@tanstack/react-router'
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { colors, shadow } from '../theme'
+import { getDetailPath } from '../router/paths'
 import { listMeta, orgLine, useStore } from '../store/store'
 import { PetPhoto, VerifiedBadge } from '../components/Brand'
 import { HeartIcon } from '../components/icons'
 
 export function Saved() {
-  const { state, listings, toggleSave, openDetail } = useStore()
+  const navigate = useNavigate()
+  const { state, listings, toggleSave } = useStore()
   const savedFeed = state.saved
     .map((id) => listings.find((l) => l.id === id))
     .filter((l): l is NonNullable<typeof l> => Boolean(l))
@@ -39,11 +42,11 @@ export function Saved() {
         return (
           <div
             key={l.id}
-            onClick={() => openDetail(l.id)}
+            onClick={() => navigate({ to: getDetailPath(l.id) })}
             onKeyDown={(e: KeyboardEvent) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault()
-                openDetail(l.id)
+                navigate({ to: getDetailPath(l.id) })
               }
             }}
             role="button"

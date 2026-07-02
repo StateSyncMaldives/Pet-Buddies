@@ -1,4 +1,6 @@
+import { useNavigate } from '@tanstack/react-router'
 import { colors, shadow } from '../theme'
+import { getDetailPath } from '../router/paths'
 import { useStore } from '../store/store'
 import type { Listing } from '../types'
 import { Segmented } from '../components/Segmented'
@@ -20,8 +22,11 @@ function statusChip(status: NonNullable<Listing['status']>) {
 }
 
 export function Inbox() {
-  const { state, listings, setInboxView, openDetail, openAdd, markAdopted } = useStore()
+  const navigate = useNavigate()
+  const { state, listings, setInboxView, openAdd, markAdopted } = useStore()
   const showMine = state.inboxView === 'listings'
+
+  const openListingDetail = (listingId: string) => navigate({ to: getDetailPath(listingId) })
 
   const myListings = state.user
     ? listings.filter((l) => l.lister === state.user!.name)
@@ -70,8 +75,8 @@ export function Inbox() {
                 style={{ background: '#fff', borderRadius: 16, boxShadow: shadow.cardSm, padding: 13, marginBottom: 12 }}
               >
                 <div
-                  onClick={status === 'live' ? () => openDetail(l.id) : undefined}
-                  onKeyDown={status === 'live' ? (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(l.id) } } : undefined}
+                  onClick={status === 'live' ? () => openListingDetail(l.id) : undefined}
+                  onKeyDown={status === 'live' ? (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openListingDetail(l.id) } } : undefined}
                   role={status === 'live' ? 'button' : undefined}
                   tabIndex={status === 'live' ? 0 : undefined}
                   aria-label={status === 'live' ? `View ${l.name}` : undefined}
@@ -133,8 +138,8 @@ export function Inbox() {
             state.inquiries.map((q) => (
               <div
                 key={q.key}
-                onClick={() => openDetail(q.listingId)}
-                onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(q.listingId) } }}
+                onClick={() => openListingDetail(q.listingId)}
+                onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openListingDetail(q.listingId) } }}
                 role="button"
                 tabIndex={0}
                 aria-label={`View inquiry about ${q.name}`}

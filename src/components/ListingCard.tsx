@@ -1,5 +1,7 @@
+import { useNavigate } from '@tanstack/react-router'
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { colors, shadow } from '../theme'
+import { getDetailPath } from '../router/paths'
 import { listMeta, useStore } from '../store/store'
 import type { Listing } from '../types'
 import { PetPhoto, VerifiedBadge } from './Brand'
@@ -7,7 +9,8 @@ import { HeartIcon } from './icons'
 
 /** Compact Browse grid card: square photo + save heart, name, meta, area. */
 export function ListingCard({ listing }: { listing: Listing }) {
-  const { state, toggleSave, openDetail } = useStore()
+  const navigate = useNavigate()
+  const { state, toggleSave } = useStore()
   const saved = state.saved.includes(listing.id)
 
   const onSave = (e: MouseEvent) => {
@@ -15,7 +18,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
     toggleSave(listing.id)
   }
 
-  const open = () => openDetail(listing.id)
+  const open = () => navigate({ to: getDetailPath(listing.id) })
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()

@@ -4,10 +4,7 @@ import { ButtonPair, CheckMedallion, FieldLabel, inputStyle } from '../component
 
 export function Report() {
   const { state, patchRep, useMyLocation, toggleRepPhoto, submitReport, resetReport } = useStore()
-  const { rep, reportDone } = state
-
-  const routedOrg = rep.species === 'cat' ? 'Maldives Cat Rescue' : 'Zoophilist Society Maldives'
-  const reportRef = 'MV' + (1200 + (state.saved.length + state.applied.length) * 7 + 48)
+  const { rep, reportDone, reportReceipt } = state
 
   if (reportDone) {
     return (
@@ -16,10 +13,10 @@ export function Report() {
           <CheckMedallion bg="#E8F3FB" stroke={colors.actionBlue} />
           <h2 style={{ fontSize: 22, fontWeight: 700, color: colors.ink, margin: '0 0 10px' }}>Report sent</h2>
           <p style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 1.55, maxWidth: 280, margin: '0 0 6px' }}>
-            Routed to <strong style={{ color: colors.ink }}>{routedOrg}</strong> — the closest partner
+            Routed to <strong style={{ color: colors.ink }}>{reportReceipt?.routedTo ?? 'Partner organisation'}</strong> — the closest partner
             org to your area. They'll follow up if they can help.
           </p>
-          <p style={{ fontSize: 12.5, color: colors.faintAlt, margin: '0 0 30px' }}>Reference #{reportRef}</p>
+          <p style={{ fontSize: 12.5, color: colors.faintAlt, margin: '0 0 30px' }}>Reference #{reportReceipt?.referenceCode ?? 'MV0000'}</p>
           <button
             onClick={resetReport}
             style={{ padding: '13px 28px', borderRadius: 13, border: '1.5px solid #d8dce4', background: '#fff', color: colors.ink, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
