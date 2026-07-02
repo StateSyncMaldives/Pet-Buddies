@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { prototypeBackend, type PrototypeBackend } from '../server/runtime/prototype-backend'
+import type { PrototypeBackend } from '../server/runtime/prototype-backend'
 import { createInquiryViewModel, mapClinicSummaryToClinic, mapListingDetailToListing } from './view-model-mappers'
 import type {
   AuthIntent,
@@ -21,8 +21,6 @@ import type {
   User,
 } from '../types'
 
-const DEFAULT_MOCK_USER: User = { name: 'Aishath Ali', email: 'aishath.ali@gmail.com' }
-const DEFAULT_VIEWER_ID = DEFAULT_MOCK_USER.name
 const DEFAULT_MODERATOR_ID = 'moderator-demo'
 
 /**
@@ -184,9 +182,9 @@ export interface Store {
 
 export interface StoreProviderProps {
   children: ReactNode
-  backend?: PrototypeBackend
-  viewerId?: string
-  mockUser?: User
+  backend: PrototypeBackend
+  viewerId: string
+  mockUser: User
   moderatorId?: string
 }
 
@@ -203,9 +201,9 @@ const StoreContext = createContext<Store | null>(null)
 
 export function StoreProvider({
   children,
-  backend = prototypeBackend,
-  viewerId = DEFAULT_VIEWER_ID,
-  mockUser = DEFAULT_MOCK_USER,
+  backend,
+  viewerId,
+  mockUser,
   moderatorId = DEFAULT_MODERATOR_ID,
 }: StoreProviderProps) {
   const hydration = useMemo(() => createInitialHydration(backend, viewerId), [backend, viewerId])

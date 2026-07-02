@@ -88,4 +88,75 @@ describe('prototype backend runtime', () => {
       expect(result.data.moderationEventId).toMatch(/^mod-event-/)
     }
   })
+
+  it('uses real infra defaults: ISO timestamps, prefixed uuids, and MV#### reference codes', () => {
+    const backend = createPrototypeBackend()
+
+    const first = backend.createReport({
+      request: {
+        reportKind: 'found',
+        species: 'bird',
+        birdSpecies: 'Budgerigar',
+        areaLabel: 'Maafannu, Malé',
+        description: 'Found a tame budgie near the harbour.',
+      },
+    })
+    const second = backend.createReport({
+      request: {
+        reportKind: 'found',
+        species: 'bird',
+        birdSpecies: 'Budgerigar',
+        areaLabel: 'Maafannu, Malé',
+        description: 'Found another tame budgie near the harbour.',
+      },
+    })
+
+    expect(first.ok).toBe(true)
+    expect(second.ok).toBe(true)
+    if (first.ok && second.ok) {
+      expect(first.data.report.id).toMatch(/^report-[0-9a-f-]{36}$/)
+      expect(first.data.report.id).not.toBe(second.data.report.id)
+      expect(first.data.report.referenceCode).toMatch(/^MV\d+$/)
+      expect(new Date(first.data.report.createdAt).toISOString()).toBe(first.data.report.createdAt)
+    }
+  })
+
+  it('accepts injected deterministic infra deps for now/generateId/generateReferenceCode', () => {
+    let idCounter = 0
+    const backend = createPrototypeBackend({
+      now: () => '2099-01-01T00:00:00.000Z',
+      generateId: (prefix) => `${prefix}-fake-${++idCounter}`,
+      generateReferenceCode: () => 'MV9999',
+    })
+
+    const result = backend.createReport({
+      request: {
+        reportKind: 'found',
+        species: 'bird',
+        birdSpecies: 'Budgerigar',
+        areaLabel: 'Maafannu, Malé',
+        description: 'Found a tame budgie near the harbour.',
+      },
+    })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.report.id).toBe('report-fake-1')
+      expect(result.data.report.referenceCode).toBe('MV9999')
+      expect(result.data.report.createdAt).toBe('2099-01-01T00:00:00.000Z')
+    }
+  })
+
+  it('does not share mutable state between separate backend instances', () => {
+    const backendA = createPrototypeBackend()
+    const backendB = createPrototypeBackend()
+
+    backendA.toggleSavedListing({ listingId: 'mishka', viewerId: 'viewer-1' })
+
+    const hydratedA = backendA.hydrateAppShell({ viewerId: 'viewer-1' })
+    const hydratedB = backendB.hydrateAppShell({ viewerId: 'viewer-1' })
+
+    expect(hydratedA.listings.find((listing) => listing.id === 'mishka')?.savedByViewer).toBe(true)
+    expect(hydratedB.listings.find((listing) => listing.id === 'mishka')?.savedByViewer).toBe(false)
+  })
 })

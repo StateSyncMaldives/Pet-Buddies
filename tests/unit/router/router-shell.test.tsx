@@ -6,6 +6,7 @@ import { RouterProvider } from '@tanstack/react-router'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { createAppRouter } from '../../../src/router'
+import { createAppRuntime } from '../../../src/server/runtime/app-session'
 import { StoreProvider } from '../../../src/store/store'
 
 function renderAt(
@@ -19,9 +20,10 @@ function renderAt(
   window.localStorage.setItem('petbuddies.flags', JSON.stringify(flags))
 
   const router = createAppRouter({ initialEntries: [path] })
+  const { backend, session } = createAppRuntime()
 
   render(
-    <StoreProvider>
+    <StoreProvider backend={backend} viewerId={session.viewerId} mockUser={session.mockUser} moderatorId={session.moderatorId}>
       <RouterProvider router={router} />
     </StoreProvider>,
   )

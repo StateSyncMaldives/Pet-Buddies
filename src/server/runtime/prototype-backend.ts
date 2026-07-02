@@ -66,6 +66,12 @@ export interface HydratedAppShell {
   clinics: ClinicSummary[]
 }
 
+export interface PrototypeBackendDeps {
+  now?: () => string
+  generateId?: (prefix: string) => string
+  generateReferenceCode?: () => string
+}
+
 export interface PrototypeBackend {
   hydrateAppShell(input: { viewerId: string }): HydratedAppShell
   getListingDetail(input: { slugOrId: string }): ReturnType<typeof getListingDetail>
@@ -82,7 +88,7 @@ export interface PrototypeBackend {
   getTagId(label: string): string
 }
 
-export function createPrototypeBackend(): PrototypeBackend {
+export function createPrototypeBackend(deps: PrototypeBackendDeps = {}): PrototypeBackend {
   const organizations = new Map<string, OrganizationRecord>()
   const organizationsByName = new Map<string, OrganizationRecord>()
   const usersByName = new Map<string, UserRecord>()
@@ -90,10 +96,10 @@ export function createPrototypeBackend(): PrototypeBackend {
   const moderationEvents: ModerationEventRecord[] = []
   const inquiries: AdoptionInquiryRecord[] = []
   const reports: Array<{ id: string }> = []
-  let counter = 0
 
-  const nextId = (prefix: string) => `${prefix}-${++counter}`
-  const now = () => new Date(Date.UTC(2026, 6, 2, 12, 0, counter % 60, 0)).toISOString()
+  const now = deps.now ?? (() => new Date().toISOString())
+  const generateId = deps.generateId ?? ((prefix: string) => `${prefix}-${crypto.randomUUID()}`)
+  const generateReferenceCode = deps.generateReferenceCode ?? (() => `MV${Math.floor(1000 + Math.random() * 9000)}`)
 
   const listingRepository = createInMemoryListingRepository({
     listings: SEED_LISTINGS.map((listing) => seedListingToAggregate(listing)),
@@ -104,25 +110,25 @@ export function createPrototypeBackend(): PrototypeBackend {
   const moderateListing = createModerateListingUseCase({
     repository: listingRepository,
     now,
-    generateEventId: () => nextId('mod-event'),
+    generateEventId: () => generateId('mod-event'),
     saveModerationEvent: (event) => moderationEvents.push(event),
   })
   const createInquiry = createCreateInquiryUseCase({
     repository: listingRepository,
     now,
-    generateId: () => nextId('inquiry'),
+    generateId: () => generateId('inquiry'),
     saveInquiry: (inquiry) => inquiries.push(inquiry),
   })
   const createReport = createCreateReportUseCase({
     now,
-    generateId: () => nextId('report'),
-    generateReferenceCode: () => `MV${1200 + ++counter}`,
+    generateId: () => generateId('report'),
+    generateReferenceCode,
     saveReport: (report) => reports.push({ id: report.id }),
   })
   const createListing = createCreateListingUseCase({
     repository: listingRepository,
     now,
-    generateId: () => nextId('listing'),
+    generateId: () => generateId('listing'),
     generateSlug: slugify,
     toPublicImageUrl: (objectKey) => objectKey,
   })
@@ -289,8 +295,6 @@ export function createPrototypeBackend(): PrototypeBackend {
     },
   }
 }
-
-export const prototypeBackend = createPrototypeBackend()
 
 function normalizeSex(value: string): 'male' | 'female' | 'unknown' {
   const lowered = value.toLowerCase()
