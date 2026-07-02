@@ -1,0 +1,15 @@
+# Pet Buddies Claude guide
+
+## Agent skills
+
+### Issue tracker
+
+Issues for this repo are tracked in GitHub Issues for `iyadhali/Pet-Buddies`. External PRs are **not** part of the triage request surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+This repo currently uses the default five-label triage vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, and `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This repo uses a **single-context** domain-doc layout with one root `CONTEXT.md` and root `docs/adr/`. See `docs/agents/domain.md`.
