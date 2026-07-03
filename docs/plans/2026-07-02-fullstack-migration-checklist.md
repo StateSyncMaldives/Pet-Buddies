@@ -122,6 +122,7 @@ Deployment note:
 Next implementation slice:
 - Move saved, inbox, and my listings toward server-backed route data, then define the Query/cache ownership strategy for those read models.
 - Keep the runtime mutation adapter in place until durable persistence replaces the demo in-memory backend.
-- Brief for completed mutation slice: `docs/prds/2026-07-03-server-backed-route-data-and-mutation-boundaries.md`
+- Brief: `docs/prds/2026-07-03-server-backed-read-models-and-cache-ownership.md`
+- Completed mutation slice brief: `docs/prds/2026-07-03-server-backed-route-data-and-mutation-boundaries.md`
 
 That preserves the work already done here and avoids another big-bang rewrite.
