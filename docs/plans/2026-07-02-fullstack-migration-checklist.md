@@ -35,6 +35,7 @@ Completed:
 - Prepared the next ready-for-agent PRD for server-backed route data and mutation boundaries at `docs/prds/2026-07-03-server-backed-route-data-and-mutation-boundaries.md`
 - Added Zod-validated mutation schemas, a store-facing mutation adapter seam, and Start server-function wrappers for save/unsave, Adoption inquiry submit, Lost/found report submit, Listing creation, and Listing lifecycle actions
 - Added ADR 0003 to preserve request/session runtime identity across Start server-function mutation work
+- Refined the next read-model PRD around Saved listings, Sent adoption inquiries, Owned listings, Clinic loaders, Router-owned loader data, and explicit mutation reconciliation
 
 Verification:
 - `pnpm test` passes (93 tests)
@@ -81,8 +82,8 @@ Issue tracker note:
 - [x] Move detail route data to route loaders instead of relying on shared in-memory store state
 - [x] Load browse filters from URL search params
 - [x] Load browse results from server query params
-- [ ] Make saved, inbox, and my listings derive from server-backed route data
-- [ ] Add mutation invalidation / optimistic update strategy for Start + Query integration
+- [ ] Make Saved listings, Sent adoption inquiries, Owned listings, and Clinic data derive from explicit server-backed route data
+- [ ] Add mutation reconciliation for loader-owned route data before deciding whether TanStack Query becomes the cache owner
 
 ### 6) Uploads and media
 - [ ] Replace fake image object keys with real upload flow
@@ -120,7 +121,7 @@ Deployment note:
 - No Cloudflare deploy has been run from this checklist. Actual deployment still requires `wrangler login` / account access and an explicit deploy command.
 
 Next implementation slice:
-- Move saved, inbox, and my listings toward server-backed route data, then define the Query/cache ownership strategy for those read models.
+- Move Saved listings, Sent adoption inquiries, Owned listings, and Clinic data toward explicit server-backed route data while keeping TanStack Query deferred.
 - Keep the runtime mutation adapter in place until durable persistence replaces the demo in-memory backend.
 - Brief: `docs/prds/2026-07-03-server-backed-read-models-and-cache-ownership.md`
 - Completed mutation slice brief: `docs/prds/2026-07-03-server-backed-route-data-and-mutation-boundaries.md`

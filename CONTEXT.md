@@ -8,6 +8,10 @@ _Avoid_: Post, ad, card
 The accountable publisher of a listing, represented by either an individual user or a verified organization.
 _Avoid_: Seller, author
 
+**Owned listings**:
+Listings for which the current viewer is the listing owner in the current identity model.
+_Avoid_: My posts, authored cards
+
 **Viewer**:
 The current session actor viewing or interacting with listings before real authentication is wired.
 _Avoid_: Anonymous visitor, browser session
@@ -19,6 +23,10 @@ _Avoid_: Vendor, clinic
 **Adoption inquiry**:
 A one-way message from a user expressing interest in a listing.
 _Avoid_: Chat, conversation, application thread
+
+**Sent adoption inquiry**:
+An adoption inquiry submitted by the current viewer and shown back to that viewer for reference.
+_Avoid_: Inbox message, reply thread, conversation
 
 **Lost/found report**:
 A report about a missing or found animal routed to an organization based on species.
