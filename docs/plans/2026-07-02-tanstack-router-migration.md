@@ -14,6 +14,7 @@ Completed implementation:
 - Browse listing results are now loaded by the route loader from validated URL search params.
 - The router shell has been migrated to TanStack Start SPA mode with file-based routes under `src/routes`.
 - Cloudflare Workers config has been added separately in the fullstack checklist slice.
+- The next remaining-task PRD has been prepared locally at `docs/prds/2026-07-03-server-backed-route-data-and-mutation-boundaries.md`.
 
 Key commits:
 - `22a58ae` `feat: add typed router context and browse detail loader`
@@ -23,6 +24,9 @@ Key commits:
 Current verification:
 - `pnpm test` passes (84 tests)
 - `pnpm build` passes
+
+Issue tracker note:
+- GitHub Issue publication is currently blocked because the fork repository `iyadhali/Pet-Buddies` has Issues disabled. Do not publish to an upstream repository; keep work scoped to the fork.
 
 > **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
 

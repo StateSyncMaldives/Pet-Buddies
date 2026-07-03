@@ -32,11 +32,15 @@ Completed:
 - Verified the Cloudflare adapter build path locally without deploying
 - Added a Browse route loader boundary that derives server-backed listing results from validated URL search params
 - Added the first Start server-function wrapper for browse listing data, with the route still delegating through injected runtime context for testable app composition
+- Prepared the next ready-for-agent PRD for server-backed route data and mutation boundaries at `docs/prds/2026-07-03-server-backed-route-data-and-mutation-boundaries.md`
 
 Verification:
 - `pnpm test` passes (84 tests)
 - `pnpm build` passes and generates `dist/client/sw.js`
 - `pnpm cf-typegen` passes and writes `worker-configuration.d.ts`
+
+Issue tracker note:
+- GitHub Issue publication is currently blocked because the fork repository `iyadhali/Pet-Buddies` has Issues disabled. Keep the PRD local until Issues are enabled on the fork.
 
 ## Remaining checklist for the broader fullstack migration
 
@@ -113,5 +117,6 @@ Deployment note:
 
 Next implementation slice:
 - Add explicit action/server-function boundaries for the remaining mutations: save/unsave, inquiry submit, report submit, listing create, and moderation actions.
+- Brief: `docs/prds/2026-07-03-server-backed-route-data-and-mutation-boundaries.md`
 
 That preserves the work already done here and avoids another big-bang rewrite.
