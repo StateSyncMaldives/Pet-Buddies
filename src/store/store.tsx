@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { PrototypeBackend } from '../server/runtime/prototype-backend'
+import { createRuntimeMutationAdapter, type AppMutationAdapter } from '../server/mutations/mutation-adapter'
 import { createInquiryViewModel, mapClinicSummaryToClinic, mapListingDetailToListing } from './view-model-mappers'
 import type {
   AuthIntent,
@@ -187,6 +188,7 @@ export interface StoreProviderProps {
   viewerId: string
   mockUser: User
   moderatorId?: string
+  mutations?: AppMutationAdapter
 }
 
 function createInitialHydration(backend: PrototypeBackend, viewerId: string) {
@@ -206,8 +208,13 @@ export function StoreProvider({
   viewerId,
   mockUser,
   moderatorId = DEFAULT_MODERATOR_ID,
+  mutations: injectedMutations,
 }: StoreProviderProps) {
   const hydration = useMemo(() => createInitialHydration(backend, viewerId), [backend, viewerId])
+  const mutations = useMemo(
+    () => injectedMutations ?? createRuntimeMutationAdapter({ backend, viewerId, moderatorId }),
+    [backend, injectedMutations, moderatorId, viewerId],
+  )
   const [state, setState] = useState<AppState>(() => initialState(hydration.saved))
   const [listings, setListings] = useState<Listing[]>(() => hydration.listings.map((listing) => ({ ...listing, tags: [...listing.tags] })))
   const [clinics] = useState<Clinic[]>(() => hydration.clinics.map((clinic) => ({ ...clinic, services: [...clinic.services] })))
@@ -249,7 +256,7 @@ export function StoreProvider({
 
   const transitionListing = useCallback(
     (id: string, action: 'approved' | 'rejected' | 'adopted') => {
-      const result = backend.moderateListing({
+      const result = mutations.updateListingLifecycle({
         listingId: id,
         actorUserId: moderatorId,
         request: { action },
@@ -262,7 +269,7 @@ export function StoreProvider({
       syncListing(listing)
       return listing
     },
-    [backend, moderatorId, showToast, syncListing],
+    [moderatorId, mutations, showToast, syncListing],
   )
 
   const store = useMemo<Store>(() => {
@@ -288,7 +295,7 @@ export function StoreProvider({
         })),
       clearFilters: () => patch({ tags: [], query: '' }),
       toggleSave: (id) => {
-        const result = backend.toggleSavedListing({ listingId: id, viewerId })
+        const result = mutations.toggleSavedListing({ listingId: id })
         if (!result.ok) {
           showToast(result.error.message)
           return
@@ -340,8 +347,7 @@ export function StoreProvider({
         const listing = listings.find((item) => item.id === listingId)
         if (!listingId || !listing || !state.user) return
 
-        const result = backend.createInquiry({
-          viewerId,
+        const result = mutations.createInquiry({
           request: {
             listingId,
             message: state.inquiry.message,
@@ -393,7 +399,7 @@ export function StoreProvider({
           return
         }
 
-        const result = backend.createListing({
+        const result = mutations.createListing({
           actorUserId: state.user?.name ?? null,
           request: {
             species: add.species,
@@ -433,7 +439,7 @@ export function StoreProvider({
       useMyLocation: () => setRep({ area: 'Maafannu, Malé' }),
       toggleRepPhoto: () => setState((s) => ({ ...s, rep: { ...s.rep, photo: true } })),
       submitReport: () => {
-        const result = backend.createReport({
+        const result = mutations.createReport({
           request: {
             reportKind: state.rep.kind,
             species: state.rep.species,
@@ -470,7 +476,7 @@ export function StoreProvider({
       installDismiss: () => patch({ installDismissed: true }),
       showToast,
     }
-  }, [backend, viewerId, mockUser, state, listings, clinics, patch, showToast, syncListing, transitionListing])
+  }, [backend, mockUser, state, listings, clinics, mutations, patch, showToast, syncListing, transitionListing])
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>
 }

@@ -2,8 +2,10 @@
 
 import { act, cleanup, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { apiResultOk } from '../../../src/server/contracts/api'
+import type { AppMutationAdapter } from '../../../src/server/mutations/mutation-adapter'
 import { createPrototypeBackend } from '../../../src/server/runtime/prototype-backend'
 import { StoreProvider, useStore, type StoreProviderProps } from '../../../src/store/store'
 import type { User } from '../../../src/types'
@@ -21,7 +23,7 @@ function createWrapper(props: Partial<StoreProviderProps> = {}) {
 
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <StoreProvider backend={backend} viewerId={viewerId} mockUser={mockUser} moderatorId={moderatorId}>
+      <StoreProvider backend={backend} viewerId={viewerId} mockUser={mockUser} moderatorId={moderatorId} mutations={props.mutations}>
         {children}
       </StoreProvider>
     )
@@ -34,6 +36,25 @@ afterEach(() => {
 })
 
 describe('StoreProvider runtime integration', () => {
+  it('uses the injected mutation adapter for Saved listing changes', () => {
+    const toggleSavedListing = vi.fn<AppMutationAdapter['toggleSavedListing']>().mockReturnValue(apiResultOk({ listingId: 'mishka', saved: true }))
+    const mutations: AppMutationAdapter = {
+      toggleSavedListing,
+      createInquiry: vi.fn<AppMutationAdapter['createInquiry']>(),
+      createListing: vi.fn<AppMutationAdapter['createListing']>(),
+      createReport: vi.fn<AppMutationAdapter['createReport']>(),
+      updateListingLifecycle: vi.fn<AppMutationAdapter['updateListingLifecycle']>(),
+    }
+    const { result } = renderHook(() => useStore(), { wrapper: createWrapper({ mutations }) })
+
+    act(() => {
+      result.current.toggleSave('mishka')
+    })
+
+    expect(toggleSavedListing).toHaveBeenCalledWith({ listingId: 'mishka' })
+    expect(result.current.state.saved).toContain('mishka')
+  })
+
   it('keeps save state isolated per injected backend session', () => {
     const firstWrapper = createWrapper({ backend: createPrototypeBackend(), viewerId: 'viewer-a' })
     const secondWrapper = createWrapper({ backend: createPrototypeBackend(), viewerId: 'viewer-b' })

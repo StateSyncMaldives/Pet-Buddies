@@ -8,6 +8,10 @@ _Avoid_: Post, ad, card
 The accountable publisher of a listing, represented by either an individual user or a verified organization.
 _Avoid_: Seller, author
 
+**Viewer**:
+The current session actor viewing or interacting with listings before real authentication is wired.
+_Avoid_: Anonymous visitor, browser session
+
 **Verified organization**:
 A rescue, NGO, partner, or community group that can publish listings under its own identity and receive routed reports.
 _Avoid_: Vendor, clinic
@@ -25,8 +29,8 @@ A directory entry for a veterinary or pet-care provider.
 _Avoid_: Organization, rescue
 
 **Saved listing**:
-A user's bookmark of a listing for later review.
-_Avoid_: Favorite pet profile
+A user- or viewer-scoped bookmark of a listing for later review.
+_Avoid_: Favorite pet profile, anonymous local save
 
 **Moderation event**:
 An immutable record of a listing lifecycle action such as submission, approval, rejection, adoption, or restoration.

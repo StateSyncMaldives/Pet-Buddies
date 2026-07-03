@@ -33,9 +33,11 @@ Completed:
 - Added a Browse route loader boundary that derives server-backed listing results from validated URL search params
 - Added the first Start server-function wrapper for browse listing data, with the route still delegating through injected runtime context for testable app composition
 - Prepared the next ready-for-agent PRD for server-backed route data and mutation boundaries at `docs/prds/2026-07-03-server-backed-route-data-and-mutation-boundaries.md`
+- Added Zod-validated mutation schemas, a store-facing mutation adapter seam, and Start server-function wrappers for save/unsave, Adoption inquiry submit, Lost/found report submit, Listing creation, and Listing lifecycle actions
+- Added ADR 0003 to preserve request/session runtime identity across Start server-function mutation work
 
 Verification:
-- `pnpm test` passes (84 tests)
+- `pnpm test` passes (93 tests)
 - `pnpm build` passes and generates `dist/client/sw.js`
 - `pnpm cf-typegen` passes and writes `worker-configuration.d.ts`
 
@@ -57,7 +59,8 @@ Issue tracker note:
 - [x] Convert `prototype-backend.ts` itself into request-scoped services instead of a module singleton export
 - [x] Thread demo viewer/session context through the app runtime boundary instead of hard-coding it inside consumers
 - [x] Replace demo in-memory ids/timestamps/reference generation with injectable implementations
-- [ ] Add explicit loader/action boundaries for listings, inquiries, reports, moderation, and clinics
+- [x] Add explicit Start server function mutation seams for listings, inquiries, reports, and moderation
+- [ ] Add explicit loader/server query boundaries for clinics and remaining read models
 
 ### 3) Connect to persistent storage
 - [ ] Implement a real database repository for listings
@@ -98,7 +101,8 @@ Issue tracker note:
 ### 8) Test coverage to add next
 - [x] Add integration tests for store + runtime mutation flows
 - [x] Add route loader tests for the current TanStack Router shell
-- [ ] Add route action tests once the Start shell exists
+- [x] Add mutation adapter and runtime validation tests for Start server function inputs
+- [ ] Add direct Start server function RPC tests once runtime identity can be preserved across real RPC calls
 - [ ] Add auth-gated flow tests for add/apply resume behavior
 - [ ] Add persistence tests against the eventual DB repositories
 - [ ] Add end-to-end tests for browse -> detail -> inquiry, add -> moderation, and report routing
@@ -116,7 +120,8 @@ Deployment note:
 - No Cloudflare deploy has been run from this checklist. Actual deployment still requires `wrangler login` / account access and an explicit deploy command.
 
 Next implementation slice:
-- Add explicit action/server-function boundaries for the remaining mutations: save/unsave, inquiry submit, report submit, listing create, and moderation actions.
-- Brief: `docs/prds/2026-07-03-server-backed-route-data-and-mutation-boundaries.md`
+- Move saved, inbox, and my listings toward server-backed route data, then define the Query/cache ownership strategy for those read models.
+- Keep the runtime mutation adapter in place until durable persistence replaces the demo in-memory backend.
+- Brief for completed mutation slice: `docs/prds/2026-07-03-server-backed-route-data-and-mutation-boundaries.md`
 
 That preserves the work already done here and avoids another big-bang rewrite.
