@@ -11,6 +11,7 @@ import type {
   CreateInquiryRequest,
   CreateListingRequest,
   CreateLostFoundReportRequest,
+  BrowseListingsQuery,
   ListingDetail,
   UpdateListingModerationRequest,
 } from '../contracts/api'
@@ -28,6 +29,7 @@ import { createCreateReportUseCase } from '../domain/reports/create-report'
 import { getClinics } from '../http/clinics/get-clinics'
 import { postInquiry } from '../http/inquiries/post-inquiry'
 import { getListingDetail } from '../http/listings/get-listing-detail'
+import { getListings } from '../http/listings/get-listings'
 import { postListing } from '../http/listings/post-listing'
 import { postSaveListing } from '../http/listings/post-save-listing'
 import { postListingAction } from '../http/moderation/post-listing-action'
@@ -74,6 +76,7 @@ export interface PrototypeBackendDeps {
 
 export interface PrototypeBackend {
   hydrateAppShell(input: { viewerId: string }): HydratedAppShell
+  browseListings(input: { query: BrowseListingsQuery }): ReturnType<typeof getListings>
   getListingDetail(input: { slugOrId: string }): ReturnType<typeof getListingDetail>
   toggleSavedListing(input: { listingId: string; viewerId: string }): ReturnType<typeof postSaveListing>
   createInquiry(input: { request: CreateInquiryRequest; viewerId: string }): ReturnType<typeof postInquiry>
@@ -246,6 +249,9 @@ export function createPrototypeBackend(deps: PrototypeBackendDeps = {}): Prototy
 
   return {
     hydrateAppShell,
+    browseListings(input) {
+      return getListings({ query: input.query, listingService })
+    },
     getListingDetail(input) {
       return getListingDetail({ params: input, listingService })
     },

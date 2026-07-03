@@ -30,9 +30,11 @@ Completed:
 - Added a tracked web app manifest and production-only service-worker registration from the Start root route
 - Added the Cloudflare Workers configuration slice with `@cloudflare/vite-plugin`, `wrangler.jsonc`, and generated Worker environment types
 - Verified the Cloudflare adapter build path locally without deploying
+- Added a Browse route loader boundary that derives server-backed listing results from validated URL search params
+- Added the first Start server-function wrapper for browse listing data, with the route still delegating through injected runtime context for testable app composition
 
 Verification:
-- `pnpm test` passes (83 tests)
+- `pnpm test` passes (84 tests)
 - `pnpm build` passes and generates `dist/client/sw.js`
 - `pnpm cf-typegen` passes and writes `worker-configuration.d.ts`
 
@@ -71,7 +73,7 @@ Verification:
 ### 5) Route-level data loading and invalidation
 - [x] Move detail route data to route loaders instead of relying on shared in-memory store state
 - [x] Load browse filters from URL search params
-- [ ] Load browse results from server query params
+- [x] Load browse results from server query params
 - [ ] Make saved, inbox, and my listings derive from server-backed route data
 - [ ] Add mutation invalidation / optimistic update strategy for Start + Query integration
 
@@ -108,5 +110,8 @@ Best next move:
 
 Deployment note:
 - No Cloudflare deploy has been run from this checklist. Actual deployment still requires `wrangler login` / account access and an explicit deploy command.
+
+Next implementation slice:
+- Add explicit action/server-function boundaries for the remaining mutations: save/unsave, inquiry submit, report submit, listing create, and moderation actions.
 
 That preserves the work already done here and avoids another big-bang rewrite.

@@ -77,6 +77,23 @@ describe('createAppRouter', () => {
     expect(detailMatch?.loaderData).toMatchObject({ id: 'luna' })
   })
 
+  it('loads browse results through the route loader from search params', async () => {
+    const router = createAppRouter({ context: testContext(), initialEntries: ['/browse?species=bird&q=kiwi&tags=Hand-tame'] })
+
+    await router.load()
+
+    const browseMatch = router.state.matches.find((match) => match.routeId === '/browse')
+    expect(browseMatch?.loaderData).toMatchObject({
+      items: [
+        {
+          slug: 'kiwi',
+          species: 'bird',
+          name: 'Kiwi',
+        },
+      ],
+    })
+  })
+
   it('surfaces a not-found match when the detail loader cannot resolve the listing id', async () => {
     const router = createAppRouter({ context: testContext(), initialEntries: ['/browse/listings/does-not-exist'] })
 

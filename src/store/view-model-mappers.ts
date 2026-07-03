@@ -1,4 +1,4 @@
-import type { ClinicSummary, ListingDetail } from '../server/contracts/api'
+import type { ClinicSummary, ListingDetail, ListingSummary } from '../server/contracts/api'
 import type { Clinic, Inquiry, Listing } from '../types'
 
 const CAT_TINTS = ['#FBE3EC', '#E7F0FA', '#FDF0DB', '#EFEAF7']
@@ -22,6 +22,25 @@ export function mapListingDetailToListing(detail: ListingDetail): Listing {
     photo: detail.primaryImageUrl ?? detail.images[0]?.url ?? undefined,
     story: detail.story,
     status: detail.status,
+  }
+}
+
+export function mapListingSummaryToListing(summary: ListingSummary): Listing {
+  return {
+    id: summary.slug,
+    species: summary.species,
+    name: summary.name,
+    age: summary.ageText,
+    sex: toTitleCase(summary.sex),
+    area: summary.areaLabel,
+    breed: summary.birdSpecies ?? undefined,
+    tags: [...summary.tags],
+    org: summary.organization?.name ?? null,
+    verified: summary.organization?.isVerified ?? false,
+    tint: pickTint(summary.species, summary.id),
+    photo: summary.primaryImageUrl ?? undefined,
+    story: '',
+    status: summary.status,
   }
 }
 

@@ -11,6 +11,7 @@ Completed implementation:
 - Browse listing detail now uses `/browse/listings/$listingId` instead of `#/pet/...`.
 - Detail route loading resolves listings through router loaders with not-found handling.
 - Browse filters now live in URL search params (`species`, `q`, `tags`).
+- Browse listing results are now loaded by the route loader from validated URL search params.
 - The router shell has been migrated to TanStack Start SPA mode with file-based routes under `src/routes`.
 - Cloudflare Workers config has been added separately in the fullstack checklist slice.
 
@@ -20,7 +21,7 @@ Key commits:
 - `ea47632` `feat: migrate app shell to tanstack start`
 
 Current verification:
-- `pnpm test` passes (83 tests)
+- `pnpm test` passes (84 tests)
 - `pnpm build` passes
 
 > **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
@@ -421,6 +422,7 @@ Before calling this migration slice done:
 - [x] browser Back closes detail correctly
 - [x] no `#/pet/...` hash routing remains
 - [x] browse filters are URL search params
+- [x] browse listing results are loaded from server query params
 - [x] listing detail resolution uses a route loader with not-found handling
 - [x] TanStack Start SPA-mode route shell is in place
 - [x] `pnpm test` passes

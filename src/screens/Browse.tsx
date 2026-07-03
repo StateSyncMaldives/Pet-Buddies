@@ -4,8 +4,10 @@ import { colors } from '../theme'
 import { useStore } from '../store/store'
 import { BIRD_FILTERS, CAT_FILTERS } from '../data/seed'
 import type { Listing } from '../types'
+import type { ListingSummary } from '../server/contracts/api'
 import type { BrowseSearch } from '../router/browse-search'
 import { normalizeBrowseSearchUrl, toTagSlug } from '../router/browse-search'
+import { mapListingSummaryToListing } from '../store/view-model-mappers'
 import { ROUTE_PATHS } from '../router/paths'
 import { LogoMark, Wordmark } from '../components/Brand'
 import { ListingCard } from '../components/ListingCard'
@@ -15,11 +17,15 @@ import { PlusIcon, SearchIcon, ShieldIcon } from '../components/icons'
 
 const HIDDEN: Listing['status'][] = ['pending', 'rejected', 'adopted']
 
-export function Browse({ search }: { search: BrowseSearch }) {
+export function Browse({ search, serverListings }: { search: BrowseSearch; serverListings?: ListingSummary[] }) {
   const navigate = useNavigate()
   const { state, listings, setBrowseFilters, openMod, openAdd } = useStore()
   const isCat = state.species === 'cat'
   const searchTagsKey = search.tags.join('\0')
+  const serverFeed = useMemo(
+    () => serverListings?.map(mapListingSummaryToListing),
+    [serverListings],
+  )
 
   useEffect(() => {
     setBrowseFilters(search)
@@ -48,7 +54,7 @@ export function Browse({ search }: { search: BrowseSearch }) {
   )
 
   // Feed = visible status ∧ species ∧ all active tags ∧ search (name/breed/area/tags).
-  const feed = useMemo(() => {
+  const localFeed = useMemo(() => {
     const q = state.query.trim().toLowerCase()
     const selectedTagSlugs = state.tags.map(toTagSlug)
     return listings
@@ -61,6 +67,7 @@ export function Browse({ search }: { search: BrowseSearch }) {
         return hay.includes(q)
       })
   }, [listings, state.species, state.tags, state.query])
+  const feed = serverFeed ?? localFeed
 
   const filters = isCat ? CAT_FILTERS : BIRD_FILTERS
   const speciesPlural = isCat ? 'cats' : 'birds'
