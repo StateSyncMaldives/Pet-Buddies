@@ -28,10 +28,13 @@ Completed:
 - Preserved the request-scoped demo runtime through typed router context in the Start router factory
 - Replaced the old `vite-plugin-pwa` build path with an explicit `workbox-build` post-build service-worker generator
 - Added a tracked web app manifest and production-only service-worker registration from the Start root route
+- Added the Cloudflare Workers configuration slice with `@cloudflare/vite-plugin`, `wrangler.jsonc`, and generated Worker environment types
+- Verified the Cloudflare adapter build path locally without deploying
 
 Verification:
 - `pnpm test` passes (83 tests)
 - `pnpm build` passes and generates `dist/client/sw.js`
+- `pnpm cf-typegen` passes and writes `worker-configuration.d.ts`
 
 ## Remaining checklist for the broader fullstack migration
 
@@ -41,7 +44,7 @@ Verification:
 - [x] Install TanStack Start + Cloudflare-compatible packages
 - [x] Replace the current Vite-only entrypoint with a TanStack Start app shell
 - [ ] Move route bootstrapping to Start loaders / server functions
-- [ ] Add the real Cloudflare deployment adapter and worker entrypoints
+- [x] Add the real Cloudflare deployment adapter and worker entrypoints
 
 ### 2) Replace prototype singleton runtime with request-scoped server execution
 - [x] Make the React store hydrate from an injected backend/session boundary instead of a hard-coded module singleton
@@ -101,6 +104,9 @@ Best next move:
 2. [x] Scaffold the TanStack Start app shell in SPA mode.
 3. [x] Replace the broken `vite-plugin-pwa` path with a manual Workbox service-worker pipeline.
 4. [x] Keep this runtime facade as the compatibility layer while routes/loaders are migrated one screen at a time.
-5. [ ] Add the Cloudflare Workers config slice (`wrangler.jsonc` + `@cloudflare/vite-plugin`) without deploying.
+5. [x] Add the Cloudflare Workers config slice (`wrangler.jsonc` + `@cloudflare/vite-plugin`) without deploying.
+
+Deployment note:
+- No Cloudflare deploy has been run from this checklist. Actual deployment still requires `wrangler login` / account access and an explicit deploy command.
 
 That preserves the work already done here and avoids another big-bang rewrite.

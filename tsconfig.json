@@ -17,5 +17,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "backend", "tests", "vite.config.ts", "vitest.config.ts"]
+  "include": ["src", "backend", "tests", "vite.config.ts", "vitest.config.ts", "worker-configuration.d.ts"]
 }
