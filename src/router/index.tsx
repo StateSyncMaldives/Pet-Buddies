@@ -18,6 +18,7 @@ import { Inbox } from '../screens/Inbox'
 import { Saved } from '../screens/Saved'
 import type { PrototypeBackend } from '../server/runtime/prototype-backend'
 import { useStore } from '../store/store'
+import { validateBrowseSearch } from './browse-search'
 import { DETAIL_ROUTE_PATH, ROUTE_PATHS } from './paths'
 
 export interface AppRouterContext {
@@ -52,8 +53,14 @@ const indexRoute = createRoute({
 const browseRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'browse',
-  component: Browse,
+  validateSearch: validateBrowseSearch,
+  component: BrowseRoute,
 })
+
+function BrowseRoute() {
+  const search = browseRoute.useSearch()
+  return <Browse search={search} />
+}
 
 /**
  * Syncs the store's detail overlay from the route's listingId param. The
@@ -63,6 +70,7 @@ const browseRoute = createRoute({
  */
 function BrowseDetailRoute() {
   const { listingId } = browseDetailRoute.useParams()
+  const search = browseDetailRoute.useSearch()
   const { openDetail, closeDetail } = useStore()
 
   // `openDetail`/`closeDetail` are recreated every time any store state
@@ -79,12 +87,13 @@ function BrowseDetailRoute() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return <Browse />
+  return <Browse search={search} />
 }
 
 const browseDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: DETAIL_ROUTE_PATH,
+  validateSearch: validateBrowseSearch,
   loader: ({ context, params }) => {
     const result = context.backend.getListingDetail({ slugOrId: params.listingId })
     if (!result.ok) throw notFound()

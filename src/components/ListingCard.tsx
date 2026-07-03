@@ -18,7 +18,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
     toggleSave(listing.id)
   }
 
-  const open = () => navigate({ to: getDetailPath(listing.id) })
+  const open = () => navigate({ to: getDetailPath(listing.id), search: (prev) => prev })
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()

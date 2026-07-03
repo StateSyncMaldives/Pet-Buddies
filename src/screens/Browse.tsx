@@ -1,8 +1,12 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { colors } from '../theme'
 import { useStore } from '../store/store'
 import { BIRD_FILTERS, CAT_FILTERS } from '../data/seed'
 import type { Listing } from '../types'
+import type { BrowseSearch } from '../router/browse-search'
+import { normalizeBrowseSearchUrl, toTagSlug } from '../router/browse-search'
+import { ROUTE_PATHS } from '../router/paths'
 import { LogoMark, Wordmark } from '../components/Brand'
 import { ListingCard } from '../components/ListingCard'
 import { Hero } from '../components/Hero'
@@ -11,9 +15,32 @@ import { PlusIcon, SearchIcon, ShieldIcon } from '../components/icons'
 
 const HIDDEN: Listing['status'][] = ['pending', 'rejected', 'adopted']
 
-export function Browse() {
-  const { state, listings, setSpecies, setQuery, toggleTag, clearFilters, openMod, openAdd } = useStore()
+export function Browse({ search }: { search: BrowseSearch }) {
+  const navigate = useNavigate()
+  const { state, listings, setBrowseFilters, openMod, openAdd } = useStore()
   const isCat = state.species === 'cat'
+  const searchTagsKey = search.tags.join('\0')
+
+  useEffect(() => {
+    setBrowseFilters(search)
+  }, [search.species, search.query, searchTagsKey, setBrowseFilters, search])
+
+  const updateSearch = (next: BrowseSearch) => {
+    void navigate({
+      to: ROUTE_PATHS.browse,
+      search: normalizeBrowseSearchUrl(next),
+    })
+  }
+
+  const setSpecies = (species: BrowseSearch['species']) => updateSearch({ species, query: state.query, tags: [] })
+  const setQuery = (query: string) => updateSearch({ species: state.species, query, tags: state.tags })
+  const toggleTag = (tag: string) =>
+    updateSearch({
+      species: state.species,
+      query: state.query,
+      tags: state.tags.includes(tag) ? state.tags.filter((item) => item !== tag) : [...state.tags, tag],
+    })
+  const clearFilters = () => updateSearch({ species: state.species, query: '', tags: [] })
 
   const pendingCount = useMemo(
     () => listings.filter((l) => l.status === 'pending').length,
@@ -23,10 +50,11 @@ export function Browse() {
   // Feed = visible status ∧ species ∧ all active tags ∧ search (name/breed/area/tags).
   const feed = useMemo(() => {
     const q = state.query.trim().toLowerCase()
+    const selectedTagSlugs = state.tags.map(toTagSlug)
     return listings
       .filter((l) => !HIDDEN.includes(l.status))
       .filter((l) => l.species === state.species)
-      .filter((l) => state.tags.every((t) => l.tags.includes(t)))
+      .filter((l) => selectedTagSlugs.every((tag) => l.tags.map(toTagSlug).includes(tag)))
       .filter((l) => {
         if (!q) return true
         const hay = `${l.name} ${l.breed ?? ''} ${l.area} ${l.tags.join(' ')}`.toLowerCase()

@@ -116,7 +116,7 @@ export function Hero() {
             >
               {l ? (
                 <button
-                  onClick={() => navigate({ to: getDetailPath(l.id) })}
+                  onClick={() => navigate({ to: getDetailPath(l.id), search: (prev) => prev })}
                   aria-label={`Featured: ${l.name}`}
                   style={{
                     position: 'relative',

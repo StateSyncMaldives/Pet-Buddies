@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider } from '@tanstack/react-router'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -53,6 +53,36 @@ describe('app router shell', () => {
     renderAt('/report')
 
     expect(await screen.findByText('Report a pet')).toBeTruthy()
+  })
+
+  it('hydrates browse filters from URL search params on direct loads', async () => {
+    renderAt('/browse?species=bird&q=kiwi&tags=Hand-tame')
+
+    expect(await screen.findByDisplayValue('kiwi')).toBeTruthy()
+    expect(screen.getByText('1 bird available')).toBeTruthy()
+    expect(screen.getByText('Kiwi')).toBeTruthy()
+  })
+
+  it('writes browse filter changes to URL search params', async () => {
+    const user = userEvent.setup()
+    const router = renderAt('/browse')
+
+    await screen.findByText('Find a buddy')
+    await user.click(screen.getByRole('button', { name: 'Birds' }))
+
+    await waitFor(() => {
+      expect(router.state.location.search).toMatchObject({ species: 'bird', query: '', tags: [] })
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Hand-tame' }))
+    await waitFor(() => {
+      expect(router.state.location.search).toMatchObject({ species: 'bird', query: '', tags: ['Hand-tame'] })
+    })
+
+    await user.type(screen.getByRole('textbox'), 'kiwi')
+    await waitFor(() => {
+      expect(router.state.location.search).toMatchObject({ species: 'bird', query: 'kiwi', tags: ['Hand-tame'] })
+    })
   })
 
   it('derives the active bottom-nav tab from the pathname and navigates on click', async () => {
@@ -110,6 +140,22 @@ describe('app router shell', () => {
 
     expect(router.state.location.pathname).toBe('/browse')
     expect(await screen.findByText('Find a buddy')).toBeTruthy()
+  })
+
+  it('preserves browse search params when opening and closing a listing detail route', async () => {
+    const user = userEvent.setup()
+    const router = renderAt('/browse?species=bird&q=kiwi&tags=Hand-tame')
+
+    await screen.findByText('Kiwi')
+    await user.click(screen.getByRole('button', { name: /View Kiwi, bird in Maafannu, Mal/ }))
+
+    expect(router.state.location.pathname).toBe('/browse/listings/kiwi')
+    expect(router.state.location.search).toMatchObject({ species: 'bird', query: 'kiwi', tags: ['Hand-tame'] })
+
+    await user.click(await screen.findByRole('button', { name: 'Back' }))
+
+    expect(router.state.location.pathname).toBe('/browse')
+    expect(router.state.location.search).toMatchObject({ species: 'bird', query: 'kiwi', tags: ['Hand-tame'] })
   })
 
   it('navigates to the detail route from the featured hero card', async () => {

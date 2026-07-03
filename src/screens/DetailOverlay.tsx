@@ -63,7 +63,7 @@ export function DetailOverlay() {
             silhouetteWidth={listing.species === 'cat' ? 190 : 170}
             silhouetteHeight={160}
           />
-          <button onClick={() => navigate({ to: ROUTE_PATHS.browse })} aria-label="Back" style={circleBtn('left')}>
+          <button onClick={() => navigate({ to: ROUTE_PATHS.browse, search: (prev) => prev })} aria-label="Back" style={circleBtn('left')}>
             <ChevronLeftIcon size={18} />
           </button>
           <button

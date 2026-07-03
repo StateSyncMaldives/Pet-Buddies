@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { validateBrowseSearch } from '../../src/router/browse-search'
 import { createAppRouter } from '../../src/router'
 import { createAppRuntime } from '../../src/server/runtime/app-session'
 
@@ -29,6 +30,28 @@ describe('createAppRouter', () => {
     await router.load()
 
     expect(router.state.location.pathname).toBe('/browse/listings/luna')
+  })
+
+  it('validates browse search params with defaults and sanitized tags', () => {
+    expect(
+      validateBrowseSearch({
+        species: 'dog',
+        q: ' mishka ',
+        tags: ['', 'Vaccinated', 'Vaccinated'],
+      }),
+    ).toEqual({
+      species: 'cat',
+      query: 'mishka',
+      tags: ['Vaccinated'],
+    })
+  })
+
+  it('validates detail route search params with the same browse filter contract', () => {
+    expect(validateBrowseSearch({ species: 'bird', q: 'kiwi', tags: 'Hand-tame' })).toEqual({
+      species: 'bird',
+      query: 'kiwi',
+      tags: ['Hand-tame'],
+    })
   })
 
   it('keeps unknown routes addressable instead of bouncing to browse', async () => {

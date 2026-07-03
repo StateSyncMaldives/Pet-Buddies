@@ -139,6 +139,7 @@ export interface Store {
   state: AppState
   listings: Listing[]
   clinics: Clinic[]
+  setBrowseFilters: (filters: Pick<AppState, 'species' | 'query' | 'tags'>) => void
   setSpecies: (species: Species) => void
   setQuery: (query: string) => void
   toggleTag: (tag: string) => void
@@ -272,6 +273,12 @@ export function StoreProvider({
       state,
       listings,
       clinics,
+      setBrowseFilters: (filters) =>
+        setState((s) => {
+          const sameTags = s.tags.length === filters.tags.length && s.tags.every((tag, index) => tag === filters.tags[index])
+          if (s.species === filters.species && s.query === filters.query && sameTags) return s
+          return { ...s, species: filters.species, query: filters.query, tags: [...filters.tags] }
+        }),
       setSpecies: (species) => patch({ species, tags: [] }),
       setQuery: (query) => patch({ query }),
       toggleTag: (tag) =>
