@@ -1,12 +1,35 @@
 # Pet Buddies TanStack Router Migration Plan
 
+## Current status
+
+This migration plan has been executed and then extended through the TanStack Start app-shell migration.
+
+Completed implementation:
+- Route vocabulary helpers and tests were added.
+- Top-level tabs now route through typed TanStack Router paths.
+- Bottom navigation is route-driven.
+- Browse listing detail now uses `/browse/listings/$listingId` instead of `#/pet/...`.
+- Detail route loading resolves listings through router loaders with not-found handling.
+- Browse filters now live in URL search params (`species`, `q`, `tags`).
+- The router shell has been migrated to TanStack Start SPA mode with file-based routes under `src/routes`.
+- Cloudflare Workers config has been added separately in the fullstack checklist slice.
+
+Key commits:
+- `22a58ae` `feat: add typed router context and browse detail loader`
+- `a746c95` `feat: sync browse filters with URL search params`
+- `ea47632` `feat: migrate app shell to tanstack start`
+
+Current verification:
+- `pnpm test` passes (83 tests)
+- `pnpm build` passes
+
 > **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
 
 **Goal:** Replace Pet Buddies’ in-memory tab/hash navigation with typed TanStack Router routes while preserving the current mobile-first prototype UX and keeping the in-memory store intact for this migration phase.
 
-**Architecture:** Pet Buddies remains the current React + Vite prototype during this phase. We introduce TanStack Router first as an app-shell/navigation layer, not as a full backend/framework rewrite. Route state becomes the source of truth for top-level tabs and browse detail deep links, while overlays like auth, inquiry, onboarding, install, add-listing, and moderation remain store-driven until later slices.
+**Architecture:** Pet Buddies began this phase as a React + Vite prototype and now runs through a TanStack Start SPA-mode app shell. Route state is the source of truth for top-level tabs, browse filters, and browse detail deep links, while overlays like auth, inquiry, onboarding, install, add-listing, and moderation remain store-driven until later slices.
 
-**Tech Stack:** React 18, Vite 5, TypeScript 5, Vitest 2, `@tanstack/react-router`
+**Tech Stack:** React 18, Vite 8, TypeScript 5, Vitest 4, TanStack Router, TanStack Start
 
 ---
 
@@ -49,14 +72,13 @@ Implication: we currently have a **planning split** between eventual fullstack d
 5. Add tests around route vocabulary/helpers before widening the migration
 
 ### Explicitly deferred
-- TanStack Start / SSR / server functions
+- SSR / server functions beyond the current Start SPA shell
 - database/auth/backend changes
 - replacing the in-memory store
 - route-ifying auth, inquiry, moderation, onboarding, add-listing, or install overlays
-- search-param modeling for browse filters
-- Cloudflare deployment changes
+- Cloudflare deploy execution
 
-This gives us a low-risk first slice: **better routing without backend churn**.
+This gave us a low-risk first slice: **better routing without backend churn**. The app shell has since moved to TanStack Start while preserving the compatibility runtime/store boundary.
 
 ---
 
@@ -79,11 +101,11 @@ Detail presentation rule:
 - direct loads keep the current full-screen overlay presentation rather than switching to a separate page layout in this slice
 
 Browse-filter URL strategy:
-- keep `species`, `query`, and `tags` store-only for this slice
-- consider URL search params only after the router shell and detail route are stable
+- completed: `species`, `q`, and `tags` are validated URL search params
+- the store keeps a compatibility mirror for the current Browse UI
 
 Medium-term direction:
-- this migration is a stepping stone toward **TanStack Start on Cloudflare**
+- completed: this migration became the stepping stone into **TanStack Start on Cloudflare**
 
 Domain-language check:
 - use **Listing** for the adoptable record
@@ -96,15 +118,16 @@ Domain-language check:
 
 ### New router files
 - Create: `src/router/paths.ts`
-- Create: `src/router/root.tsx`
-- Create: `src/router/routes/__root.tsx` or equivalent route tree entry
-- Create: `src/router/routes/browse.tsx`
-- Create: `src/router/routes/browse.listings.$listingId.tsx`
-- Create: `src/router/routes/report.tsx`
-- Create: `src/router/routes/vets.tsx`
-- Create: `src/router/routes/you.tsx`
-- Create: `src/router/routes/saved.tsx`
+- Create: `src/routes/__root.tsx`
+- Create: `src/routes/browse.tsx`
+- Create: `src/routes/browse.listings.$listingId.tsx`
+- Create: `src/routes/report.tsx`
+- Create: `src/routes/vets.tsx`
+- Create: `src/routes/you.tsx`
+- Create: `src/routes/saved.tsx`
 - Create: `src/router/index.tsx` if needed for router instance composition
+- Create: `src/router/context.ts`
+- Generate: `src/routeTree.gen.ts`
 
 ### App shell wiring
 - Modify: `src/main.tsx`
@@ -390,15 +413,18 @@ The repo already contains a Next.js recommendation and a TanStack Start assumpti
 ## Verification checklist
 
 Before calling this migration slice done:
-- [ ] `/browse` is the default route
-- [ ] all bottom-nav tabs work by URL
-- [ ] refresh on any top-level route preserves the correct screen
-- [ ] clicking a listing navigates to `/browse/listings/$listingId`
-- [ ] direct detail URL opens the correct listing
-- [ ] browser Back closes detail correctly
-- [ ] no `#/pet/...` hash routing remains
-- [ ] `pnpm test` passes
-- [ ] `pnpm build` passes
+- [x] `/browse` is the default route
+- [x] all bottom-nav tabs work by URL
+- [x] refresh on any top-level route preserves the correct screen
+- [x] clicking a listing navigates to `/browse/listings/$listingId`
+- [x] direct detail URL opens the correct listing
+- [x] browser Back closes detail correctly
+- [x] no `#/pet/...` hash routing remains
+- [x] browse filters are URL search params
+- [x] listing detail resolution uses a route loader with not-found handling
+- [x] TanStack Start SPA-mode route shell is in place
+- [x] `pnpm test` passes
+- [x] `pnpm build` passes
 
 ---
 
@@ -407,18 +433,20 @@ Before calling this migration slice done:
 These decisions are now locked for the next slice:
 1. Keep the `You` tab route as `/you`
 2. Keep listing detail as a full-screen overlay presentation, including direct loads
-3. Keep browse filters (`species`, `query`, `tags`) store-only for now
-4. Treat this router migration as a stepping stone toward **TanStack Start on Cloudflare**
+3. Model browse filters in URL search params while keeping the current store compatibility mirror
+4. Treat this router migration as the completed stepping stone into **TanStack Start on Cloudflare**
 5. Redirect `/` to `/browse`
 
 ---
 
 ## Execution handoff
 
-Plan complete and saved. Ready to execute in small slices:
-1. route vocabulary helpers/tests
-2. router shell
-3. tab routes
-4. route-driven bottom nav
-5. browse detail route
-6. doc cleanup
+Plan executed in small slices:
+1. [x] route vocabulary helpers/tests
+2. [x] router shell
+3. [x] tab routes
+4. [x] route-driven bottom nav
+5. [x] browse detail route
+6. [x] browse URL search params
+7. [x] TanStack Start SPA-mode shell
+8. [x] doc cleanup
