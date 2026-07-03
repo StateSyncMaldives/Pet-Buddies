@@ -1,6 +1,7 @@
 import { useNavigate } from '@tanstack/react-router'
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { colors, shadow } from '../theme'
+import type { BrowseSearchUrl } from '../router/browse-search'
 import { getDetailPath } from '../router/paths'
 import { listMeta, useStore } from '../store/store'
 import type { Listing } from '../types'
@@ -18,7 +19,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
     toggleSave(listing.id)
   }
 
-  const open = () => navigate({ to: getDetailPath(listing.id), search: (prev) => prev })
+  const open = () => navigate({ to: getDetailPath(listing.id), search: (prev: BrowseSearchUrl) => prev })
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()

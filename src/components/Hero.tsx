@@ -4,6 +4,7 @@ import { colors } from '../theme'
 import { useStore } from '../store/store'
 import { listMeta } from '../store/store'
 import { getDetailPath } from '../router/paths'
+import type { BrowseSearchUrl } from '../router/browse-search'
 
 const HERO_H = 188
 const INTERVAL = 4500
@@ -116,7 +117,7 @@ export function Hero() {
             >
               {l ? (
                 <button
-                  onClick={() => navigate({ to: getDetailPath(l.id), search: (prev) => prev })}
+                  onClick={() => navigate({ to: getDetailPath(l.id), search: (prev: BrowseSearchUrl) => prev })}
                   aria-label={`Featured: ${l.name}`}
                   style={{
                     position: 'relative',

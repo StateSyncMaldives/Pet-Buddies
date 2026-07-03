@@ -3,6 +3,7 @@ import { colors, shadow, z } from '../theme'
 import { detailMeta, useStore } from '../store/store'
 import { PersonIcon, ChevronLeftIcon, HeartIcon, PinIcon, ShareIcon } from '../components/icons'
 import { PetPhoto, VerifiedBadge } from '../components/Brand'
+import type { BrowseSearchUrl } from '../router/browse-search'
 import { getDetailPath, ROUTE_PATHS } from '../router/paths'
 
 export function DetailOverlay() {
@@ -63,7 +64,7 @@ export function DetailOverlay() {
             silhouetteWidth={listing.species === 'cat' ? 190 : 170}
             silhouetteHeight={160}
           />
-          <button onClick={() => navigate({ to: ROUTE_PATHS.browse, search: (prev) => prev })} aria-label="Back" style={circleBtn('left')}>
+          <button onClick={() => navigate({ to: ROUTE_PATHS.browse, search: (prev: BrowseSearchUrl) => prev })} aria-label="Back" style={circleBtn('left')}>
             <ChevronLeftIcon size={18} />
           </button>
           <button

@@ -7,7 +7,6 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { createAppRouter } from '../../../src/router'
 import { createAppRuntime } from '../../../src/server/runtime/app-session'
-import { StoreProvider } from '../../../src/store/store'
 
 function renderAt(
   path: string,
@@ -20,13 +19,17 @@ function renderAt(
   window.localStorage.setItem('petbuddies.flags', JSON.stringify(flags))
 
   const { backend, session } = createAppRuntime()
-  const router = createAppRouter({ context: { backend, viewerId: session.viewerId }, initialEntries: [path] })
+  const router = createAppRouter({
+    context: {
+      backend,
+      viewerId: session.viewerId,
+      mockUser: session.mockUser,
+      moderatorId: session.moderatorId,
+    },
+    initialEntries: [path],
+  })
 
-  render(
-    <StoreProvider backend={backend} viewerId={session.viewerId} mockUser={session.mockUser} moderatorId={session.moderatorId}>
-      <RouterProvider router={router} />
-    </StoreProvider>,
-  )
+  render(<RouterProvider router={router} />)
 
   return router
 }

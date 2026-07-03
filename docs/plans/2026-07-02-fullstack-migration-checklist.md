@@ -23,18 +23,23 @@ Completed:
 - Moved listing detail resolution into the browse detail route loader with not-found handling for unknown listing ids
 - Moved browse filters (`species`, `q`, `tags`) into validated URL search params while keeping the current SPA/store compatibility layer
 - Upgraded the plain SPA toolchain to Vite 8.1.3, Vitest 4.1.9, `@vitejs/plugin-react` 6.0.3, and `vite-plugin-pwa` 1.3.0
+- Installed TanStack Start and the router plugin on the Vite 8 toolchain
+- Swapped the route shell to TanStack Start SPA mode with generated file-based routes under `src/routes`
+- Preserved the request-scoped demo runtime through typed router context in the Start router factory
+- Replaced the old `vite-plugin-pwa` build path with an explicit `workbox-build` post-build service-worker generator
+- Added a tracked web app manifest and production-only service-worker registration from the Start root route
 
 Verification:
 - `pnpm test` passes (83 tests)
-- `pnpm build` passes
+- `pnpm build` passes and generates `dist/client/sw.js`
 
 ## Remaining checklist for the broader fullstack migration
 
 ### 1) Runtime -> real TanStack Start app shell
 - [x] Upgrade local/runtime Node version to >= 22.12
 - [x] Upgrade the plain SPA toolchain to Vite 8 + Vitest 4
-- [ ] Install TanStack Start + Cloudflare-compatible packages
-- [ ] Replace the current Vite-only entrypoint with a TanStack Start app shell
+- [x] Install TanStack Start + Cloudflare-compatible packages
+- [x] Replace the current Vite-only entrypoint with a TanStack Start app shell
 - [ ] Move route bootstrapping to Start loaders / server functions
 - [ ] Add the real Cloudflare deployment adapter and worker entrypoints
 
@@ -92,9 +97,10 @@ Verification:
 ## Recommended next implementation slice
 
 Best next move:
-1. Upgrade the plain SPA toolchain to Vite 8 + Vitest 4 while preserving PWA behavior.
-2. Scaffold the TanStack Start app shell in SPA mode.
-3. Replace the broken `vite-plugin-pwa` path with a manual Workbox service-worker pipeline.
-4. Keep this runtime facade as the compatibility layer while routes/loaders are migrated one screen at a time.
+1. [x] Upgrade the plain SPA toolchain to Vite 8 + Vitest 4 while preserving PWA behavior.
+2. [x] Scaffold the TanStack Start app shell in SPA mode.
+3. [x] Replace the broken `vite-plugin-pwa` path with a manual Workbox service-worker pipeline.
+4. [x] Keep this runtime facade as the compatibility layer while routes/loaders are migrated one screen at a time.
+5. [ ] Add the Cloudflare Workers config slice (`wrangler.jsonc` + `@cloudflare/vite-plugin`) without deploying.
 
 That preserves the work already done here and avoids another big-bang rewrite.

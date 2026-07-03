@@ -6,7 +6,12 @@ import { createAppRuntime } from '../../src/server/runtime/app-session'
 
 function testContext() {
   const { backend, session } = createAppRuntime()
-  return { backend, viewerId: session.viewerId }
+  return {
+    backend,
+    viewerId: session.viewerId,
+    mockUser: session.mockUser,
+    moderatorId: session.moderatorId,
+  }
 }
 
 describe('createAppRouter', () => {
@@ -63,8 +68,8 @@ describe('createAppRouter', () => {
   })
 
   it('resolves the detail loader through the injected backend context', async () => {
-    const { backend, viewerId } = testContext()
-    const router = createAppRouter({ context: { backend, viewerId }, initialEntries: ['/browse/listings/luna'] })
+    const context = testContext()
+    const router = createAppRouter({ context, initialEntries: ['/browse/listings/luna'] })
 
     await router.load()
 
