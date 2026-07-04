@@ -17,6 +17,7 @@ Completed implementation:
 - The router shell has been migrated to TanStack Start SPA mode with file-based routes under `src/routes`.
 - Cloudflare Workers config has been added separately in the fullstack checklist slice.
 - The read-model PRD has been implemented locally at `docs/prds/2026-07-03-server-backed-read-models-and-cache-ownership.md`.
+- The follow-on durable persistence slice has started with full D1/Drizzle schema wiring and Miniflare-backed setup tests.
 
 Key commits:
 - `22a58ae` `feat: add typed router context and browse detail loader`
@@ -24,7 +25,7 @@ Key commits:
 - `ea47632` `feat: migrate app shell to tanstack start`
 
 Current verification:
-- `pnpm test` passes (106 tests)
+- `pnpm test` passes (108 tests)
 - `pnpm build` passes
 
 Issue tracker note:

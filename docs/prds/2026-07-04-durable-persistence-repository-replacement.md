@@ -1,6 +1,6 @@
 # PRD: Durable persistence and repository replacement
 
-Status: Ready for agent
+Status: In progress
 Labels: ready-for-agent
 Issue: Blocked from publication because `iyadhali/Pet-Buddies` has GitHub Issues disabled
 
@@ -12,7 +12,7 @@ The next slice should replace the prototype repository internals with durable pe
 
 ## Solution
 
-Introduce Cloudflare D1-compatible repository implementations behind the existing domain interfaces, using the current SQL schema as the persistence target. Keep the current in-memory backend available for tests and local demo composition until a later environment-wiring slice decides when to instantiate D1-backed runtime services.
+Introduce Cloudflare D1-compatible repository implementations behind the existing domain interfaces, using the current SQL schema as the persistence target. Use Drizzle as the typed SQL adapter layer for the persistence implementation. Keep the current in-memory backend available for tests and local demo composition until a later environment-wiring slice decides when to instantiate D1-backed runtime services.
 
 This slice should not introduce real Google authentication, R2 uploads, production authorization, or a Cloudflare deploy. It should make persistence replaceable and testable first.
 
@@ -49,6 +49,10 @@ Prefer narrow repository methods that match use-case needs over generic table ac
 
 Add D1-compatible SQL adapters behind the repository interfaces. The adapters should depend on a minimal database client interface under `src/server/infra/db`, not on Cloudflare globals directly. Tests may use a fake or in-memory SQL client that exercises SQL behavior without requiring `wrangler login`.
 
+Use Drizzle for SQL schema definitions and repository query construction. Define the full database schema in Drizzle now, covering all tables from `backend/sql/001_initial_schema.sql`, rather than a partial Listing-only schema. The production-facing adapter should target Cloudflare D1 through Drizzle's D1 driver. Do not introduce raw SQL query strings inside domain modules.
+
+For the persistence setup, use Miniflare to test the D1-compatible database locally. Repository tests should exercise real D1-compatible SQL through Miniflare without requiring Cloudflare credentials. Keep production D1 binding/runtime wiring deferred until the Miniflare-backed Drizzle repositories pass the same repository contract behaviors as the in-memory repositories.
+
 Keep the current `createPrototypeBackend()` path working. Add a separate persistence-backed runtime factory only when the repository adapters are ready enough to compose without breaking the demo runtime.
 
 Do not wire production D1 bindings into the app runtime in this PRD unless the repository tests and local build remain deterministic without Cloudflare credentials.
@@ -59,15 +63,16 @@ Use Zod only at network/user-input boundaries. Repository methods should rely on
 
 ## Implementation Order
 
-1. Strengthen the DB seam: database client interface, migration discovery/execution tests, and D1-compatible adapter boundaries.
-2. Add repository contract tests that can run against the existing in-memory repository and the new SQL-backed repository where practical.
-3. Implement Listing persistence first, because every other workflow depends on Listing aggregates.
-4. Implement Saved listing persistence second, because it is small and exercises Viewer-scoped join data.
-5. Implement Adoption inquiry persistence third, including sent-inquiry reads.
-6. Implement Moderation event and lifecycle persistence fourth, preserving lifecycle status and audit event creation.
-7. Implement Lost/found report persistence fifth, preserving reference code and routed organization receipt behavior.
-8. Implement Clinic persistence last, because it is read-only and can be seeded independently.
-9. Add a persistence-backed runtime composition seam, but keep the existing demo runtime as the default until environment binding is explicitly configured.
+1. Strengthen the DB seam: full Drizzle schema definitions, Miniflare-backed D1 test setup, migration discovery/execution tests, and D1-compatible adapter boundaries. Status: completed for setup; repository adapters remain next.
+2. Implement a narrow Listing persistence tracer bullet first, because every other workflow depends on Listing aggregates.
+3. Keep the tracer bullet behind the existing `ListingRepository` interface and do not make it the default runtime repository yet.
+4. Add repository contract tests that can run against the existing in-memory Listing repository and the new Miniflare-backed Drizzle Listing repository where practical.
+5. Implement Saved listing persistence second, because it is small and exercises Viewer-scoped join data.
+6. Implement Adoption inquiry persistence third, including sent-inquiry reads.
+7. Implement Moderation event and lifecycle persistence fourth, preserving lifecycle status and audit event creation.
+8. Implement Lost/found report persistence fifth, preserving reference code and routed organization receipt behavior.
+9. Implement Clinic persistence last, because it is read-only and can be seeded independently.
+10. Add a persistence-backed runtime composition seam, but keep the existing demo runtime as the default until environment binding is explicitly configured.
 
 ## Testing Decisions
 
@@ -83,7 +88,7 @@ Add repository contract tests for:
 6. Clinic summaries with grouped services.
 7. Moderation events written during lifecycle changes.
 
-Add migration tests proving `backend/sql/001_initial_schema.sql` is discoverable and contains the tables required by the repositories.
+Add migration tests proving `backend/sql/001_initial_schema.sql` is discoverable and contains the tables required by the repositories. Add Miniflare D1 setup tests proving the full Drizzle schema can be created locally and queried without Cloudflare credentials.
 
 Add runtime composition tests proving the persistence-backed runtime can satisfy the same public read and mutation contracts as the in-memory runtime for the covered workflows.
 

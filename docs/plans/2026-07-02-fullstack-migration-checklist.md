@@ -40,9 +40,10 @@ Completed:
 - Moved the You segmented view to validated URL search params with `/you?view=inquiries|listings`
 - Added loader invalidation/reconciliation for Saved remove and You owned-listing lifecycle changes
 - Prepared the durable persistence and repository replacement PRD at `docs/prds/2026-07-04-durable-persistence-repository-replacement.md`
+- Added the full Drizzle schema map for the D1/SQLite database and Miniflare-backed D1 setup tests for the canonical SQL migration
 
 Verification:
-- `pnpm test` passes (106 tests)
+- `pnpm test` passes (108 tests)
 - `pnpm build` passes and generates `dist/client/sw.js`
 - `pnpm cf-typegen` passes and writes `worker-configuration.d.ts`
 
@@ -73,7 +74,7 @@ Issue tracker note:
 - [ ] Persist inquiries
 - [ ] Persist moderation events
 - [ ] Persist reports and routing history
-- [ ] Add migrations / schema wiring for organizations, users, listings, tags, images, inquiries, and reports
+- [x] Add full D1 migration / Drizzle schema wiring for organizations, users, listings, tags, images, saved listings, inquiries, reports, clinics, and moderation events
 
 ### 4) Real auth and authorization
 - [ ] Replace `MOCK_USER` sign-in with Google auth
@@ -110,6 +111,7 @@ Issue tracker note:
 - [ ] Add direct Start server function RPC tests once runtime identity can be preserved across real RPC calls
 - [ ] Add auth-gated flow tests for add/apply resume behavior
 - [ ] Add persistence tests against the eventual DB repositories
+- [x] Add Miniflare D1 setup tests for the full migration and Drizzle schema map
 - [ ] Add end-to-end tests for browse -> detail -> inquiry, add -> moderation, and report routing
 
 ## Recommended next implementation slice
