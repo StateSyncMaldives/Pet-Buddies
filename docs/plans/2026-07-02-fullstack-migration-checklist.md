@@ -39,6 +39,7 @@ Completed:
 - Added explicit route-facing read models and loaders for Clinic data, Saved listings, Sent adoption inquiries, and Owned listings
 - Moved the You segmented view to validated URL search params with `/you?view=inquiries|listings`
 - Added loader invalidation/reconciliation for Saved remove and You owned-listing lifecycle changes
+- Prepared the durable persistence and repository replacement PRD at `docs/prds/2026-07-04-durable-persistence-repository-replacement.md`
 
 Verification:
 - `pnpm test` passes (106 tests)
@@ -126,6 +127,7 @@ Deployment note:
 Next implementation slice:
 - Replace the in-memory prototype repositories with durable persistence while keeping the explicit route read contracts stable.
 - Keep the runtime mutation adapter in place until durable persistence replaces the demo in-memory backend.
+- Brief: `docs/prds/2026-07-04-durable-persistence-repository-replacement.md`
 - Completed read-model brief: `docs/prds/2026-07-03-server-backed-read-models-and-cache-ownership.md`
 - Completed mutation slice brief: `docs/prds/2026-07-03-server-backed-route-data-and-mutation-boundaries.md`
 
