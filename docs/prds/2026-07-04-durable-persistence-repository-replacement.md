@@ -64,9 +64,9 @@ Use Zod only at network/user-input boundaries. Repository methods should rely on
 ## Implementation Order
 
 1. Strengthen the DB seam: full Drizzle schema definitions, Miniflare-backed D1 test setup, migration discovery/execution tests, and D1-compatible adapter boundaries. Status: completed for setup; repository adapters remain next.
-2. Implement a narrow Listing persistence tracer bullet first, because every other workflow depends on Listing aggregates.
-3. Keep the tracer bullet behind the existing `ListingRepository` interface and do not make it the default runtime repository yet.
-4. Add repository contract tests that can run against the existing in-memory Listing repository and the new Miniflare-backed Drizzle Listing repository where practical.
+2. Implement a narrow Listing persistence tracer bullet first, because every other workflow depends on Listing aggregates. Status: completed as an async Drizzle D1 adapter behind a durable repository contract.
+3. Keep the tracer bullet behind the existing `ListingRepository` interface and do not make it the default runtime repository yet. Status: completed; the prototype runtime still uses the in-memory repository.
+4. Add repository contract tests that can run against the existing in-memory Listing repository and the new Miniflare-backed Drizzle Listing repository where practical. Status: completed for browse/get/create/save/status/toggle behavior.
 5. Implement Saved listing persistence second, because it is small and exercises Viewer-scoped join data.
 6. Implement Adoption inquiry persistence third, including sent-inquiry reads.
 7. Implement Moderation event and lifecycle persistence fourth, preserving lifecycle status and audit event creation.

@@ -17,6 +17,46 @@ export interface ListingRepository {
   toggleSavedListing(input: ToggleSavedListingInput): boolean
 }
 
+export interface AsyncListingRepository {
+  browse(query: BrowseListingsQuery): Promise<ListingAggregate[]>
+  listAll(viewerId?: string): Promise<ListingAggregate[]>
+  getById(id: string): Promise<ListingAggregate | null>
+  getBySlug(slug: string): Promise<ListingAggregate | null>
+  create(aggregate: ListingAggregate): Promise<ListingAggregate>
+  save(aggregate: ListingAggregate): Promise<ListingAggregate>
+  updateStatus(id: string, status: ListingStatus): Promise<ListingAggregate | null>
+  toggleSavedListing(input: ToggleSavedListingInput): Promise<boolean>
+}
+
+export function createAsyncListingRepository(repository: ListingRepository): AsyncListingRepository {
+  return {
+    browse(query) {
+      return Promise.resolve(repository.browse(query))
+    },
+    listAll(viewerId) {
+      return Promise.resolve(repository.listAll(viewerId))
+    },
+    getById(id) {
+      return Promise.resolve(repository.getById(id))
+    },
+    getBySlug(slug) {
+      return Promise.resolve(repository.getBySlug(slug))
+    },
+    create(aggregate) {
+      return Promise.resolve(repository.create(aggregate))
+    },
+    save(aggregate) {
+      return Promise.resolve(repository.save(aggregate))
+    },
+    updateStatus(id, status) {
+      return Promise.resolve(repository.updateStatus(id, status))
+    },
+    toggleSavedListing(input) {
+      return Promise.resolve(repository.toggleSavedListing(input))
+    },
+  }
+}
+
 export function createInMemoryListingRepository(input: {
   listings?: ListingAggregate[]
 }): ListingRepository {
