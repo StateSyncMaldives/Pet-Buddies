@@ -1,17 +1,22 @@
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useRouter } from '@tanstack/react-router'
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { colors, shadow } from '../theme'
 import { getDetailPath } from '../router/paths'
+import type { ListingDetail } from '../server/contracts/api'
+import { mapListingDetailToListing } from '../store/view-model-mappers'
 import { listMeta, orgLine, useStore } from '../store/store'
 import { PetPhoto, VerifiedBadge } from '../components/Brand'
 import { HeartIcon } from '../components/icons'
 
-export function Saved() {
+export function Saved({ savedListings }: { savedListings?: ListingDetail[] }) {
   const navigate = useNavigate()
+  const router = useRouter()
   const { state, listings, toggleSave } = useStore()
-  const savedFeed = state.saved
-    .map((id) => listings.find((l) => l.id === id))
-    .filter((l): l is NonNullable<typeof l> => Boolean(l))
+  const savedFeed = savedListings
+    ? savedListings.map(mapListingDetailToListing)
+    : state.saved
+        .map((id) => listings.find((l) => l.id === id))
+        .filter((l): l is NonNullable<typeof l> => Boolean(l))
 
   const empty = savedFeed.length === 0
   const sub = empty
@@ -38,6 +43,7 @@ export function Saved() {
         const onRemove = (e: MouseEvent) => {
           e.stopPropagation()
           toggleSave(l.id)
+          void router.invalidate()
         }
         return (
           <div

@@ -10,7 +10,9 @@ import {
   type CreateListingRequest,
   type CreateLostFoundReportRequest,
   type GetListingDetailResponse,
+  type GetYouReadModelResponse,
   type ListClinicsResponse,
+  type ListSavedListingsResponse,
   type ToggleSavedListingResponse,
   type UpdateListingModerationRequest,
 } from '../../../../src/server/contracts/api'
@@ -133,6 +135,25 @@ describe('server api transport contracts', () => {
       ],
     }
 
+    const savedListingsResponse: ListSavedListingsResponse = {
+      items: [detailResponse.item],
+    }
+
+    const youReadModelResponse: GetYouReadModelResponse = {
+      sentAdoptionInquiries: [
+        {
+          id: 'inquiry-1',
+          listingId: 'listing-1',
+          listingName: 'Coco',
+          recipientDisplayName: 'Feather Friends',
+          message: 'I would love to adopt Coco.',
+          status: 'awaiting_reply',
+          createdAt: '2026-07-02T08:00:00.000Z',
+        },
+      ],
+      ownedListings: [detailResponse.item],
+    }
+
     const toggleSavedResponse: ToggleSavedListingResponse = {
       listingId: 'listing-1',
       saved: true,
@@ -149,7 +170,11 @@ describe('server api transport contracts', () => {
     expect('objectKey' in detailResponse.item.images[0]).toBe(false)
     expect(toggleSavedResponse.saved).toBe(true)
     expect(clinicsResponse.items).toHaveLength(1)
+    expect(savedListingsResponse.items[0].savedByViewer).toBe(false)
+    expect(youReadModelResponse.sentAdoptionInquiries[0].recipientDisplayName).toBe('Feather Friends')
 
     expectTypeOf(result).toEqualTypeOf<ApiResult<BrowseListingsResponse>>()
+    expectTypeOf(savedListingsResponse).toEqualTypeOf<ListSavedListingsResponse>()
+    expectTypeOf(youReadModelResponse).toEqualTypeOf<GetYouReadModelResponse>()
   })
 })

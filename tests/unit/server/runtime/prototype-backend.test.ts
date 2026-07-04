@@ -28,6 +28,100 @@ describe('prototype backend runtime', () => {
     expect(hydrated.listings.find((listing) => listing.id === 'mishka')?.savedByViewer).toBe(true)
   })
 
+  it('loads clinic data through the explicit clinic read model', () => {
+    const backend = createPrototypeBackend()
+
+    const result = backend.listClinics()
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.items.map((clinic) => clinic.name)).toEqual(['Oases Vet Hospital', 'Erika Vet Hospital'])
+    }
+  })
+
+  it('loads saved listings through the explicit saved listing read model', () => {
+    const backend = createPrototypeBackend()
+
+    backend.toggleSavedListing({ listingId: 'mishka', viewerId: 'viewer-1' })
+
+    const firstViewer = backend.listSavedListings({ viewerId: 'viewer-1' })
+    const secondViewer = backend.listSavedListings({ viewerId: 'viewer-2' })
+
+    expect(firstViewer.ok).toBe(true)
+    expect(secondViewer.ok).toBe(true)
+    if (firstViewer.ok && secondViewer.ok) {
+      expect(firstViewer.data.items.map((listing) => listing.slug)).toEqual(['mishka'])
+      expect(firstViewer.data.items[0].savedByViewer).toBe(true)
+      expect(secondViewer.data.items).toEqual([])
+    }
+  })
+
+  it('loads sent adoption inquiries through the explicit you read model', () => {
+    const backend = createPrototypeBackend({
+      now: () => '2099-01-01T00:00:00.000Z',
+      generateId: (prefix) => `${prefix}-fake-1`,
+    })
+
+    backend.createInquiry({
+      viewerId: 'viewer-1',
+      request: {
+        listingId: 'mishka',
+        message: 'Could we visit Mishka this week?',
+      },
+    })
+
+    const result = backend.getYouReadModel({ viewerId: 'viewer-1' })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.sentAdoptionInquiries).toEqual([
+        {
+          id: 'inquiry-fake-1',
+          listingId: 'mishka',
+          listingName: 'Mishka',
+          recipientDisplayName: 'Maldives Cat Rescue',
+          message: 'Could we visit Mishka this week?',
+          status: 'awaiting_reply',
+          createdAt: '2099-01-01T00:00:00.000Z',
+        },
+      ])
+    }
+  })
+
+  it('loads owned listings through the explicit you read model', () => {
+    const backend = createPrototypeBackend()
+
+    backend.createListing({
+      actorUserId: 'viewer-1',
+      request: {
+        species: 'cat',
+        name: 'Nala',
+        ageText: '2 years',
+        sex: 'female',
+        areaLabel: 'Maafannu, Male',
+        story: 'Gentle indoor cat.',
+        tagIds: [],
+        imageObjectKeys: [],
+      },
+    })
+
+    const result = backend.getYouReadModel({ viewerId: 'viewer-1' })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.ownedListings).toEqual([
+        expect.objectContaining({
+          name: 'Nala',
+          status: 'pending',
+          listedBy: expect.objectContaining({
+            kind: 'user',
+            id: 'viewer-1',
+          }),
+        }),
+      ])
+    }
+  })
+
   it('creates pending listings through the typed create-listing use case', () => {
     const backend = createPrototypeBackend()
 

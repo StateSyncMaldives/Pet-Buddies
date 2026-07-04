@@ -94,6 +94,172 @@ describe('createAppRouter', () => {
     })
   })
 
+  it('loads clinics through the vets route loader', async () => {
+    const context = testContext()
+    const router = createAppRouter({ context, initialEntries: ['/vets'] })
+
+    await router.load()
+
+    const vetsMatch = router.state.matches.find((match) => match.routeId === '/vets')
+    expect(vetsMatch?.loaderData).toMatchObject({
+      items: expect.arrayContaining([
+        expect.objectContaining({
+          name: 'Oases Vet Hospital',
+        }),
+      ]),
+    })
+  })
+
+  it('loads saved listings through the saved route loader for the current viewer', async () => {
+    const context = testContext()
+    context.backend.toggleSavedListing({ listingId: 'mishka', viewerId: context.viewerId })
+    const router = createAppRouter({ context, initialEntries: ['/saved'] })
+
+    await router.load()
+
+    const savedMatch = router.state.matches.find((match) => match.routeId === '/saved')
+    expect(savedMatch?.loaderData).toMatchObject({
+      items: [
+        expect.objectContaining({
+          slug: 'mishka',
+          name: 'Mishka',
+          savedByViewer: true,
+        }),
+      ],
+    })
+  })
+
+  it('validates you route view search params with an inquiries default', async () => {
+    const listingsRouter = createAppRouter({ context: testContext(), initialEntries: ['/you?view=listings'] })
+    await listingsRouter.load()
+
+    const listingsMatch = listingsRouter.state.matches.find((match) => match.routeId === '/you')
+    expect(listingsMatch?.search).toEqual({ view: 'listings' })
+
+    const invalidRouter = createAppRouter({ context: testContext(), initialEntries: ['/you?view=unknown'] })
+    await invalidRouter.load()
+
+    const invalidMatch = invalidRouter.state.matches.find((match) => match.routeId === '/you')
+    expect(invalidMatch?.search).toEqual({ view: 'inquiries' })
+  })
+
+  it('loads sent adoption inquiries through the you route loader for the current viewer', async () => {
+    const context = testContext()
+    context.backend.createInquiry({
+      viewerId: context.viewerId,
+      request: {
+        listingId: 'mishka',
+        message: 'Could we visit Mishka this week?',
+      },
+    })
+    const router = createAppRouter({ context, initialEntries: ['/you?view=inquiries'] })
+
+    await router.load()
+
+    const youMatch = router.state.matches.find((match) => match.routeId === '/you')
+    expect(youMatch?.loaderData).toMatchObject({
+      sentAdoptionInquiries: [
+        expect.objectContaining({
+          listingId: 'mishka',
+          listingName: 'Mishka',
+          message: 'Could we visit Mishka this week?',
+          status: 'awaiting_reply',
+        }),
+      ],
+    })
+  })
+
+  it('loads owned listings through the you route loader for the current viewer', async () => {
+    const context = testContext()
+    const created = context.backend.createListing({
+      actorUserId: context.viewerId,
+      request: {
+        species: 'cat',
+        name: 'Nala',
+        ageText: '2 years',
+        sex: 'female',
+        areaLabel: 'Maafannu, Male',
+        story: 'Gentle indoor cat.',
+        tagIds: [],
+        imageObjectKeys: [],
+      },
+    })
+    expect(created.ok).toBe(true)
+    const router = createAppRouter({ context, initialEntries: ['/you?view=listings'] })
+
+    await router.load()
+
+    const youMatch = router.state.matches.find((match) => match.routeId === '/you')
+    expect(youMatch?.loaderData).toMatchObject({
+      ownedListings: [
+        expect.objectContaining({
+          name: 'Nala',
+          status: 'pending',
+        }),
+      ],
+    })
+  })
+
+  it('loads read-model routes without projecting from app-shell hydration', async () => {
+    const context = testContext()
+    const backend = context.backend
+    context.backend = {
+      ...backend,
+      hydrateAppShell() {
+        throw new Error('Route loaders must use explicit read-model methods.')
+      },
+    }
+
+    await createAppRouter({ context, initialEntries: ['/vets'] }).load()
+    await createAppRouter({ context, initialEntries: ['/saved'] }).load()
+    await createAppRouter({ context, initialEntries: ['/you'] }).load()
+  })
+
+  it('refreshes owned listing status after you route invalidation', async () => {
+    const context = testContext()
+    const created = context.backend.createListing({
+      actorUserId: context.viewerId,
+      request: {
+        species: 'cat',
+        name: 'Nala',
+        ageText: '2 years',
+        sex: 'female',
+        areaLabel: 'Maafannu, Male',
+        story: 'Gentle indoor cat.',
+        tagIds: [],
+        imageObjectKeys: [],
+      },
+    })
+    expect(created.ok).toBe(true)
+    if (!created.ok) return
+    const listingId = created.data.listing.id
+    const moderatorId = context.moderatorId ?? 'moderator-demo'
+    context.backend.moderateListing({
+      listingId,
+      actorUserId: moderatorId,
+      request: { action: 'approved' },
+    })
+    const router = createAppRouter({ context, initialEntries: ['/you?view=listings'] })
+
+    await router.load()
+    context.backend.moderateListing({
+      listingId,
+      actorUserId: moderatorId,
+      request: { action: 'adopted' },
+    })
+    await router.invalidate()
+
+    const youMatch = router.state.matches.find((match) => match.routeId === '/you')
+    expect(youMatch?.loaderData).toMatchObject({
+      ownedListings: [
+        expect.objectContaining({
+          name: 'Nala',
+          status: 'adopted',
+        }),
+      ],
+    })
+  })
+
   it('surfaces a not-found match when the detail loader cannot resolve the listing id', async () => {
     const router = createAppRouter({ context: testContext(), initialEntries: ['/browse/listings/does-not-exist'] })
 

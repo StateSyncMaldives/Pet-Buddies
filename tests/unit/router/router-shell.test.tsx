@@ -15,10 +15,13 @@ function renderAt(
     installed: true,
     installDismissed: true,
   },
+  setupRuntime?: (runtime: ReturnType<typeof createAppRuntime>) => void,
 ) {
   window.localStorage.setItem('petbuddies.flags', JSON.stringify(flags))
 
-  const { backend, session } = createAppRuntime()
+  const runtime = createAppRuntime()
+  setupRuntime?.(runtime)
+  const { backend, session } = runtime
   const router = createAppRouter({
     context: {
       backend,
@@ -186,6 +189,21 @@ describe('app router shell', () => {
     expect(await screen.findByRole('heading', { name: 'Mishka' })).toBeTruthy()
   })
 
+  it('refreshes saved route data after removing a saved listing', async () => {
+    const user = userEvent.setup()
+    renderAt('/saved', undefined, ({ backend, session }) => {
+      backend.toggleSavedListing({ listingId: 'mishka', viewerId: session.viewerId })
+    })
+
+    await screen.findByRole('button', { name: 'View Mishka, cat in Maafannu, Malé' })
+    await user.click(screen.getByRole('button', { name: 'Remove from saved' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'View Mishka, cat in Maafannu, Malé' })).toBeNull()
+    })
+    expect(screen.getByText('Nothing saved yet.')).toBeTruthy()
+  })
+
   it('opens the listing detail overlay on direct detail loads', async () => {
     renderAt('/browse/listings/mishka')
 
@@ -200,4 +218,21 @@ describe('app router shell', () => {
     expect(router.state.location.pathname).toBe('/browse/listings/does-not-exist')
     expect(screen.queryByText('Find a buddy')).toBeNull()
   })
+
+  it('renders sent adoption inquiries from the you route loader', async () => {
+    renderAt('/you?view=inquiries', undefined, ({ backend, session }) => {
+      backend.createInquiry({
+        viewerId: session.viewerId,
+        request: {
+          listingId: 'mishka',
+          message: 'Could we visit Mishka this week?',
+        },
+      })
+    })
+
+    expect(await screen.findByText('1 inquiry sent.')).toBeTruthy()
+    expect(screen.getByText('Mishka')).toBeTruthy()
+    expect(screen.getByText('"Could we visit Mishka this week?"')).toBeTruthy()
+  })
+
 })

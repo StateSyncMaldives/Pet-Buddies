@@ -12,9 +12,13 @@ import type {
   CreateListingRequest,
   CreateLostFoundReportRequest,
   BrowseListingsQuery,
+  ApiResult,
+  GetYouReadModelResponse,
   ListingDetail,
+  ListSavedListingsResponse,
   UpdateListingModerationRequest,
 } from '../contracts/api'
+import { apiResultOk } from '../contracts/api'
 import { createSeedClinicRepository } from '../domain/clinics/clinic-repository'
 import { createClinicService } from '../domain/clinics/clinic-service'
 import { createCreateInquiryUseCase } from '../domain/inquiries/create-inquiry'
@@ -76,6 +80,9 @@ export interface PrototypeBackendDeps {
 
 export interface PrototypeBackend {
   hydrateAppShell(input: { viewerId: string }): HydratedAppShell
+  listClinics(): ReturnType<typeof getClinics>
+  listSavedListings(input: { viewerId: string }): ApiResult<ListSavedListingsResponse>
+  getYouReadModel(input: { viewerId: string }): ApiResult<GetYouReadModelResponse>
   browseListings(input: { query: BrowseListingsQuery }): ReturnType<typeof getListings>
   getListingDetail(input: { slugOrId: string }): ReturnType<typeof getListingDetail>
   toggleSavedListing(input: { listingId: string; viewerId: string }): ReturnType<typeof postSaveListing>
@@ -249,6 +256,36 @@ export function createPrototypeBackend(deps: PrototypeBackendDeps = {}): Prototy
 
   return {
     hydrateAppShell,
+    listClinics() {
+      return getClinics({ clinicService })
+    },
+    listSavedListings(input) {
+      return apiResultOk({
+        items: listingRepository
+          .listAll(input.viewerId)
+          .filter((aggregate) => aggregate.savedByViewer)
+          .map((aggregate) => toListingDetail(aggregate)),
+      })
+    },
+    getYouReadModel(input) {
+      return apiResultOk({
+        sentAdoptionInquiries: inquiries
+          .filter((inquiry) => inquiry.senderUserId === input.viewerId)
+          .map((inquiry) => ({
+            id: inquiry.id,
+            listingId: inquiry.listingId,
+            listingName: inquiry.listingNameSnapshot,
+            recipientDisplayName: inquiry.recipientDisplayNameSnapshot,
+            message: inquiry.message,
+            status: inquiry.status,
+            createdAt: inquiry.createdAt,
+          })),
+        ownedListings: listingRepository
+          .listAll(input.viewerId)
+          .filter((aggregate) => aggregate.listing.listedByUserId === input.viewerId)
+          .map((aggregate) => toListingDetail(aggregate)),
+      })
+    },
     browseListings(input) {
       return getListings({ query: input.query, listingService })
     },

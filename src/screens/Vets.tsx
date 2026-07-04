@@ -1,8 +1,13 @@
 import { colors, shadow } from '../theme'
+import type { ClinicSummary } from '../server/contracts/api'
+import { mapClinicSummaryToClinic } from '../store/view-model-mappers'
 import { useStore } from '../store/store'
 
-export function Vets() {
-  const { clinics, callClinic, directionsClinic } = useStore()
+export function Vets({ clinics: serverClinics }: { clinics?: ClinicSummary[] }) {
+  const { clinics: storeClinics, callClinic, directionsClinic } = useStore()
+  const clinics = serverClinics
+    ? serverClinics.map((clinic, index) => mapClinicSummaryToClinic(clinic, index))
+    : storeClinics
 
   return (
     <div style={{ padding: '14px 20px 110px' }}>

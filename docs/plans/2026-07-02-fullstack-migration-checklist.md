@@ -36,9 +36,12 @@ Completed:
 - Added Zod-validated mutation schemas, a store-facing mutation adapter seam, and Start server-function wrappers for save/unsave, Adoption inquiry submit, Lost/found report submit, Listing creation, and Listing lifecycle actions
 - Added ADR 0003 to preserve request/session runtime identity across Start server-function mutation work
 - Refined the next read-model PRD around Saved listings, Sent adoption inquiries, Owned listings, Clinic loaders, Router-owned loader data, and explicit mutation reconciliation
+- Added explicit route-facing read models and loaders for Clinic data, Saved listings, Sent adoption inquiries, and Owned listings
+- Moved the You segmented view to validated URL search params with `/you?view=inquiries|listings`
+- Added loader invalidation/reconciliation for Saved remove and You owned-listing lifecycle changes
 
 Verification:
-- `pnpm test` passes (93 tests)
+- `pnpm test` passes (106 tests)
 - `pnpm build` passes and generates `dist/client/sw.js`
 - `pnpm cf-typegen` passes and writes `worker-configuration.d.ts`
 
@@ -61,7 +64,7 @@ Issue tracker note:
 - [x] Thread demo viewer/session context through the app runtime boundary instead of hard-coding it inside consumers
 - [x] Replace demo in-memory ids/timestamps/reference generation with injectable implementations
 - [x] Add explicit Start server function mutation seams for listings, inquiries, reports, and moderation
-- [ ] Add explicit loader/server query boundaries for clinics and remaining read models
+- [x] Add explicit loader/server query boundaries for clinics and remaining read models
 
 ### 3) Connect to persistent storage
 - [ ] Implement a real database repository for listings
@@ -82,8 +85,8 @@ Issue tracker note:
 - [x] Move detail route data to route loaders instead of relying on shared in-memory store state
 - [x] Load browse filters from URL search params
 - [x] Load browse results from server query params
-- [ ] Make Saved listings, Sent adoption inquiries, Owned listings, and Clinic data derive from explicit server-backed route data
-- [ ] Add mutation reconciliation for loader-owned route data before deciding whether TanStack Query becomes the cache owner
+- [x] Make Saved listings, Sent adoption inquiries, Owned listings, and Clinic data derive from explicit server-backed route data
+- [x] Add mutation reconciliation for loader-owned route data before deciding whether TanStack Query becomes the cache owner
 
 ### 6) Uploads and media
 - [ ] Replace fake image object keys with real upload flow
@@ -121,9 +124,9 @@ Deployment note:
 - No Cloudflare deploy has been run from this checklist. Actual deployment still requires `wrangler login` / account access and an explicit deploy command.
 
 Next implementation slice:
-- Move Saved listings, Sent adoption inquiries, Owned listings, and Clinic data toward explicit server-backed route data while keeping TanStack Query deferred.
+- Replace the in-memory prototype repositories with durable persistence while keeping the explicit route read contracts stable.
 - Keep the runtime mutation adapter in place until durable persistence replaces the demo in-memory backend.
-- Brief: `docs/prds/2026-07-03-server-backed-read-models-and-cache-ownership.md`
+- Completed read-model brief: `docs/prds/2026-07-03-server-backed-read-models-and-cache-ownership.md`
 - Completed mutation slice brief: `docs/prds/2026-07-03-server-backed-route-data-and-mutation-boundaries.md`
 
 That preserves the work already done here and avoids another big-bang rewrite.

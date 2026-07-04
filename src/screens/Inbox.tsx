@@ -1,8 +1,10 @@
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useRouter } from '@tanstack/react-router'
 import { colors, shadow } from '../theme'
 import { getDetailPath } from '../router/paths'
+import type { GetYouReadModelResponse } from '../server/contracts/api'
+import { mapListingDetailToListing } from '../store/view-model-mappers'
 import { useStore } from '../store/store'
-import type { Listing } from '../types'
+import type { InboxView, Inquiry, Listing } from '../types'
 import { Segmented } from '../components/Segmented'
 import { PetThumb } from '../components/primitives'
 import { VerifiedBadge } from '../components/Brand'
@@ -21,17 +23,38 @@ function statusChip(status: NonNullable<Listing['status']>) {
   }
 }
 
-export function Inbox() {
+export function Inbox({ view, youReadModel }: { view?: InboxView; youReadModel?: GetYouReadModelResponse }) {
   const navigate = useNavigate()
-  const { state, listings, setInboxView, openAdd, markAdopted } = useStore()
-  const showMine = state.inboxView === 'listings'
+  const router = useRouter()
+  const { state, listings, openAdd, markAdopted } = useStore()
+  const selectedView = view ?? state.inboxView
+  const showMine = selectedView === 'listings'
 
   const openListingDetail = (listingId: string) => navigate({ to: getDetailPath(listingId) })
+  const setView = (nextView: InboxView) => navigate({ to: '/you', search: { view: nextView } })
 
   const myListings = state.user
-    ? listings.filter((l) => l.lister === state.user!.name)
+    ? youReadModel
+      ? youReadModel.ownedListings.map(mapListingDetailToListing)
+      : listings.filter((l) => l.lister === state.user!.name)
     : []
-  const nInq = state.inquiries.length
+  const inquiries = youReadModel ? youReadModel.sentAdoptionInquiries.map((inquiry): Inquiry => {
+    const listing = youReadModel.ownedListings.find((item) => item.id === inquiry.listingId) ?? listings.find((item) => item.id === inquiry.listingId)
+    const mappedListing = listing && 'ageText' in listing ? mapListingDetailToListing(listing) : listing
+    return {
+      key: inquiry.id,
+      listingId: inquiry.listingId,
+      name: inquiry.listingName,
+      to: inquiry.recipientDisplayName,
+      verified: mappedListing?.verified ?? false,
+      message: inquiry.message,
+      isCat: mappedListing?.species !== 'bird',
+      isBird: mappedListing?.species === 'bird',
+      tint: mappedListing?.tint ?? '#FBE3EC',
+      status: inquiry.status === 'awaiting_reply' ? 'Awaiting reply' : inquiry.status,
+    }
+  }) : state.inquiries
+  const nInq = inquiries.length
 
   return (
     <div style={{ padding: '14px 20px 110px' }}>
@@ -43,7 +66,7 @@ export function Inbox() {
         <Segmented
           options={['Inquiries', 'My listings']}
           activeIndex={showMine ? 1 : 0}
-          onSelect={(i) => setInboxView(i === 0 ? 'inquiries' : 'listings')}
+          onSelect={(i) => setView(i === 0 ? 'inquiries' : 'listings')}
           fontSize={14}
         />
       </div>
@@ -97,7 +120,10 @@ export function Inbox() {
                 </div>
                 {status === 'live' && (
                   <button
-                    onClick={() => markAdopted(l.id)}
+                    onClick={() => {
+                      markAdopted(l.id)
+                      void router.invalidate()
+                    }}
                     style={{
                       width: '100%',
                       marginTop: 12,
@@ -135,7 +161,7 @@ export function Inbox() {
               pad={88}
             />
           ) : (
-            state.inquiries.map((q) => (
+            inquiries.map((q) => (
               <div
                 key={q.key}
                 onClick={() => openListingDetail(q.listingId)}

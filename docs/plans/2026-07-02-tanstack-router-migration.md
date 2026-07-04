@@ -12,9 +12,11 @@ Completed implementation:
 - Detail route loading resolves listings through router loaders with not-found handling.
 - Browse filters now live in URL search params (`species`, `q`, `tags`).
 - Browse listing results are now loaded by the route loader from validated URL search params.
+- Saved listings, Sent adoption inquiries, Owned listings, and Clinic data now load through explicit route-facing read models.
+- The You segmented view now uses validated URL search params.
 - The router shell has been migrated to TanStack Start SPA mode with file-based routes under `src/routes`.
 - Cloudflare Workers config has been added separately in the fullstack checklist slice.
-- The next remaining-task PRD has been prepared locally at `docs/prds/2026-07-03-server-backed-route-data-and-mutation-boundaries.md`.
+- The read-model PRD has been implemented locally at `docs/prds/2026-07-03-server-backed-read-models-and-cache-ownership.md`.
 
 Key commits:
 - `22a58ae` `feat: add typed router context and browse detail loader`
@@ -22,7 +24,7 @@ Key commits:
 - `ea47632` `feat: migrate app shell to tanstack start`
 
 Current verification:
-- `pnpm test` passes (84 tests)
+- `pnpm test` passes (106 tests)
 - `pnpm build` passes
 
 Issue tracker note:
@@ -108,6 +110,13 @@ Detail presentation rule:
 Browse-filter URL strategy:
 - completed: `species`, `q`, and `tags` are validated URL search params
 - the store keeps a compatibility mirror for the current Browse UI
+
+Read-model route data strategy:
+- completed: `/saved` loads Saved listings through an explicit route-facing read model
+- completed: `/you` loads Sent adoption inquiries and Owned listings through an explicit route-facing read model
+- completed: `/vets` loads Clinic data through an explicit route-facing read model
+- completed: `/you` view selection uses validated `view=inquiries|listings` search params
+- TanStack Query remains deferred; Router loader data owns these read models for this slice
 
 Medium-term direction:
 - completed: this migration became the stepping stone into **TanStack Start on Cloudflare**
@@ -427,6 +436,10 @@ Before calling this migration slice done:
 - [x] no `#/pet/...` hash routing remains
 - [x] browse filters are URL search params
 - [x] browse listing results are loaded from server query params
+- [x] saved listings are loaded from explicit route data
+- [x] sent adoption inquiries and owned listings are loaded from explicit route data
+- [x] clinic data is loaded from explicit route data
+- [x] `/you` segmented view uses validated URL search params
 - [x] listing detail resolution uses a route loader with not-found handling
 - [x] TanStack Start SPA-mode route shell is in place
 - [x] `pnpm test` passes
@@ -455,4 +468,5 @@ Plan executed in small slices:
 5. [x] browse detail route
 6. [x] browse URL search params
 7. [x] TanStack Start SPA-mode shell
-8. [x] doc cleanup
+8. [x] Saved, You, and Vets read-model loaders
+9. [x] doc cleanup

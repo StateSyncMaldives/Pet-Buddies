@@ -191,6 +191,25 @@ export interface ListClinicsResponse {
   items: ClinicSummary[]
 }
 
+export interface ListSavedListingsResponse {
+  items: ListingDetail[]
+}
+
+export interface SentAdoptionInquirySummary {
+  id: string
+  listingId: string
+  listingName: string
+  recipientDisplayName: string
+  message: string
+  status: InquiryStatus
+  createdAt: string
+}
+
+export interface GetYouReadModelResponse {
+  sentAdoptionInquiries: SentAdoptionInquirySummary[]
+  ownedListings: ListingDetail[]
+}
+
 export const API_RESULT_READY = 'server-contracts-ready'
 
 export const apiResultOk = <T>(data: T): ApiResult<T> => ({
