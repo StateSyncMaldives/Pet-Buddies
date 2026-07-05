@@ -4,6 +4,19 @@
   "compatibility_date": "2026-07-03",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pet-buddies-mv-db",
+      "database_id": "5a134b5b-1631-4f98-aec2-0774217b9d53"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "pet-buddies-mv-media"
+    }
+  ],
   "observability": {
     "enabled": true
   }

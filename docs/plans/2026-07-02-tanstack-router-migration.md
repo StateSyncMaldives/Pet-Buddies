@@ -17,7 +17,8 @@ Completed implementation:
 - The router shell has been migrated to TanStack Start SPA mode with file-based routes under `src/routes`.
 - Cloudflare Workers config has been added separately in the fullstack checklist slice.
 - The read-model PRD has been implemented locally at `docs/prds/2026-07-03-server-backed-read-models-and-cache-ownership.md`.
-- The follow-on durable persistence slice has started with full D1/Drizzle schema wiring and Miniflare-backed setup tests.
+- The follow-on durable persistence slice has started with full D1/Drizzle schema wiring, Miniflare-backed setup tests, and dedicated repository seams for Listing, Saved listing, Adoption inquiry, and Moderation event persistence.
+- Cloudflare D1 and R2 are now wired in `wrangler.jsonc` as `DB` and `MEDIA_BUCKET`; the canonical D1 SQL schema has been applied remotely, and the R2 media object store seam is in place for later upload flows.
 
 Key commits:
 - `22a58ae` `feat: add typed router context and browse detail loader`
@@ -25,8 +26,8 @@ Key commits:
 - `ea47632` `feat: migrate app shell to tanstack start`
 
 Current verification:
-- `pnpm test` passes (108 tests)
-- `pnpm build` passes
+- Last clean router/app-shell checkpoint: `pnpm test` and `pnpm build` passed before the later persistence and responsive-layout worktree changes.
+- D1/R2 wiring checkpoint: remote D1 schema apply succeeded, `pnpm cf-typegen` regenerated Worker bindings, and `pnpm test -- tests/unit/server/infra/cloudflare-bindings.test.ts` passes.
 
 Issue tracker note:
 - GitHub Issue publication is currently blocked because the fork repository `iyadhali/Pet-Buddies` has Issues disabled. Do not publish to an upstream repository; keep work scoped to the fork.
@@ -85,6 +86,7 @@ Implication: we currently have a **planning split** between eventual fullstack d
 - replacing the in-memory store
 - route-ifying auth, inquiry, moderation, onboarding, add-listing, or install overlays
 - Cloudflare deploy execution
+- listing/report upload flows on top of the R2 media store seam
 
 This gave us a low-risk first slice: **better routing without backend churn**. The app shell has since moved to TanStack Start while preserving the compatibility runtime/store boundary.
 
@@ -445,6 +447,7 @@ Before calling this migration slice done:
 - [x] TanStack Start SPA-mode route shell is in place
 - [x] `pnpm test` passes
 - [x] `pnpm build` passes
+- [x] Cloudflare D1 and R2 Worker bindings are configured for the Start shell
 
 ---
 

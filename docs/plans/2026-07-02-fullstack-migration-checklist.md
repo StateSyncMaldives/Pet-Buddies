@@ -45,12 +45,14 @@ Completed:
 - Added a dedicated Saved listing repository seam with Miniflare-backed Drizzle coverage for Viewer-scoped save toggles and saved-list reads
 - Added a dedicated Adoption inquiry repository seam with Miniflare-backed Drizzle coverage for inquiry saves and sender-scoped sent-inquiry reads
 - Added a dedicated Moderation event repository seam with Miniflare-backed Drizzle coverage for listing-scoped audit trail reads
+- Created and bound the Cloudflare D1 database `pet-buddies-mv-db` as `DB`, applied the canonical SQL schema remotely, and regenerated Worker environment types
+- Created and bound the Cloudflare R2 bucket `pet-buddies-mv-media` as `MEDIA_BUCKET`, added a typed R2 media object store seam, and stored `CLOUDFLARE_API_TOKEN` as a GitHub Actions secret for fork-scoped automation
 - Prepared the responsive desktop layout PRD at `docs/prds/2026-07-05-responsive-desktop-layout.md` (plan: `docs/plans/2026-07-05-responsive-desktop-layout.md`, ADR 0004, plus new `PRODUCT.md`/`DESIGN.md` design context)
 
 Verification:
-- `pnpm test` passes (rerun after the Moderation event repository slice)
-- `pnpm build` passes and generates `dist/client/sw.js`
-- `pnpm cf-typegen` passes and writes `worker-configuration.d.ts`
+- Last clean full-suite checkpoint before the current responsive-layout dirty worktree: `pnpm test` passed after the Moderation event repository slice
+- Last clean build checkpoint before the current responsive-layout dirty worktree: `pnpm build` passed and generated `dist/client/sw.js`
+- D1/R2 wiring verification: remote D1 schema apply processed 29 SQL queries; `pnpm cf-typegen` regenerated `DB` and `MEDIA_BUCKET` bindings; `pnpm test -- tests/unit/server/infra/cloudflare-bindings.test.ts` passes
 
 Issue tracker note:
 - GitHub Issue publication is currently blocked because the fork repository `iyadhali/Pet-Buddies` has Issues disabled. Keep the PRD local until Issues are enabled on the fork.
@@ -80,6 +82,7 @@ Issue tracker note:
 - [x] Persist moderation events
 - [ ] Persist reports and routing history
 - [x] Add full D1 migration / Drizzle schema wiring for organizations, users, listings, tags, images, saved listings, inquiries, reports, clinics, and moderation events
+- [x] Bind the production Cloudflare D1 database to the Worker environment
 
 ### 4) Real auth and authorization
 - [ ] Replace `MOCK_USER` sign-in with Google auth
@@ -100,7 +103,7 @@ Issue tracker note:
 - [ ] Add listing image upload + preview pipeline
 - [ ] Add report photo upload pipeline
 - [ ] Validate media size/type server-side
-- [ ] Add Cloudflare-compatible object storage integration
+- [x] Add Cloudflare-compatible object storage binding and typed media store seam
 
 ### 7) Production UX/state cleanup
 - [ ] Remove remaining hard-coded location/report defaults used only for the prototype
