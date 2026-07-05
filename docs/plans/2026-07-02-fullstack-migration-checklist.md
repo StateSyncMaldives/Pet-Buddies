@@ -43,9 +43,11 @@ Completed:
 - Added the full Drizzle schema map for the D1/SQLite database and Miniflare-backed D1 setup tests for the canonical SQL migration
 - Added the first Miniflare-backed Drizzle Listing repository tracer bullet with contract coverage for browse, detail lookup, create/save, status updates, and Viewer save toggles
 - Added a dedicated Saved listing repository seam with Miniflare-backed Drizzle coverage for Viewer-scoped save toggles and saved-list reads
+- Added a dedicated Adoption inquiry repository seam with Miniflare-backed Drizzle coverage for inquiry saves and sender-scoped sent-inquiry reads
+- Prepared the responsive desktop layout PRD at `docs/prds/2026-07-05-responsive-desktop-layout.md` (plan: `docs/plans/2026-07-05-responsive-desktop-layout.md`, ADR 0004, plus new `PRODUCT.md`/`DESIGN.md` design context)
 
 Verification:
-- `pnpm test` passes (112 tests)
+- `pnpm test` passes (114 tests)
 - `pnpm build` passes and generates `dist/client/sw.js`
 - `pnpm cf-typegen` passes and writes `worker-configuration.d.ts`
 
@@ -73,7 +75,7 @@ Issue tracker note:
 ### 3) Connect to persistent storage
 - [x] Implement a real database repository for listings
 - [x] Persist saved listings by user
-- [ ] Persist inquiries
+- [x] Persist inquiries
 - [ ] Persist moderation events
 - [ ] Persist reports and routing history
 - [x] Add full D1 migration / Drizzle schema wiring for organizations, users, listings, tags, images, saved listings, inquiries, reports, clinics, and moderation events
@@ -112,7 +114,7 @@ Issue tracker note:
 - [x] Add mutation adapter and runtime validation tests for Start server function inputs
 - [ ] Add direct Start server function RPC tests once runtime identity can be preserved across real RPC calls
 - [ ] Add auth-gated flow tests for add/apply resume behavior
-- [x] Add persistence tests against the Listing and Saved listing DB repositories
+- [x] Add persistence tests against the Listing, Saved listing, and Adoption inquiry DB repositories
 - [x] Add Miniflare D1 setup tests for the full migration and Drizzle schema map
 - [ ] Add end-to-end tests for browse -> detail -> inquiry, add -> moderation, and report routing
 

@@ -68,7 +68,7 @@ Use Zod only at network/user-input boundaries. Repository methods should rely on
 3. Keep the tracer bullet behind the existing `ListingRepository` interface and do not make it the default runtime repository yet. Status: completed; the prototype runtime still uses the in-memory repository.
 4. Add repository contract tests that can run against the existing in-memory Listing repository and the new Miniflare-backed Drizzle Listing repository where practical. Status: completed for browse/get/create/save/status/toggle behavior.
 5. Implement Saved listing persistence second, because it is small and exercises Viewer-scoped join data. Status: completed as a dedicated async repository with in-memory and Drizzle D1 contract coverage.
-6. Implement Adoption inquiry persistence third, including sent-inquiry reads.
+6. Implement Adoption inquiry persistence third, including sent-inquiry reads. Status: completed as a dedicated async repository with in-memory and Drizzle D1 contract coverage.
 7. Implement Moderation event and lifecycle persistence fourth, preserving lifecycle status and audit event creation.
 8. Implement Lost/found report persistence fifth, preserving reference code and routed organization receipt behavior.
 9. Implement Clinic persistence last, because it is read-only and can be seeded independently.
