@@ -44,6 +44,14 @@ _Avoid_: Favorite pet profile, anonymous local save
 An immutable record of a listing lifecycle action such as submission, approval, rejection, adoption, or restoration.
 _Avoid_: Status history row
 
+**Listing image**:
+One of an ordered set of images attached to a listing by its listing owner, reviewed as part of the listing in the review queue.
+_Avoid_: Attachment, media file, upload
+
+**Report photo**:
+The single optional photo attached to a lost/found report to help the routed organization identify the animal.
+_Avoid_: Attachment, listing image, evidence
+
 **Bird species allowlist**:
 The restricted set of legal bird species supported by the product for listings and reports.
 _Avoid_: Free-form species text

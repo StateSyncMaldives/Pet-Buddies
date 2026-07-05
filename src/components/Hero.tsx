@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { colors } from '../theme'
 import { useStore } from '../store/store'
+import { useViewportMode } from '../layout/viewport-mode'
 import { listMeta } from '../store/store'
 import { getDetailPath } from '../router/paths'
 import type { BrowseSearchUrl } from '../router/browse-search'
@@ -45,6 +46,7 @@ const PROMOS: Promo[] = [
 export function Hero() {
   const navigate = useNavigate()
   const { listings, showToast } = useStore()
+  const desktop = useViewportMode() === 'desktop'
 
   // Featured = first few live listings that have a real photo.
   const featured = listings
@@ -63,9 +65,10 @@ export function Hero() {
   const [active, setActive] = useState(0)
   const paused = useRef(false)
 
-  // Auto-advance.
+  // Auto-advance — never when the user prefers reduced motion.
   useEffect(() => {
     if (slides.length <= 1) return
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
     const t = setInterval(() => {
       if (paused.current) return
       const el = trackRef.current
@@ -84,8 +87,18 @@ export function Hero() {
 
   if (slides.length === 0) return null
 
+  // Desktop: taller band, capped width — a full-bleed 188px strip letterboxes
+  // the photography the product is supposed to celebrate.
+  const heroH = desktop ? 300 : HERO_H
+
+  const goTo = (index: number) => {
+    const el = trackRef.current
+    if (!el) return
+    el.scrollTo({ left: index * el.clientWidth, behavior: 'smooth' })
+  }
+
   return (
-    <div style={{ margin: '0 -20px 18px' }}>
+    <div style={{ margin: desktop ? '0 0 18px' : '0 -20px 18px', maxWidth: desktop ? 780 : undefined }}>
       <div
         ref={trackRef}
         className="pbscroll"
@@ -93,13 +106,15 @@ export function Hero() {
         onPointerDown={() => (paused.current = true)}
         onPointerUp={() => (paused.current = false)}
         onPointerCancel={() => (paused.current = false)}
+        onMouseEnter={() => (paused.current = true)}
+        onMouseLeave={() => (paused.current = false)}
         style={{
           display: 'flex',
           overflowX: 'auto',
           scrollSnapType: 'x mandatory',
           gap: 0,
-          padding: '0 20px',
-          scrollPadding: '0 20px',
+          padding: desktop ? 0 : '0 20px',
+          scrollPadding: desktop ? 0 : '0 20px',
         }}
       >
         {slides.map((s) => {
@@ -122,7 +137,7 @@ export function Hero() {
                   style={{
                     position: 'relative',
                     width: '100%',
-                    height: HERO_H,
+                    height: heroH,
                     border: 'none',
                     padding: 0,
                     borderRadius: 20,
@@ -178,7 +193,7 @@ export function Hero() {
                   style={{
                     position: 'relative',
                     width: '100%',
-                    height: HERO_H,
+                    height: heroH,
                     border: 'none',
                     borderRadius: 20,
                     overflow: 'hidden',
@@ -230,19 +245,33 @@ export function Hero() {
         })}
       </div>
 
-      {/* Dot indicators */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 12 }}>
+      {/* Dot indicators — real buttons so mouse/keyboard users can drive the carousel. */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginTop: 8 }}>
         {slides.map((s, i) => (
-          <span
+          <button
             key={s.id}
+            onClick={() => goTo(i)}
+            aria-label={`Go to slide ${i + 1} of ${slides.length}`}
+            aria-current={i === active || undefined}
             style={{
-              width: i === active ? 18 : 6,
-              height: 6,
-              borderRadius: 999,
-              background: i === active ? colors.deepBlue : '#cdd3dc',
-              transition: 'width .25s ease, background .25s ease',
+              border: 'none',
+              background: 'none',
+              padding: 4,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
             }}
-          />
+          >
+            <span
+              style={{
+                width: i === active ? 18 : 6,
+                height: 6,
+                borderRadius: 999,
+                background: i === active ? colors.deepBlue : '#cdd3dc',
+                transition: 'width .25s var(--pb-ease-out), background-color .25s var(--pb-ease-out)',
+              }}
+            />
+          </button>
         ))}
       </div>
     </div>

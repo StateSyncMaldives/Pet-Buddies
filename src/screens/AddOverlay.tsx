@@ -11,6 +11,7 @@ import {
   inputStyle,
   primaryBtn,
 } from '../components/primitives'
+import { OverlaySurface } from '../components/OverlaySurface'
 
 export function AddOverlay() {
   const { state, closeAdd, signOut, patchAdd, toggleAddTag, submitListing } = useStore()
@@ -22,7 +23,7 @@ export function AddOverlay() {
   const canSubmit = add.name.trim().length > 0
 
   return (
-    <div className="pb-overlay" style={overlay}>
+    <OverlaySurface label="New listing" zIndex={z.add} onDismiss={closeAdd} width={720}>
       <OverlayHeader onCancel={closeAdd} title="New listing" />
       <div className="pbscroll" style={{ flex: 1, overflowY: 'auto', padding: '8px 20px calc(40px + env(safe-area-inset-bottom, 0px))' }}>
         {!addDone ? (
@@ -200,14 +201,6 @@ export function AddOverlay() {
           </div>
         )}
       </div>
-    </div>
+    </OverlaySurface>
   )
 }
-
-const overlay = {
-  background: colors.appBg,
-  zIndex: z.add,
-  display: 'flex',
-  flexDirection: 'column',
-  animation: 'pb-overlay-in .22s cubic-bezier(.4,0,.2,1)',
-} as const

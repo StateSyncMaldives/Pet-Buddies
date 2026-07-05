@@ -12,7 +12,7 @@ export const colors = {
 
   // Text — cool neutral greys for a crisp, product feel
   ink: '#20252C',
-  textSecondary: '#6f7680',
+  textSecondary: '#697077', // ≥4.5:1 on appBg (#F7F8FA)
   textSecondaryAlt: '#828893',
   faint: '#8d94a0',
   faintAlt: '#a4abb7',

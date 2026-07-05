@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { colors } from '../theme'
+import { colors, font } from '../theme'
+import { useViewportMode } from '../layout/viewport-mode'
 import { useStore } from '../store/store'
 import { BIRD_FILTERS, CAT_FILTERS } from '../data/seed'
 import type { Listing } from '../types'
@@ -71,6 +72,124 @@ export function Browse({ search, serverListings }: { search: BrowseSearch; serve
 
   const filters = isCat ? CAT_FILTERS : BIRD_FILTERS
   const speciesPlural = isCat ? 'cats' : 'birds'
+  const desktop = useViewportMode() === 'desktop'
+
+  const searchField = (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 9,
+        background: '#fff',
+        border: `1.5px solid ${colors.line}`,
+        borderRadius: 13,
+        padding: '11px 14px',
+        marginBottom: desktop ? 0 : 16,
+        flex: desktop ? 1 : undefined,
+      }}
+    >
+      <SearchIcon size={17} />
+      <input
+        value={state.query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search name, breed, area…"
+        aria-label="Search listings"
+        style={{ flex: 1, border: 'none', background: 'none', fontSize: 14, color: colors.ink }}
+      />
+    </div>
+  )
+
+  const speciesToggle = (
+    <Segmented
+      options={['Cats', 'Birds']}
+      activeIndex={isCat ? 0 : 1}
+      onSelect={(i) => setSpecies(i === 0 ? 'cat' : 'bird')}
+    />
+  )
+
+  const filterChips = (
+    <div
+      className="pbscroll"
+      style={{
+        display: 'flex',
+        gap: 8,
+        overflowX: 'auto',
+        margin: desktop ? '12px 0 0' : '0 -20px 20px',
+        padding: desktop ? 0 : '2px 20px',
+      }}
+    >
+      {filters.map((label) => {
+        const active = state.tags.includes(label)
+        return (
+          <button
+            key={label}
+            onClick={() => toggleTag(label)}
+            aria-pressed={active}
+            style={{
+              flex: 'none',
+              border: `1.5px solid ${active ? colors.deepBlue : '#d8dce4'}`,
+              background: active ? colors.deepBlue : '#fff',
+              color: active ? '#fff' : '#6b7280',
+              padding: '7px 14px',
+              borderRadius: 999,
+              fontSize: 12.5,
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'background-color .15s var(--pb-ease-out), border-color .15s var(--pb-ease-out), color .15s var(--pb-ease-out)',
+            }}
+          >
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
+
+  const countLine =
+    feed.length > 0 ? (
+      <div style={{ fontSize: 12.5, color: colors.faint, fontWeight: 600, margin: desktop ? '12px 0 0' : '0 0 12px' }}>
+        {feed.length} {isCat ? 'cat' : 'bird'}
+        {feed.length === 1 ? '' : 's'} available
+      </div>
+    ) : null
+
+  if (desktop) {
+    return (
+      <div style={{ padding: '18px 0 90px' }}>
+        <h1
+          style={{
+            fontFamily: font.brand,
+            fontSize: 52,
+            fontWeight: 700,
+            color: colors.ink,
+            letterSpacing: '-0.02em',
+            textWrap: 'balance',
+            margin: '18px 0 6px',
+          }}
+        >
+          Find a buddy
+        </h1>
+        <p style={{ fontSize: 16, color: colors.textSecondary, margin: '0 0 24px' }}>
+          Cats &amp; birds looking for homes in Greater Malé.
+        </p>
+
+        {/* Rotating hero: featured pets + promo / sponsor slides */}
+        <Hero />
+
+        <div className="pb-filterbar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            {searchField}
+            {speciesToggle}
+          </div>
+          {filterChips}
+        </div>
+        {countLine}
+
+        <BrowseFeed feed={feed} desktop speciesPlural={speciesPlural} onClearFilters={clearFilters} />
+      </div>
+    )
+  }
 
   return (
     <div style={{ padding: '6px 20px 110px' }}>
@@ -167,116 +286,76 @@ export function Browse({ search, serverListings }: { search: BrowseSearch; serve
         Cats &amp; birds looking for homes in Greater Malé.
       </p>
 
-      {/* Search */}
+      {searchField}
+
+      {/* Species segmented */}
+      <div style={{ marginBottom: 16 }}>{speciesToggle}</div>
+
+      {filterChips}
+      {countLine}
+
+      <BrowseFeed feed={feed} speciesPlural={speciesPlural} onClearFilters={clearFilters} />
+    </div>
+  )
+}
+
+function BrowseFeed({
+  feed,
+  speciesPlural,
+  onClearFilters,
+  desktop = false,
+}: {
+  feed: Listing[]
+  speciesPlural: string
+  onClearFilters: () => void
+  desktop?: boolean
+}) {
+  if (feed.length === 0) {
+    return (
       <div
         style={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          gap: 9,
-          background: '#fff',
-          border: `1.5px solid ${colors.line}`,
-          borderRadius: 13,
-          padding: '11px 14px',
-          marginBottom: 16,
+          textAlign: 'center',
+          padding: '46px 20px 0',
         }}
       >
-        <SearchIcon size={17} />
-        <input
-          value={state.query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search name, breed, area…"
-          style={{ flex: 1, border: 'none', background: 'none', fontSize: 14, color: colors.ink }}
-        />
-      </div>
-
-      {/* Species segmented */}
-      <div style={{ marginBottom: 16 }}>
-        <Segmented
-          options={['Cats', 'Birds']}
-          activeIndex={isCat ? 0 : 1}
-          onSelect={(i) => setSpecies(i === 0 ? 'cat' : 'bird')}
-        />
-      </div>
-
-      {/* Filter chips */}
-      <div
-        className="pbscroll"
-        style={{ display: 'flex', gap: 8, overflowX: 'auto', margin: '0 -20px 20px', padding: '2px 20px' }}
-      >
-        {filters.map((label) => {
-          const active = state.tags.includes(label)
-          return (
-            <button
-              key={label}
-              onClick={() => toggleTag(label)}
-              style={{
-                flex: 'none',
-                border: `1.5px solid ${active ? colors.deepBlue : '#d8dce4'}`,
-                background: active ? colors.deepBlue : '#fff',
-                color: active ? '#fff' : '#6b7280',
-                padding: '7px 14px',
-                borderRadius: 999,
-                fontSize: 12.5,
-                fontWeight: 600,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {label}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Count line */}
-      {feed.length > 0 && (
-        <div style={{ fontSize: 12.5, color: colors.faint, fontWeight: 600, marginBottom: 12 }}>
-          {feed.length} {isCat ? 'cat' : 'bird'}
-          {feed.length === 1 ? '' : 's'} available
-        </div>
-      )}
-
-      {/* Feed — 2-up grid */}
-      {feed.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          {feed.map((l) => (
-            <ListingCard key={l.id} listing={l} />
-          ))}
-        </div>
-      )}
-
-      {/* Empty state */}
-      {feed.length === 0 && (
-        <div
+        <SearchIcon size={44} stroke="#cfd4dc" strokeWidth={1.8} />
+        <p style={{ fontSize: 14, color: colors.faint, lineHeight: 1.55, maxWidth: 230, margin: '18px 0 16px' }}>
+          No {speciesPlural} match your search yet. Try fewer filters.
+        </p>
+        <button
+          onClick={onClearFilters}
           style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            padding: '46px 20px 0',
+            padding: '10px 20px',
+            borderRadius: 11,
+            border: '1.5px solid #d8dce4',
+            background: '#fff',
+            color: colors.ink,
+            fontSize: 13.5,
+            fontWeight: 600,
+            cursor: 'pointer',
           }}
         >
-          <SearchIcon size={44} stroke="#cfd4dc" strokeWidth={1.8} />
-          <p style={{ fontSize: 14, color: colors.faint, lineHeight: 1.55, maxWidth: 230, margin: '18px 0 16px' }}>
-            No {speciesPlural} match your search yet. Try fewer filters.
-          </p>
-          <button
-            onClick={clearFilters}
-            style={{
-              padding: '10px 20px',
-              borderRadius: 11,
-              border: '1.5px solid #d8dce4',
-              background: '#fff',
-              color: colors.ink,
-              fontSize: 13.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            Clear filters
-          </button>
-        </div>
-      )}
+          Clear filters
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: desktop ? 'repeat(auto-fill, minmax(280px, 1fr))' : '1fr 1fr',
+        gap: desktop ? 18 : 12,
+        marginTop: desktop ? 22 : 0,
+      }}
+    >
+      {feed.map((l) => (
+        <ListingCard key={l.id} listing={l} />
+      ))}
     </div>
   )
 }

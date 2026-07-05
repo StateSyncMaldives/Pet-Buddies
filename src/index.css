@@ -5,6 +5,10 @@
   -moz-osx-font-smoothing: grayscale;
   /* App is light-only; stop the OS from auto-tinting the status bar / controls dark. */
   color-scheme: light;
+
+  /* Motion tokens (product register: 150–250ms, state-conveying only). */
+  --pb-ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+  --pb-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 * {
@@ -13,8 +17,7 @@
 
 body {
   margin: 0;
-  background: #d4d8df;
-  /* Center the phone frame on large screens; fill the viewport on mobile. */
+  background: #f7f8fa;
   min-height: 100vh;
 }
 
@@ -25,13 +28,19 @@ select {
   font-family: inherit;
 }
 
-input:focus,
-textarea:focus {
+/* Pointer clicks keep the quiet inputs; keyboard users get a visible ring. */
+input:focus:not(:focus-visible),
+textarea:focus:not(:focus-visible) {
   outline: none;
 }
+:focus-visible {
+  outline: 2px solid #3e89be;
+  outline-offset: 2px;
+}
 
-button {
-  font-family: inherit;
+::selection {
+  background: #6fb8e0;
+  color: #fff;
 }
 
 /* Hide scrollbars on scroll regions (matches the prototype's .pbscroll). */
@@ -42,121 +51,242 @@ button {
   display: none;
 }
 
-/* ---- Phone stage / frame ----
-   Desktop: a centered 390×844 device mock with a dark bezel; the app body scrolls
-   inside the frame, and the nav / overlays are positioned within the frame.
-   Mobile (<=440px): the app fills the viewport and the *document* scrolls (so iOS
-   Safari collapses its toolbar), with the nav / overlays pinned to the viewport. */
+/* ---- App shell (ADR 0004) ----
+   One component tree, three widths:
+   - phone (≤440px): the untouched mobile reference — document scroll, safe areas,
+     bottom pill nav, overlays pinned to the viewport.
+   - column (441–900px): the same single column, centered at ≤640px, no bezel.
+   - desktop (>900px): left rail + content shell; nav renders as the rail (JS-gated
+     in App.tsx via useViewportMode), overlays are promoted per-surface. */
 .pb-stage {
   min-height: 100vh;
   min-height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32px;
-  background: #d4d8df;
+  background: #f7f8fa;
 }
 
 .pb-phone {
-  /* Desktop mock: leave room for the cosmetic status bar. */
-  --pb-top: 50px;
-  --pb-sticky-top: 0px; /* where in-feed sticky headers pin (under the cosmetic bar on desktop) */
+  /* Real device: use the actual notch/Dynamic Island inset, not a fake bar. */
+  --pb-top: env(safe-area-inset-top, 0px);
+  --pb-sticky-top: env(safe-area-inset-top, 0px);
   position: relative;
-  width: 390px;
-  height: 844px;
-  background: #F7F8FA;
-  border-radius: 46px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  box-shadow:
-    0 30px 80px rgba(36, 48, 47, 0.28),
-    0 0 0 11px #1a1d1c,
-    0 0 0 13px #34403e;
+  width: 100%;
+  min-height: 100dvh;
+  background: #f7f8fa;
+  padding-top: var(--pb-top); /* clear the notch; 0 off-device */
 }
 
-/* Main app scroll region (desktop: scrolls inside the frame). */
+/* The document scrolls at every width; .pb-scroll is a plain flow container. */
 .pb-scroll {
-  flex: 1;
-  overflow-y: auto;
+  overflow: visible;
 }
 
-/* Floating pill nav + full-screen overlays: positioned within the frame on
-   desktop, pinned to the viewport on a real phone (see media query below). */
+/* Floating pill nav + full-screen overlays pin to the viewport. */
 .pb-nav {
-  position: absolute;
+  position: fixed;
   left: 50%;
-  bottom: 18px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
   transform: translateX(-50%);
   z-index: 15;
 }
 .pb-overlay {
-  position: absolute;
+  position: fixed;
   top: var(--pb-top);
   left: 0;
   right: 0;
   bottom: 0;
 }
 .pb-overlay-full {
-  position: absolute;
+  position: fixed;
   inset: 0;
 }
+.pb-toast {
+  position: fixed;
+}
 
-@media (max-width: 440px) {
-  /* On a real phone the document background is what iOS paints behind the
-     status bar and bottom bar — make it the app background so there's no
-     gray seam in the safe areas. */
-  html,
-  body,
-  .pb-stage {
-    background: #F7F8FA;
+/* ---- Column (441–900px): centered single column, no bezel. ---- */
+@media (min-width: 441px) {
+  .pb-phone {
+    max-width: 640px;
+    margin-inline: auto;
   }
+}
+
+/* ---- Desktop shell (>900px): rail + content. ---- */
+@media (min-width: 901px) {
   .pb-stage {
-    display: block;
-    padding: 0;
+    display: flex;
+    align-items: stretch;
   }
   .pb-phone {
-    /* Real device: use the actual notch/Dynamic Island inset, not a fake bar. */
-    --pb-top: env(safe-area-inset-top, 0px);
-    --pb-sticky-top: env(safe-area-inset-top, 0px);
-    display: block;
-    width: 100%;
-    height: auto; /* grow with content so the document (and the Safari bar) scrolls */
-    min-height: 100dvh;
-    border-radius: 0;
-    overflow: visible;
-    box-shadow: none;
-    padding-top: var(--pb-top); /* clear the notch */
-  }
-  /* No inner scroll on mobile — let the document scroll. */
-  .pb-scroll {
-    flex: none;
-    overflow: visible;
-  }
-  /* Pin the floating nav + overlays to the viewport instead of the frame. */
-  .pb-nav {
-    position: fixed;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
-  }
-  .pb-overlay,
-  .pb-overlay-full {
-    position: fixed;
-  }
-  /* The cosmetic iOS status bar is for the desktop mock only; the real phone
-     already has one, so hide it to avoid a doubled status bar. */
-  .pb-statusbar {
-    display: none !important;
+    flex: 1;
+    min-width: 0;
+    max-width: 1200px;
+    margin-inline: auto;
+    padding-inline: 40px;
   }
 }
 
-/* Toast: within the frame on desktop, pinned to the viewport on mobile. */
-.pb-toast {
-  position: absolute;
+/* Rail: quiet second-neutral panel (JS-gated to desktop mode). */
+.pb-rail {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  width: 232px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 16px calc(22px + env(safe-area-inset-bottom, 0px));
+  background: #eef1f6;
+  border-right: 1px solid #e6e9ef;
+  z-index: 15;
 }
-@media (max-width: 440px) {
-  .pb-toast {
-    position: fixed;
+.pb-rail-link {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 11px;
+  background: none;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s var(--pb-ease-out);
+}
+.pb-rail-link:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+.pb-rail-link[data-active] {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(36, 48, 47, 0.05);
+}
+.pb-rail-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 13px;
+  background: #3e89be;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(62, 137, 190, 0.32);
+  transition:
+    transform 0.15s var(--pb-ease-out),
+    box-shadow 0.15s var(--pb-ease-out);
+}
+.pb-rail-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(62, 137, 190, 0.36);
+}
+.pb-rail-cta:active {
+  transform: translateY(0);
+}
+.pb-rail-badge {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #e78fb4;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Listing cards: pointer feedback on desktop (touch devices get none). */
+@media (min-width: 901px) {
+  .pb-card {
+    transition:
+      transform 0.15s var(--pb-ease-out),
+      box-shadow 0.15s var(--pb-ease-out);
   }
+  .pb-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(36, 48, 47, 0.12);
+  }
+}
+
+/* Desktop Browse: sticky filter bar under the hero. */
+.pb-filterbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin-top: 26px;
+  padding: 14px 0 12px;
+  background: rgba(247, 248, 250, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Desktop dialog promotion: scrim + centered dialog (OverlaySurface). */
+.pb-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 28, 34, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  animation: pb-scrim-in 0.18s var(--pb-ease-out);
+}
+.pb-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: 86vh;
+  border-radius: 20px;
+  overflow: hidden;
+  outline: none;
+  box-shadow: 0 24px 64px rgba(10, 16, 22, 0.28);
+  animation: pb-dialog-in 0.2s var(--pb-ease-out-expo);
+}
+@keyframes pb-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pb-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Detail page circular icon actions (share / save). */
+.pb-detail-iconbtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #e6e9ef;
+  box-shadow: 0 2px 8px rgba(36, 48, 47, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s var(--pb-ease-out);
+}
+.pb-detail-iconbtn:hover {
+  background: #eef1f6;
 }
 
 /* Toast fade/slide-in. */
@@ -180,5 +310,17 @@ button {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Reduced motion: crossfade or instant everywhere, including keyframed entrances. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

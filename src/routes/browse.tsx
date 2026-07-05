@@ -1,6 +1,8 @@
-import { Outlet, createFileRoute } from '@tanstack/react-router'
+import { Outlet, createFileRoute, useRouterState } from '@tanstack/react-router'
 
 import { Browse } from '../screens/Browse'
+import { useViewportMode } from '../layout/viewport-mode'
+import { isDetailPath } from '../router/paths'
 import { toTagSlug, validateBrowseSearch } from '../router/browse-search'
 
 export const Route = createFileRoute('/browse')({
@@ -27,6 +29,15 @@ export const Route = createFileRoute('/browse')({
 function BrowseRoute() {
   const search = Route.useSearch()
   const browseData = Route.useLoaderData()
+  const desktop = useViewportMode() === 'desktop'
+  const pathname = useRouterState({ select: (state) => state.location.pathname })
+
+  // Desktop renders listing detail as a page of its own; phone/column keep the
+  // feed mounted underneath the detail overlay.
+  if (desktop && isDetailPath(pathname)) {
+    return <Outlet />
+  }
+
   return (
     <>
       <Browse search={search} serverListings={browseData.items} />

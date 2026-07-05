@@ -48,11 +48,14 @@ Completed:
 - Created and bound the Cloudflare D1 database `pet-buddies-mv-db` as `DB`, applied the canonical SQL schema remotely, and regenerated Worker environment types
 - Created and bound the Cloudflare R2 bucket `pet-buddies-mv-media` as `MEDIA_BUCKET`, added a typed R2 media object store seam, and stored `CLOUDFLARE_API_TOKEN` as a GitHub Actions secret for fork-scoped automation
 - Prepared the responsive desktop layout PRD at `docs/prds/2026-07-05-responsive-desktop-layout.md` (plan: `docs/plans/2026-07-05-responsive-desktop-layout.md`, ADR 0004, plus new `PRODUCT.md`/`DESIGN.md` design context)
+- Implemented the first responsive desktop layout pass: retired the desktop phone bezel, added desktop rail navigation, Browse grid/hero layout, route-rendered desktop listing detail, desktop dialog promotion, Review queue dialog layout, and responsive Saved/You/Vets/Report passes
+- Ran the impeccable audit/critique pass on the desktop surfaces and applied the fixes (hero recomposition, inquiry-draft scrim protection, official Google mark, card hover, contrast-safe `textSecondary`); open follow-ups are recorded in `docs/plans/2026-07-05-responsive-desktop-layout.md`
 
 Verification:
 - Last clean full-suite checkpoint before the current responsive-layout dirty worktree: `pnpm test` passed after the Moderation event repository slice
 - Last clean build checkpoint before the current responsive-layout dirty worktree: `pnpm build` passed and generated `dist/client/sw.js`
 - D1/R2 wiring verification: remote D1 schema apply processed 29 SQL queries; `pnpm cf-typegen` regenerated `DB` and `MEDIA_BUCKET` bindings; `pnpm test -- tests/unit/server/infra/cloudflare-bindings.test.ts` passes
+- Responsive desktop verification: `pnpm exec tsc --noEmit`, `pnpm test -- tests/unit/layout/rail-nav.test.tsx tests/unit/layout/desktop-detail.test.tsx tests/unit/layout/desktop-dialogs.test.tsx tests/unit/layout/desktop-review-queue.test.tsx`, full `pnpm test`, and `pnpm build` pass
 
 Issue tracker note:
 - GitHub Issue publication is currently blocked because the fork repository `iyadhali/Pet-Buddies` has Issues disabled. Keep the PRD local until Issues are enabled on the fork.

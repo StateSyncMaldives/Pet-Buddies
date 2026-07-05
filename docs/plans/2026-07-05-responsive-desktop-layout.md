@@ -111,6 +111,32 @@ existing Toast stays viewport-anchored bottom-center at all sizes.
 - Ship with restraint: Browse + Listing detail are the flagship; Vets / Saved /
   You / Report get competent, consistent desktop passes in the first slice.
 
+## Post-critique follow-ups (2026-07-06 audit/critique run)
+
+Fixed in the implementation slice: desktop hero recomposed (300px band, 780px
+cap, interactive dots, hover pause), inquiry dialog no longer dismissed by
+stray scrim clicks, official Google mark on sign-in, listing-card hover state,
+desktop Screen titles at 32px, count line out of the sticky filter bar, filter
+chip transitions, `textSecondary` darkened to meet 4.5:1, flag glyph removed
+from "Report this listing".
+
+Open (documented, deliberately not fixed in this slice):
+- **Contrast (pre-existing brand tokens, affect phone too — needs a design
+  decision):** white on `deepBlue #3E89BE` = 3.8:1 on buttons; white 10px
+  badge text on `wordmarkPink` = 2.3:1; `pendingText/pendingBg` chip = 2.4:1;
+  `faint`/`faintAlt` meta text below 3:1.
+- **Loading/error surfaces:** no skeletons or loader error states exist; the
+  demo backend is synchronous so none are reachable yet — build them with the
+  durable-persistence slice when real latency appears (detail route loader is
+  also fetch-discarded below desktop; see comment in the detail route).
+- **Review queue**: reject has no confirm/undo; the rail entry (with pending
+  badge) is visible to signed-out viewers — both belong to the auth/authz
+  slice (checklist §4).
+- **Hero promo density**: pets and promos interleave 1:1; product decision
+  pending on demoting promos.
+- **You side-tabs**: desktop keeps the segmented control this slice; vertical
+  side-tabs deferred.
+
 ## Sequencing
 
 1. **Shell slice**: breakpoint tokens, retire bezel >440px, document scroll,

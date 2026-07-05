@@ -6,6 +6,7 @@ import { mapListingDetailToListing } from '../store/view-model-mappers'
 import { useStore } from '../store/store'
 import type { InboxView, Inquiry, Listing } from '../types'
 import { Segmented } from '../components/Segmented'
+import { Screen } from '../layout/primitives'
 import { PetThumb } from '../components/primitives'
 import { VerifiedBadge } from '../components/Brand'
 import { GridIcon, PersonIcon } from '../components/icons'
@@ -57,11 +58,7 @@ export function Inbox({ view, youReadModel }: { view?: InboxView; youReadModel?:
   const nInq = inquiries.length
 
   return (
-    <div style={{ padding: '14px 20px 110px' }}>
-      <h1 style={{ fontSize: 25, fontWeight: 700, color: colors.ink, letterSpacing: '-0.02em', margin: '6px 0 16px' }}>
-        You
-      </h1>
-
+    <Screen title="You" maxWidth={760}>
       <div style={{ marginBottom: 22 }}>
         <Segmented
           options={['Inquiries', 'My listings']}
@@ -194,7 +191,7 @@ export function Inbox({ view, youReadModel }: { view?: InboxView; youReadModel?:
           )}
         </>
       )}
-    </div>
+    </Screen>
   )
 }
 

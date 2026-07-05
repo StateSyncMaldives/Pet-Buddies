@@ -1,16 +1,19 @@
 import { colors, shadow, z } from '../theme'
 import { useStore } from '../store/store'
+import { useViewportMode } from '../layout/viewport-mode'
 import { PetThumb, CheckMedallion, InfoCircle } from '../components/primitives'
+import { OverlaySurface } from '../components/OverlaySurface'
 import { ChevronLeftIcon } from '../components/icons'
 
 export function ModOverlay() {
   const { state, listings, closeMod, approveListing, rejectListing } = useStore()
+  const desktop = useViewportMode() === 'desktop'
   if (state.overlay !== 'mod') return null
 
   const pending = listings.filter((l) => l.status === 'pending')
 
   return (
-    <div className="pb-overlay" style={{ background: '#F1EFEA', zIndex: z.mod, display: 'flex', flexDirection: 'column', animation: 'pb-overlay-in .22s cubic-bezier(.4,0,.2,1)' }}>
+    <OverlaySurface label="Review queue" zIndex={z.mod} onDismiss={closeMod} width={880} background="#F1EFEA">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 12px', background: colors.appBg, borderBottom: '1px solid #e6e9ef', flex: 'none' }}>
         <button
           onClick={closeMod}
@@ -35,15 +38,22 @@ export function ModOverlay() {
         </div>
 
         {pending.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingTop: 80 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '80px 0' }}>
             <CheckMedallion bg="#E8F3FB" stroke={colors.actionBlue} size={74} />
             <p style={{ fontSize: 14, color: colors.faint, lineHeight: 1.55, maxWidth: 230, margin: 0 }}>
               All caught up — no listings waiting for review.
             </p>
           </div>
         ) : (
-          pending.map((p) => (
-            <div key={p.id} style={{ background: '#fff', borderRadius: 18, boxShadow: shadow.card, overflow: 'hidden', marginBottom: 14 }}>
+          <div
+            style={
+              desktop
+                ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14, alignItems: 'start' }
+                : undefined
+            }
+          >
+          {pending.map((p) => (
+            <div key={p.id} style={{ background: '#fff', borderRadius: 18, boxShadow: shadow.card, overflow: 'hidden', marginBottom: desktop ? 0 : 14 }}>
               <div style={{ display: 'flex', gap: 13, padding: '15px 15px 13px' }}>
                 <PetThumb species={p.species} photo={p.photo} name={p.name} size={60} radius={13} />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -74,12 +84,14 @@ export function ModOverlay() {
               <div style={{ display: 'flex', gap: 9, padding: '0 15px 15px' }}>
                 <button
                   onClick={() => rejectListing(p.id)}
+                  aria-label={`Reject ${p.name}`}
                   style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid #ecc9d3', background: '#fff', color: colors.rejectText, fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}
                 >
                   Reject
                 </button>
                 <button
                   onClick={() => approveListing(p.id)}
+                  aria-label={`Approve and publish ${p.name}`}
                   style={{ flex: 1.4, padding: '12px 0', borderRadius: 12, border: 'none', background: colors.approveGreen, color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
@@ -89,9 +101,10 @@ export function ModOverlay() {
                 </button>
               </div>
             </div>
-          ))
+          ))}
+          </div>
         )}
       </div>
-    </div>
+    </OverlaySurface>
   )
 }

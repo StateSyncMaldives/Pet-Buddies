@@ -1,6 +1,7 @@
 import { colors, shadow } from '../theme'
 import type { ClinicSummary } from '../server/contracts/api'
 import { mapClinicSummaryToClinic } from '../store/view-model-mappers'
+import { CardGrid, Screen } from '../layout/primitives'
 import { useStore } from '../store/store'
 
 export function Vets({ clinics: serverClinics }: { clinics?: ClinicSummary[] }) {
@@ -10,16 +11,10 @@ export function Vets({ clinics: serverClinics }: { clinics?: ClinicSummary[] }) 
     : storeClinics
 
   return (
-    <div style={{ padding: '14px 20px 110px' }}>
-      <h1 style={{ fontSize: 25, fontWeight: 700, color: colors.ink, letterSpacing: '-0.02em', margin: '6px 0 4px' }}>
-        Vet clinics
-      </h1>
-      <p style={{ fontSize: 13.5, color: colors.textSecondary, margin: '0 0 22px' }}>
-        For cats &amp; birds in Greater Malé.
-      </p>
-
+    <Screen title="Vet clinics" subtitle={<>For cats &amp; birds in Greater Malé.</>}>
+      <CardGrid minCardWidth={400} gap={16} phoneGap={16}>
       {clinics.map((clinic) => (
-        <div key={clinic.name} style={{ background: '#fff', borderRadius: 20, boxShadow: shadow.card, padding: 20, marginBottom: 16 }}>
+        <div key={clinic.name} style={{ background: '#fff', borderRadius: 20, boxShadow: shadow.card, padding: 20 }}>
           <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
             <div style={{ width: 52, height: 52, borderRadius: 14, background: clinic.tint, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round">
@@ -63,8 +58,9 @@ export function Vets({ clinics: serverClinics }: { clinics?: ClinicSummary[] }) 
           </div>
         </div>
       ))}
+      </CardGrid>
 
-      <div style={{ background: colors.paper, borderRadius: 16, padding: 18 }}>
+      <div style={{ background: colors.paper, borderRadius: 16, padding: 18, marginTop: 16 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: colors.textSecondaryAlt, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 8 }}>
           Good to know
         </div>
@@ -73,6 +69,6 @@ export function Vets({ clinics: serverClinics }: { clinics?: ClinicSummary[] }) 
           wait times — worth booking early, especially for stray care.
         </p>
       </div>
-    </div>
+    </Screen>
   )
 }

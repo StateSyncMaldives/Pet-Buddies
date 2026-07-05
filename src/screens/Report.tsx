@@ -1,5 +1,6 @@
 import { colors } from '../theme'
 import { useStore } from '../store/store'
+import { Screen } from '../layout/primitives'
 import { ButtonPair, CheckMedallion, FieldLabel, inputStyle } from '../components/primitives'
 
 export function Report() {
@@ -8,7 +9,7 @@ export function Report() {
 
   if (reportDone) {
     return (
-      <div style={{ padding: '14px 20px 110px' }}>
+      <Screen maxWidth={640}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingTop: 80 }}>
           <CheckMedallion bg="#E8F3FB" stroke={colors.actionBlue} />
           <h2 style={{ fontSize: 22, fontWeight: 700, color: colors.ink, margin: '0 0 10px' }}>Report sent</h2>
@@ -24,18 +25,16 @@ export function Report() {
             Done
           </button>
         </div>
-      </div>
+      </Screen>
     )
   }
 
   return (
-    <div style={{ padding: '14px 20px 110px' }}>
-      <h1 style={{ fontSize: 25, fontWeight: 700, color: colors.ink, letterSpacing: '-0.02em', margin: '6px 0 4px' }}>
-        Report a pet
-      </h1>
-      <p style={{ fontSize: 13.5, color: colors.textSecondary, margin: '0 0 22px' }}>
-        Lost, found, or a stray that needs help. It reaches the nearest partner org.
-      </p>
+    <Screen
+      title="Report a pet"
+      subtitle="Lost, found, or a stray that needs help. It reaches the nearest partner org."
+      maxWidth={640}
+    >
 
       <FieldLabel>What's happening?</FieldLabel>
       <div style={{ marginBottom: 20 }}>
@@ -153,6 +152,6 @@ export function Report() {
       >
         Send report
       </button>
-    </div>
+    </Screen>
   )
 }

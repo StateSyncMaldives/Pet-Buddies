@@ -1,33 +1,10 @@
 // @vitest-environment happy-dom
 
-import { cleanup, render, screen, within } from '@testing-library/react'
-import { RouterProvider } from '@tanstack/react-router'
+import { cleanup, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
-import { createAppRouter } from '../../../src/router'
-import { createAppRuntime } from '../../../src/server/runtime/app-session'
+import { renderAppAt as renderAt } from '../../helpers/render-app'
 import { DESKTOP_VIEWPORT, PHONE_VIEWPORT, setViewport } from '../../helpers/viewport'
-
-function renderAt(path: string) {
-  window.localStorage.setItem(
-    'petbuddies.flags',
-    JSON.stringify({ onboarded: true, installed: true, installDismissed: true }),
-  )
-
-  const { backend, session } = createAppRuntime()
-  const router = createAppRouter({
-    context: {
-      backend,
-      viewerId: session.viewerId,
-      mockUser: session.mockUser,
-      moderatorId: session.moderatorId,
-    },
-    initialEntries: [path],
-  })
-
-  render(<RouterProvider router={router} />)
-  return router
-}
 
 beforeAll(() => {
   window.scrollTo = vi.fn()

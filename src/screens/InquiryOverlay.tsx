@@ -1,6 +1,7 @@
 import { colors, shadow, z } from '../theme'
 import { listMeta, orgLine, useStore } from '../store/store'
 import { OverlayHeader, PetThumb, InfoNote, FieldLabel } from '../components/primitives'
+import { OverlaySurface } from '../components/OverlaySurface'
 
 export function InquiryOverlay() {
   const { state, listings, cancelInquiry, setInquiryMessage, sendInquiry } = useStore()
@@ -11,7 +12,13 @@ export function InquiryOverlay() {
   const to = orgLine(listing)
 
   return (
-    <div className="pb-overlay" style={overlay}>
+    <OverlaySurface
+      label="Adoption inquiry"
+      zIndex={z.inquiry}
+      onDismiss={cancelInquiry}
+      width={560}
+      dismissOnScrim={false}
+    >
       <OverlayHeader onCancel={cancelInquiry} title="Adoption inquiry" />
       <div className="pbscroll" style={{ flex: 1, overflowY: 'auto', padding: '10px 20px calc(30px + env(safe-area-inset-bottom, 0px))' }}>
         {/* Pet summary */}
@@ -81,14 +88,6 @@ export function InquiryOverlay() {
           Send inquiry
         </button>
       </div>
-    </div>
+    </OverlaySurface>
   )
 }
-
-const overlay = {
-  background: colors.appBg,
-  zIndex: z.inquiry,
-  display: 'flex',
-  flexDirection: 'column',
-  animation: 'pb-overlay-in .22s cubic-bezier(.4,0,.2,1)',
-} as const

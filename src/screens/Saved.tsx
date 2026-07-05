@@ -1,7 +1,8 @@
-import { useNavigate, useRouter } from '@tanstack/react-router'
+import { Link, useNavigate, useRouter } from '@tanstack/react-router'
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { colors, shadow } from '../theme'
-import { getDetailPath } from '../router/paths'
+import { CardGrid, Screen } from '../layout/primitives'
+import { ROUTE_PATHS, getDetailPath } from '../router/paths'
 import type { ListingDetail } from '../server/contracts/api'
 import { mapListingDetailToListing } from '../store/view-model-mappers'
 import { listMeta, orgLine, useStore } from '../store/store'
@@ -22,23 +23,33 @@ export function Saved({ savedListings }: { savedListings?: ListingDetail[] }) {
   const sub = empty
     ? 'Nothing saved yet.'
     : `${savedFeed.length} budd${savedFeed.length === 1 ? 'y' : 'ies'} saved.`
-
   return (
-    <div style={{ padding: '14px 20px 110px' }}>
-      <h1 style={{ fontSize: 25, fontWeight: 700, color: colors.ink, letterSpacing: '-0.02em', margin: '6px 0 4px' }}>
-        Saved
-      </h1>
-      <p style={{ fontSize: 13.5, color: colors.textSecondary, margin: '0 0 22px' }}>{sub}</p>
-
+    <Screen title="Saved" subtitle={sub}>
       {empty && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingTop: 90 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingTop: 80 }}>
           <HeartIcon size={46} stroke="#cfd4dc" strokeWidth={1.8} />
-          <p style={{ fontSize: 14, color: colors.faint, lineHeight: 1.55, maxWidth: 240, margin: '18px 0 0' }}>
-            Tap the heart on any listing and it'll show up here.
+          <p style={{ fontSize: 14, color: colors.faint, lineHeight: 1.55, maxWidth: 240, margin: '18px 0 16px' }}>
+            Save a listing with its heart and it'll show up here for easy comparing.
           </p>
+          <Link
+            to={ROUTE_PATHS.browse}
+            style={{
+              padding: '10px 20px',
+              borderRadius: 11,
+              border: '1.5px solid #d8dce4',
+              background: '#fff',
+              color: colors.ink,
+              fontSize: 13.5,
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
+          >
+            Browse listings
+          </Link>
         </div>
       )}
 
+      <CardGrid>
       {savedFeed.map((l) => {
         const onRemove = (e: MouseEvent) => {
           e.stopPropagation()
@@ -66,7 +77,6 @@ export function Saved({ savedListings }: { savedListings?: ListingDetail[] }) {
               borderRadius: 16,
               boxShadow: shadow.cardSm,
               padding: 11,
-              marginBottom: 12,
               cursor: 'pointer',
             }}
           >
@@ -123,6 +133,7 @@ export function Saved({ savedListings }: { savedListings?: ListingDetail[] }) {
           </div>
         )
       })}
-    </div>
+      </CardGrid>
+    </Screen>
   )
 }

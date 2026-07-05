@@ -29,6 +29,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
 
   return (
     <div
+      className="pb-card"
       onClick={open}
       onKeyDown={onKey}
       role="button"

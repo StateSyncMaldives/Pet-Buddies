@@ -1,10 +1,17 @@
 import { useNavigate } from '@tanstack/react-router'
-import { colors, shadow, z } from '../theme'
+import { colors, z } from '../theme'
 import { detailMeta, useStore } from '../store/store'
-import { PersonIcon, ChevronLeftIcon, HeartIcon, PinIcon, ShareIcon } from '../components/icons'
-import { PetPhoto, VerifiedBadge } from '../components/Brand'
+import { ChevronLeftIcon, HeartIcon, ShareIcon } from '../components/icons'
+import { PetPhoto } from '../components/Brand'
 import type { BrowseSearchUrl } from '../router/browse-search'
 import { getDetailPath, ROUTE_PATHS } from '../router/paths'
+import {
+  AdoptAction,
+  ListingAreaNote,
+  ListingOwnerCard,
+  ListingStory,
+  ListingTagChips,
+} from './listing-detail-shared'
 
 export function DetailOverlay() {
   const navigate = useNavigate()
@@ -16,8 +23,6 @@ export function DetailOverlay() {
 
   const saved = state.saved.includes(listing.id)
   const applied = state.applied.includes(listing.id)
-  const orgName = listing.org ?? listing.lister ?? 'Individual lister'
-  const orgRole = listing.org ? 'Verified partner organisation' : 'Individual lister'
 
   const onShare = async () => {
     const url = `${location.origin}${getDetailPath(listing.id)}`
@@ -64,7 +69,11 @@ export function DetailOverlay() {
             silhouetteWidth={listing.species === 'cat' ? 190 : 170}
             silhouetteHeight={160}
           />
-          <button onClick={() => navigate({ to: ROUTE_PATHS.browse, search: (prev: BrowseSearchUrl) => prev })} aria-label="Back" style={circleBtn('left')}>
+          <button
+            onClick={() => navigate({ to: ROUTE_PATHS.browse, search: (prev: BrowseSearchUrl) => prev })}
+            aria-label="Back"
+            style={circleBtn('left')}
+          >
             <ChevronLeftIcon size={18} />
           </button>
           <button
@@ -94,78 +103,10 @@ export function DetailOverlay() {
           </h1>
           <div style={{ fontSize: 14, color: colors.textSecondary, marginTop: 4 }}>{detailMeta(listing)}</div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '18px 0 22px' }}>
-            {listing.tags.map((t) => (
-              <span
-                key={t}
-                style={{
-                  background: colors.paper,
-                  color: '#6b7280',
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  padding: '6px 12px',
-                  borderRadius: 9,
-                }}
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 11,
-              background: '#fff',
-              borderRadius: 15,
-              padding: '13px 15px',
-              boxShadow: shadow.cardSm,
-              marginBottom: 22,
-            }}
-          >
-            <div
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 11,
-                background: colors.paper,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flex: 'none',
-              }}
-            >
-              <PersonIcon size={20} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 14.5, fontWeight: 700, color: colors.ink }}>{orgName}</span>
-                {listing.verified && <VerifiedBadge size={16} />}
-              </div>
-              <div style={{ fontSize: 12, color: colors.textSecondaryAlt, marginTop: 1 }}>{orgRole}</div>
-            </div>
-          </div>
-
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: colors.ink, margin: '0 0 9px' }}>About {listing.name}</h2>
-          <p style={{ fontSize: 14.5, color: '#565b63', lineHeight: 1.65, margin: '0 0 22px' }}>{listing.story}</p>
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 9,
-              background: colors.paper,
-              borderRadius: 13,
-              padding: '13px 15px',
-              marginBottom: 20,
-            }}
-          >
-            <PinIcon size={18} stroke={colors.faint} style={{ flex: 'none' }} />
-            <span style={{ fontSize: 12.5, color: '#6b7280', lineHeight: 1.45 }}>
-              General area: <strong style={{ color: colors.ink }}>{listing.area}</strong>. Exact location is shared after your inquiry.
-            </span>
-          </div>
+          <ListingTagChips tags={listing.tags} />
+          <ListingOwnerCard listing={listing} />
+          <ListingStory listing={listing} />
+          <ListingAreaNote area={listing.area} />
 
           <button
             onClick={reportListing}
@@ -179,7 +120,7 @@ export function DetailOverlay() {
               padding: '4px 0',
             }}
           >
-            ⚑ Report this listing
+            Report this listing
           </button>
         </div>
       </div>
@@ -194,47 +135,7 @@ export function DetailOverlay() {
           right: 0,
         }}
       >
-        {applied ? (
-          <div
-            style={{
-              width: '100%',
-              padding: '16px 0',
-              borderRadius: 16,
-              background: '#E8F3FB',
-              color: colors.deepBlue,
-              fontSize: 15,
-              fontWeight: 700,
-              textAlign: 'center',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={colors.deepBlue} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="4,12 10,18 20,5" />
-            </svg>
-            Inquiry sent
-          </div>
-        ) : (
-          <button
-            onClick={() => applyToAdopt(listing.id)}
-            style={{
-              width: '100%',
-              padding: '16px 0',
-              borderRadius: 16,
-              border: 'none',
-              background: colors.deepBlue,
-              color: '#fff',
-              fontSize: 15.5,
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: shadow.raisedLg,
-            }}
-          >
-            Apply to adopt
-          </button>
-        )}
+        <AdoptAction applied={applied} onApply={() => applyToAdopt(listing.id)} />
       </div>
     </div>
   )
