@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 
 import { colors } from '../theme'
+import { BIRD_SPECIES } from '../data/seed'
 import { useStore } from '../store/store'
 import { Screen } from '../layout/primitives'
 import { ButtonPair, CheckMedallion, FieldLabel, inputStyle } from '../components/primitives'
@@ -56,11 +57,29 @@ export function Report() {
           left="Cat"
           right="Bird"
           value={rep.species === 'cat' ? 'left' : 'right'}
-          onLeft={() => patchRep({ species: 'cat' })}
+          onLeft={() => patchRep({ species: 'cat', birdSpecies: '' })}
           onRight={() => patchRep({ species: 'bird' })}
           padY={11}
         />
       </div>
+
+      {rep.species === 'bird' && (
+        <>
+          <FieldLabel>Bird species</FieldLabel>
+          <select
+            value={rep.birdSpecies}
+            onChange={(e) => patchRep({ birdSpecies: e.target.value as typeof rep.birdSpecies })}
+            style={{ ...inputStyle, marginBottom: 20 }}
+          >
+            <option value="">Select species</option>
+            {BIRD_SPECIES.map((species) => (
+              <option key={species} value={species}>
+                {species}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
 
       <FieldLabel>Photo</FieldLabel>
       <input

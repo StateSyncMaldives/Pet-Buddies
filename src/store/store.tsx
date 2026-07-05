@@ -12,6 +12,7 @@ import type { PrototypeBackend } from '../server/runtime/prototype-backend'
 import { MAX_LISTING_IMAGES } from '../server/domain/listings/create-listing'
 import type { MediaUploadKind } from '../server/domain/media/media-upload-policy'
 import { createRuntimeMutationAdapter, type AppMutationAdapter } from '../server/mutations/mutation-adapter'
+import type { BirdSpecies } from '../server/contracts/api'
 import { createInquiryViewModel, mapClinicSummaryToClinic, mapListingDetailToListing } from './view-model-mappers'
 import type {
   AuthIntent,
@@ -43,6 +44,7 @@ export interface MediaDraft {
 export interface ReportForm {
   kind: 'lost' | 'found'
   species: Species
+  birdSpecies: BirdSpecies | ''
   area: string
   desc: string
   photo: MediaDraft | null
@@ -102,9 +104,16 @@ const emptyAdd: AddForm = {
   images: [],
 }
 
-const emptyRep: ReportForm = { kind: 'lost', species: 'cat', area: '', desc: '', photo: null }
+const emptyRep: ReportForm = { kind: 'lost', species: 'cat', birdSpecies: '', area: '', desc: '', photo: null }
 
 const LS_KEY = 'petbuddies.flags'
+const DRAFTS_KEY = 'petbuddies.drafts'
+
+interface PersistedDrafts {
+  add?: Omit<AddForm, 'images'>
+  rep?: Omit<ReportForm, 'photo'>
+}
+
 function loadFlags(): { onboarded: boolean; installed: boolean; installDismissed: boolean } {
   try {
     const raw = localStorage.getItem(LS_KEY)
@@ -115,8 +124,23 @@ function loadFlags(): { onboarded: boolean; installed: boolean; installDismissed
   return { onboarded: false, installed: false, installDismissed: false }
 }
 
+function loadDrafts(): { add: AddForm; rep: ReportForm } {
+  try {
+    const raw = localStorage.getItem(DRAFTS_KEY)
+    if (!raw) return { add: { ...emptyAdd }, rep: { ...emptyRep } }
+    const parsed = JSON.parse(raw) as PersistedDrafts
+    return {
+      add: { ...emptyAdd, ...parsed.add, images: [] },
+      rep: { ...emptyRep, ...parsed.rep, photo: null },
+    }
+  } catch {
+    return { add: { ...emptyAdd }, rep: { ...emptyRep } }
+  }
+}
+
 function initialState(initialSaved: string[]): AppState {
   const flags = loadFlags()
+  const drafts = loadDrafts()
   return {
     species: 'cat',
     query: '',
@@ -136,10 +160,10 @@ function initialState(initialSaved: string[]): AppState {
     installed: flags.installed,
     installDismissed: flags.installDismissed,
     toast: '',
-    rep: { ...emptyRep },
+    rep: drafts.rep,
     reportDone: false,
     reportReceipt: null,
-    add: { ...emptyAdd },
+    add: drafts.add,
     addDone: false,
     addedName: '',
   }
@@ -252,6 +276,16 @@ export function StoreProvider({
       /* ignore */
     }
   }, [state.onboarded, state.installed, state.installDismissed])
+
+  useEffect(() => {
+    const { images: _images, ...addDraft } = state.add
+    const { photo: _photo, ...reportDraft } = state.rep
+    try {
+      localStorage.setItem(DRAFTS_KEY, JSON.stringify({ add: addDraft, rep: reportDraft }))
+    } catch {
+      /* ignore */
+    }
+  }, [state.add, state.rep])
 
   const showToast = useCallback(
     (msg: string) => {
@@ -460,6 +494,14 @@ export function StoreProvider({
           showToast('Add a name first')
           return
         }
+        if (!add.age.trim()) {
+          showToast('Add an age')
+          return
+        }
+        if (!add.area.trim()) {
+          showToast('Add a location')
+          return
+        }
         if (add.images.some((image) => image.status === 'uploading')) {
           showToast('Photos are still uploading')
           return
@@ -471,9 +513,9 @@ export function StoreProvider({
             species: add.species,
             birdSpecies: add.species === 'bird' ? (add.breed as 'Budgerigar' | 'Cockatiel' | 'Lovebird' | 'Finch' | 'Canary') : undefined,
             name: add.name.trim(),
-            ageText: add.age.trim() || 'Unknown age',
+            ageText: add.age.trim(),
             sex: 'unknown',
-            areaLabel: add.area.trim() || 'Malé',
+            areaLabel: add.area.trim(),
             story: add.desc.trim(),
             tagIds: add.tags.map((tag) => backend.getTagId(tag)),
             imageObjectKeys: add.images
@@ -517,20 +559,34 @@ export function StoreProvider({
           return { ...s, rep: { ...s.rep, photo: null } }
         }),
       submitReport: () => {
-        if (state.rep.photo?.status === 'uploading') {
+        const report = state.rep
+        if (report.photo?.status === 'uploading') {
           showToast('Photo is still uploading')
           return
         }
+        if (!report.area.trim()) {
+          showToast('Add a report location')
+          return
+        }
+        if (!report.desc.trim()) {
+          showToast('Add identifying details')
+          return
+        }
+        if (report.species === 'bird' && !report.birdSpecies) {
+          showToast('Choose the bird species')
+          return
+        }
+        const birdSpecies: BirdSpecies | undefined = report.species === 'bird' ? (report.birdSpecies as BirdSpecies) : undefined
         const result = mutations.createReport({
           request: {
-            reportKind: state.rep.kind,
-            species: state.rep.species,
-            birdSpecies: state.rep.species === 'bird' ? 'Budgerigar' : undefined,
+            reportKind: report.kind,
+            species: report.species,
+            birdSpecies,
             reporterName: state.user?.name,
             reporterEmail: state.user?.email,
-            areaLabel: state.rep.area.trim() || 'Maafannu, Malé',
-            description: state.rep.desc.trim() || 'No additional description provided.',
-            photoObjectKey: state.rep.photo?.objectKey ?? undefined,
+            areaLabel: report.area.trim(),
+            description: report.desc.trim(),
+            photoObjectKey: report.photo?.objectKey ?? undefined,
           },
         })
         if (!result.ok) {

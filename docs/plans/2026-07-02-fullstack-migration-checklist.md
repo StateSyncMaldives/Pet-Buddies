@@ -54,6 +54,8 @@ Completed:
 - Ran the impeccable audit/critique pass on the desktop surfaces and applied the fixes (hero recomposition, inquiry-draft scrim protection, official Google mark, card hover, contrast-safe `textSecondary`); open follow-ups are recorded in `docs/plans/2026-07-05-responsive-desktop-layout.md`
 - Added the managed media serving route at `/media/$`, backed by the R2 media store in Workers and a local fallback for non-Worker route tests
 - Wired real media upload into UI flows: Add listing now supports image selection, previews, remove/error/uploading states, and upload-backed object keys; Lost/found report now supports a real photo picker with preview/remove/error/uploading states
+- Removed remaining prototype submit defaults from Add listing and Lost/found report flows: location, description, age, and report bird species must now be explicit user input
+- Added durable local draft persistence for Add listing and Lost/found report text/select state while keeping media file drafts session-only
 
 Verification:
 - Last clean full-suite checkpoint before the current responsive-layout dirty worktree: `pnpm test` passed after the Moderation event repository slice
@@ -61,6 +63,7 @@ Verification:
 - D1/R2 wiring verification: remote D1 schema apply processed 29 SQL queries; `pnpm cf-typegen` regenerated `DB` and `MEDIA_BUCKET` bindings; `pnpm test -- tests/unit/server/infra/cloudflare-bindings.test.ts` passes
 - Responsive desktop verification: `pnpm exec tsc --noEmit`, `pnpm test -- tests/unit/layout/rail-nav.test.tsx tests/unit/layout/desktop-detail.test.tsx tests/unit/layout/desktop-dialogs.test.tsx tests/unit/layout/desktop-review-queue.test.tsx`, full `pnpm test`, and `pnpm build` pass
 - Media UI wiring verification: targeted store/media tests, route/layout tests, `pnpm exec tsc --noEmit`, full `pnpm test` (178 tests), and `pnpm build` pass
+- Production UX/state cleanup verification: `pnpm test -- tests/unit/store/store-runtime-integration.test.tsx tests/unit/router/router-shell.test.tsx` passes with coverage for explicit report/listing fields, durable form drafts, auth-gated add/apply resume, report routing, and add-to-moderation approval
 
 Issue tracker note:
 - GitHub Issue publication is currently blocked because the fork repository `iyadhali/Pet-Buddies` has Issues disabled. Keep the PRD local until Issues are enabled on the fork.
@@ -114,23 +117,24 @@ Issue tracker note:
 - [x] Add Cloudflare-compatible object storage binding and typed media store seam
 
 ### 7) Production UX/state cleanup
-- [ ] Remove remaining hard-coded location/report defaults used only for the prototype
+- [x] Remove remaining hard-coded location/report defaults used only for the prototype
 - [ ] Replace demo toasts/messages with responses driven by server outcomes everywhere
-- [ ] Normalize bird species selection for the report flow UI instead of defaulting to Budgerigar internally
+- [x] Normalize bird species selection for the report flow UI instead of defaulting to Budgerigar internally
 - [ ] Decide whether anonymous saves are local-only or account-backed and reflect that consistently in UX
-- [ ] Ensure onboarding/install/report/add state is durable in the right layer
+- [x] Ensure onboarding/install/report/add state is durable in the right layer
 
 ### 8) Test coverage to add next
 - [x] Add integration tests for store + runtime mutation flows
 - [x] Add route loader tests for the current TanStack Router shell
 - [x] Add mutation adapter and runtime validation tests for Start server function inputs
 - [ ] Add direct Start server function RPC tests once runtime identity can be preserved across real RPC calls
-- [ ] Add auth-gated flow tests for add/apply resume behavior
+- [x] Add auth-gated flow tests for add/apply resume behavior
 - [x] Add persistence tests against the Listing, Saved listing, Adoption inquiry, and Moderation event DB repositories
 - [x] Add persistence tests against the Lost/found report DB repository
 - [x] Add Miniflare D1 setup tests for the full migration and Drizzle schema map
 - [x] Add store/runtime tests for listing image and report photo upload wiring
-- [ ] Add end-to-end tests for browse -> detail -> inquiry, add -> moderation, and report routing
+- [x] Add route-shell integration coverage for browse -> detail -> inquiry, add -> moderation, and report routing
+- [ ] Add browser end-to-end tests for browse -> detail -> inquiry, add -> moderation, and report routing
 
 ## Recommended next implementation slice
 

@@ -21,6 +21,18 @@ function jpegFile(name = 'mango.jpg'): File {
   return new File([JPEG_BYTES], name, { type: 'image/jpeg' })
 }
 
+function createMutationAdapter(overrides: Partial<AppMutationAdapter> = {}): AppMutationAdapter {
+  return {
+    toggleSavedListing: vi.fn<AppMutationAdapter['toggleSavedListing']>(),
+    createInquiry: vi.fn<AppMutationAdapter['createInquiry']>(),
+    createListing: vi.fn<AppMutationAdapter['createListing']>(),
+    createReport: vi.fn<AppMutationAdapter['createReport']>(),
+    uploadMedia: vi.fn<AppMutationAdapter['uploadMedia']>(),
+    updateListingLifecycle: vi.fn<AppMutationAdapter['updateListingLifecycle']>(),
+    ...overrides,
+  }
+}
+
 function createWrapper(props: Partial<StoreProviderProps> = {}) {
   const backend = props.backend ?? createPrototypeBackend()
   const viewerId = props.viewerId ?? 'viewer-test'
@@ -146,6 +158,7 @@ describe('StoreProvider runtime integration', () => {
       result.current.patchRep({
         kind: 'found',
         species: 'bird',
+        birdSpecies: 'Budgerigar',
         area: 'Maafannu, Malé',
         desc: 'Found a tame budgie near the harbour.',
       })
@@ -158,6 +171,158 @@ describe('StoreProvider runtime integration', () => {
     expect(result.current.state.reportDone).toBe(true)
     expect(result.current.state.reportReceipt?.routedTo).toBe('Zoophilist Society Maldives')
     expect(result.current.state.reportReceipt?.referenceCode).toMatch(/^MV\d+$/)
+  })
+
+  it('requires report location and description instead of submitting prototype defaults', () => {
+    const createReport = vi.fn<AppMutationAdapter['createReport']>()
+    const { result } = renderHook(() => useStore(), { wrapper: createWrapper({ mutations: createMutationAdapter({ createReport }) }) })
+
+    act(() => {
+      result.current.submitReport()
+    })
+
+    expect(createReport).not.toHaveBeenCalled()
+    expect(result.current.state.reportDone).toBe(false)
+    expect(result.current.state.toast).toBe('Add a report location')
+
+    act(() => {
+      result.current.patchRep({ area: 'Maafannu, Male' })
+    })
+    act(() => {
+      result.current.submitReport()
+    })
+
+    expect(createReport).not.toHaveBeenCalled()
+    expect(result.current.state.toast).toBe('Add identifying details')
+  })
+
+  it('requires an explicit bird species for bird reports', () => {
+    const createReport = vi.fn<AppMutationAdapter['createReport']>()
+    const { result } = renderHook(() => useStore(), { wrapper: createWrapper({ mutations: createMutationAdapter({ createReport }) }) })
+
+    act(() => {
+      result.current.patchRep({
+        kind: 'found',
+        species: 'bird',
+        area: 'Maafannu, Male',
+        desc: 'Found a tame bird near the harbour.',
+      })
+    })
+    act(() => {
+      result.current.submitReport()
+    })
+
+    expect(createReport).not.toHaveBeenCalled()
+    expect(result.current.state.toast).toBe('Choose the bird species')
+  })
+
+  it('submits the selected bird species with bird reports', () => {
+    const createReport = vi.fn<AppMutationAdapter['createReport']>().mockReturnValue(
+      apiResultOk({
+        report: {
+          id: 'report-test',
+          referenceCode: 'MV1001',
+          routedToOrganizationId: 'zoophilist-society-maldives',
+          status: 'submitted',
+          createdAt: '2026-07-06T00:00:00.000Z',
+        },
+      }),
+    )
+    const { result } = renderHook(() => useStore(), { wrapper: createWrapper({ mutations: createMutationAdapter({ createReport }) }) })
+
+    act(() => {
+      result.current.patchRep({
+        kind: 'found',
+        species: 'bird',
+        birdSpecies: 'Cockatiel',
+        area: 'Maafannu, Male',
+        desc: 'Found a tame cockatiel near the harbour.',
+      })
+    })
+    act(() => {
+      result.current.submitReport()
+    })
+
+    expect(createReport).toHaveBeenCalledWith({
+      request: expect.objectContaining({
+        species: 'bird',
+        birdSpecies: 'Cockatiel',
+        areaLabel: 'Maafannu, Male',
+        description: 'Found a tame cockatiel near the harbour.',
+      }),
+    })
+    expect(result.current.state.reportDone).toBe(true)
+  })
+
+  it('requires listing age and location instead of submitting prototype defaults', () => {
+    const createListing = vi.fn<AppMutationAdapter['createListing']>()
+    const { result } = renderHook(() => useStore(), { wrapper: createWrapper({ mutations: createMutationAdapter({ createListing }) }) })
+
+    act(() => {
+      result.current.patchAdd({ name: 'Sunny' })
+    })
+    act(() => {
+      result.current.submitListing()
+    })
+
+    expect(createListing).not.toHaveBeenCalled()
+    expect(result.current.state.toast).toBe('Add an age')
+
+    act(() => {
+      result.current.patchAdd({ age: '10 months' })
+    })
+    act(() => {
+      result.current.submitListing()
+    })
+
+    expect(createListing).not.toHaveBeenCalled()
+    expect(result.current.state.toast).toBe('Add a location')
+  })
+
+  it('persists add-listing and report drafts across store remounts without media drafts', () => {
+    const first = renderHook(() => useStore(), { wrapper: createWrapper() })
+
+    act(() => {
+      first.result.current.patchAdd({
+        species: 'bird',
+        breed: 'Lovebird',
+        name: 'Sky',
+        age: '6 months',
+        area: 'Machangolhi',
+        desc: 'Needs a patient home.',
+        tags: ['Needs foster'],
+      })
+      first.result.current.patchRep({
+        kind: 'found',
+        species: 'bird',
+        birdSpecies: 'Cockatiel',
+        area: 'Galolhu',
+        desc: 'Seen near the school.',
+      })
+    })
+
+    first.unmount()
+
+    const second = renderHook(() => useStore(), { wrapper: createWrapper() })
+
+    expect(second.result.current.state.add).toMatchObject({
+      species: 'bird',
+      breed: 'Lovebird',
+      name: 'Sky',
+      age: '6 months',
+      area: 'Machangolhi',
+      desc: 'Needs a patient home.',
+      tags: ['Needs foster'],
+      images: [],
+    })
+    expect(second.result.current.state.rep).toMatchObject({
+      kind: 'found',
+      species: 'bird',
+      birdSpecies: 'Cockatiel',
+      area: 'Galolhu',
+      desc: 'Seen near the school.',
+      photo: null,
+    })
   })
 
   it('uploads a selected listing image and submits its object key with the listing', async () => {
@@ -176,7 +341,7 @@ describe('StoreProvider runtime integration', () => {
     expect(image.objectKey).toMatch(/^listing-images\/media-[a-z0-9-]+\.jpg$/)
 
     act(() => {
-      result.current.patchAdd({ name: 'Sunny' })
+      result.current.patchAdd({ name: 'Sunny', age: '10 months', area: 'Maafannu, Male' })
     })
 
     act(() => {
@@ -238,7 +403,13 @@ describe('StoreProvider runtime integration', () => {
     expect(result.current.state.rep.photo?.objectKey).toMatch(/^report-photos\/media-[a-z0-9-]+\.jpg$/)
 
     act(() => {
-      result.current.patchRep({ kind: 'found', species: 'bird', area: 'Maafannu, Malé', desc: 'Found a tame budgie.' })
+      result.current.patchRep({
+        kind: 'found',
+        species: 'bird',
+        birdSpecies: 'Budgerigar',
+        area: 'Maafannu, Malé',
+        desc: 'Found a tame budgie.',
+      })
     })
 
     act(() => {

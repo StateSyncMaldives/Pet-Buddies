@@ -235,4 +235,67 @@ describe('app router shell', () => {
     expect(screen.getByText('"Could we visit Mishka this week?"')).toBeTruthy()
   })
 
+  it('resumes add-listing after signed-out users complete sign-in', async () => {
+    const user = userEvent.setup()
+    renderAt('/browse')
+
+    await screen.findByText('Find a buddy')
+    await user.click(screen.getByRole('button', { name: 'Add a listing' }))
+    expect(await screen.findByRole('heading', { name: 'Sign in to list a pet' })).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }))
+
+    expect(await screen.findByText('Posting as')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Submit for review' })).toBeTruthy()
+  })
+
+  it('resumes adoption inquiry after signed-out users complete sign-in', async () => {
+    const user = userEvent.setup()
+    renderAt('/browse/listings/mishka')
+
+    await screen.findByRole('heading', { name: 'Mishka' })
+    await user.click(screen.getByRole('button', { name: 'Apply to adopt' }))
+    expect(await screen.findByRole('heading', { name: 'Sign in to list a pet' })).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }))
+
+    expect(await screen.findByText('Your message')).toBeTruthy()
+    expect(screen.getByDisplayValue(/interested in adopting Mishka/)).toBeTruthy()
+  })
+
+  it('routes a bird lost-found report from the report UI', async () => {
+    const user = userEvent.setup()
+    renderAt('/report')
+
+    await screen.findByText('Report a pet')
+    await user.click(screen.getByRole('button', { name: 'Bird' }))
+    await user.selectOptions(screen.getByRole('combobox'), 'Cockatiel')
+    await user.type(screen.getByPlaceholderText('Area, e.g. Maafannu, Malé'), 'Maafannu, Malé')
+    await user.type(screen.getByPlaceholderText(/Colour, collar/), 'Found a tame cockatiel near the harbour.')
+    await user.click(screen.getByRole('button', { name: 'Send report' }))
+
+    expect(await screen.findByRole('heading', { name: 'Report sent' })).toBeTruthy()
+    expect(screen.getByText(/Zoophilist Society Maldives/)).toBeTruthy()
+  })
+
+  it('supports add listing to moderation approval from the app shell', async () => {
+    const user = userEvent.setup()
+    renderAt('/browse')
+
+    await screen.findByText('Find a buddy')
+    await user.click(screen.getByRole('button', { name: 'Add a listing' }))
+    await user.click(await screen.findByRole('button', { name: 'Continue with Google' }))
+    await user.type(await screen.findByPlaceholderText('e.g. Mishka'), 'Sunny')
+    await user.type(screen.getByPlaceholderText('e.g. 8 months'), '10 months')
+    await user.type(screen.getByPlaceholderText('e.g. Maafannu'), 'Maafannu, Malé')
+    await user.click(screen.getByRole('button', { name: 'Submit for review' }))
+    expect(await screen.findByRole('heading', { name: 'Submitted!' })).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Back to browse' }))
+    await user.click(screen.getByRole('button', { name: 'Review queue' }))
+    await user.click(await screen.findByRole('button', { name: 'Approve and publish Sunny' }))
+
+    expect(await screen.findByText('Sunny is now live')).toBeTruthy()
+  })
+
 })
