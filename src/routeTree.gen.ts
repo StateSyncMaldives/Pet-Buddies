@@ -15,6 +15,7 @@ import { Route as SavedRouteImport } from './routes/saved'
 import { Route as ReportRouteImport } from './routes/report'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MediaSplatRouteImport } from './routes/media.$'
 import { Route as BrowseListingsListingIdRouteImport } from './routes/browse.listings.$listingId'
 
 const YouRoute = YouRouteImport.update({
@@ -47,6 +48,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MediaSplatRoute = MediaSplatRouteImport.update({
+  id: '/media/$',
+  path: '/media/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BrowseListingsListingIdRoute = BrowseListingsListingIdRouteImport.update({
   id: '/listings/$listingId',
   path: '/listings/$listingId',
@@ -60,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/saved': typeof SavedRoute
   '/vets': typeof VetsRoute
   '/you': typeof YouRoute
+  '/media/$': typeof MediaSplatRoute
   '/browse/listings/$listingId': typeof BrowseListingsListingIdRoute
 }
 export interface FileRoutesByTo {
@@ -69,6 +76,7 @@ export interface FileRoutesByTo {
   '/saved': typeof SavedRoute
   '/vets': typeof VetsRoute
   '/you': typeof YouRoute
+  '/media/$': typeof MediaSplatRoute
   '/browse/listings/$listingId': typeof BrowseListingsListingIdRoute
 }
 export interface FileRoutesById {
@@ -79,6 +87,7 @@ export interface FileRoutesById {
   '/saved': typeof SavedRoute
   '/vets': typeof VetsRoute
   '/you': typeof YouRoute
+  '/media/$': typeof MediaSplatRoute
   '/browse/listings/$listingId': typeof BrowseListingsListingIdRoute
 }
 export interface FileRouteTypes {
@@ -90,6 +99,7 @@ export interface FileRouteTypes {
     | '/saved'
     | '/vets'
     | '/you'
+    | '/media/$'
     | '/browse/listings/$listingId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -99,6 +109,7 @@ export interface FileRouteTypes {
     | '/saved'
     | '/vets'
     | '/you'
+    | '/media/$'
     | '/browse/listings/$listingId'
   id:
     | '__root__'
@@ -108,6 +119,7 @@ export interface FileRouteTypes {
     | '/saved'
     | '/vets'
     | '/you'
+    | '/media/$'
     | '/browse/listings/$listingId'
   fileRoutesById: FileRoutesById
 }
@@ -118,6 +130,7 @@ export interface RootRouteChildren {
   SavedRoute: typeof SavedRoute
   VetsRoute: typeof VetsRoute
   YouRoute: typeof YouRoute
+  MediaSplatRoute: typeof MediaSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -164,6 +177,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/media/$': {
+      id: '/media/$'
+      path: '/media/$'
+      fullPath: '/media/$'
+      preLoaderRoute: typeof MediaSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/browse/listings/$listingId': {
       id: '/browse/listings/$listingId'
       path: '/listings/$listingId'
@@ -192,6 +212,7 @@ const rootRouteChildren: RootRouteChildren = {
   SavedRoute: SavedRoute,
   VetsRoute: VetsRoute,
   YouRoute: YouRoute,
+  MediaSplatRoute: MediaSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
