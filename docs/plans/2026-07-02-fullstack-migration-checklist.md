@@ -52,12 +52,15 @@ Completed:
 - Added a dedicated Lost/found report repository seam with in-memory and Miniflare-backed Drizzle coverage for report receipts and routed-organization history
 - Added media domain helpers for upload policy validation, managed object-key admission, upload object-key construction, and read-time URL derivation; recorded ADR 0005 and ADR 0006 for those media decisions
 - Ran the impeccable audit/critique pass on the desktop surfaces and applied the fixes (hero recomposition, inquiry-draft scrim protection, official Google mark, card hover, contrast-safe `textSecondary`); open follow-ups are recorded in `docs/plans/2026-07-05-responsive-desktop-layout.md`
+- Added the managed media serving route at `/media/$`, backed by the R2 media store in Workers and a local fallback for non-Worker route tests
+- Wired real media upload into UI flows: Add listing now supports image selection, previews, remove/error/uploading states, and upload-backed object keys; Lost/found report now supports a real photo picker with preview/remove/error/uploading states
 
 Verification:
 - Last clean full-suite checkpoint before the current responsive-layout dirty worktree: `pnpm test` passed after the Moderation event repository slice
 - Last clean build checkpoint before the current responsive-layout dirty worktree: `pnpm build` passed and generated `dist/client/sw.js`
 - D1/R2 wiring verification: remote D1 schema apply processed 29 SQL queries; `pnpm cf-typegen` regenerated `DB` and `MEDIA_BUCKET` bindings; `pnpm test -- tests/unit/server/infra/cloudflare-bindings.test.ts` passes
 - Responsive desktop verification: `pnpm exec tsc --noEmit`, `pnpm test -- tests/unit/layout/rail-nav.test.tsx tests/unit/layout/desktop-detail.test.tsx tests/unit/layout/desktop-dialogs.test.tsx tests/unit/layout/desktop-review-queue.test.tsx`, full `pnpm test`, and `pnpm build` pass
+- Media UI wiring verification: targeted store/media tests, route/layout tests, `pnpm exec tsc --noEmit`, full `pnpm test` (178 tests), and `pnpm build` pass
 
 Issue tracker note:
 - GitHub Issue publication is currently blocked because the fork repository `iyadhali/Pet-Buddies` has Issues disabled. Keep the PRD local until Issues are enabled on the fork.
@@ -104,9 +107,9 @@ Issue tracker note:
 - [x] Add mutation reconciliation for loader-owned route data before deciding whether TanStack Query becomes the cache owner
 
 ### 6) Uploads and media
-- [ ] Replace fake image object keys with real upload flow
-- [ ] Add listing image upload + preview pipeline
-- [ ] Add report photo upload pipeline
+- [x] Replace fake image object keys with upload-backed managed object keys in create/report mutations
+- [x] Add listing image upload + preview pipeline
+- [x] Add report photo upload pipeline
 - [x] Validate media size/type server-side
 - [x] Add Cloudflare-compatible object storage binding and typed media store seam
 
@@ -126,6 +129,7 @@ Issue tracker note:
 - [x] Add persistence tests against the Listing, Saved listing, Adoption inquiry, and Moderation event DB repositories
 - [x] Add persistence tests against the Lost/found report DB repository
 - [x] Add Miniflare D1 setup tests for the full migration and Drizzle schema map
+- [x] Add store/runtime tests for listing image and report photo upload wiring
 - [ ] Add end-to-end tests for browse -> detail -> inquiry, add -> moderation, and report routing
 
 ## Recommended next implementation slice

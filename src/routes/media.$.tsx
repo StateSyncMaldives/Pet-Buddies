@@ -33,9 +33,10 @@ export const Route = createFileRoute('/media/$')({
 async function getMediaBucket(): Promise<R2Bucket | null> {
   try {
     // Resolved by workerd at runtime; unavailable outside the Worker (vitest, plain dev).
-    const workers = (await import(/* @vite-ignore */ 'cloudflare:workers')) as {
+    const importWorkers = new Function('return import("cloudflare:workers")') as () => Promise<{
       env?: Partial<PetBuddiesCloudflareBindings>
-    }
+    }>
+    const workers = await importWorkers()
     return workers.env?.MEDIA_BUCKET ?? null
   } catch {
     return null

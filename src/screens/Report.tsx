@@ -1,11 +1,14 @@
+import { useRef } from 'react'
+
 import { colors } from '../theme'
 import { useStore } from '../store/store'
 import { Screen } from '../layout/primitives'
 import { ButtonPair, CheckMedallion, FieldLabel, inputStyle } from '../components/primitives'
 
 export function Report() {
-  const { state, patchRep, useMyLocation, toggleRepPhoto, submitReport, resetReport } = useStore()
+  const { state, patchRep, useMyLocation, setReportPhoto, removeReportPhoto, submitReport, resetReport } = useStore()
   const { rep, reportDone, reportReceipt } = state
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   if (reportDone) {
     return (
@@ -60,30 +63,56 @@ export function Report() {
       </div>
 
       <FieldLabel>Photo</FieldLabel>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) void setReportPhoto(file)
+          e.target.value = ''
+        }}
+      />
       <button
-        onClick={toggleRepPhoto}
+        onClick={() => fileInputRef.current?.click()}
         style={{
           width: '100%',
           height: 120,
           borderRadius: 15,
-          border: `1.5px dashed ${rep.photo ? colors.actionBlue : '#d9d4ca'}`,
-          background: rep.photo ? '#F4FAFE' : '#fff',
+          border: `1.5px dashed ${rep.photo?.status === 'ready' ? colors.actionBlue : rep.photo?.status === 'error' ? '#e0938f' : '#d9d4ca'}`,
+          background: rep.photo?.status === 'ready' ? '#F4FAFE' : '#fff',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           gap: 8,
           cursor: 'pointer',
-          marginBottom: 20,
+          marginBottom: rep.photo ? 8 : 20,
+          overflow: 'hidden',
         }}
       >
-        {rep.photo ? (
+        {rep.photo?.status === 'ready' ? (
           <>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={colors.actionBlue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="4,12 10,18 20,5" />
-            </svg>
+            {rep.photo.previewUrl ? (
+              <img
+                src={rep.photo.previewUrl}
+                alt="Report photo preview"
+                style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover' }}
+              />
+            ) : (
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={colors.actionBlue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="4,12 10,18 20,5" />
+              </svg>
+            )}
             <span style={{ fontSize: 13, color: colors.actionBlue, fontWeight: 600 }}>Photo added</span>
           </>
+        ) : rep.photo?.status === 'uploading' ? (
+          <span style={{ fontSize: 13, color: colors.faint }}>Uploading…</span>
+        ) : rep.photo?.status === 'error' ? (
+          <span style={{ fontSize: 13, color: '#b4574f', fontWeight: 600 }}>
+            {rep.photo.error ?? 'Upload failed.'} Tap to pick another photo.
+          </span>
         ) : (
           <>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#b3aea4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -91,10 +120,27 @@ export function Report() {
               <circle cx="12" cy="13" r="3.5" />
               <path d="M8 6l1.5-2h5L16 6" />
             </svg>
-            <span style={{ fontSize: 13, color: colors.faint }}>Add a photo</span>
+            <span style={{ fontSize: 13, color: colors.faint }}>Add a photo — JPEG, PNG, or WebP, up to 5 MB</span>
           </>
         )}
       </button>
+      {rep.photo && (
+        <button
+          onClick={removeReportPhoto}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: colors.actionBlue,
+            fontSize: 12.5,
+            fontWeight: 600,
+            cursor: 'pointer',
+            padding: 0,
+            marginBottom: 20,
+          }}
+        >
+          Remove photo
+        </button>
+      )}
 
       <FieldLabel>Location</FieldLabel>
       <button

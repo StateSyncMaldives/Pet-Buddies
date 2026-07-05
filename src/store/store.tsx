@@ -9,6 +9,8 @@ import {
   type ReactNode,
 } from 'react'
 import type { PrototypeBackend } from '../server/runtime/prototype-backend'
+import { MAX_LISTING_IMAGES } from '../server/domain/listings/create-listing'
+import type { MediaUploadKind } from '../server/domain/media/media-upload-policy'
 import { createRuntimeMutationAdapter, type AppMutationAdapter } from '../server/mutations/mutation-adapter'
 import { createInquiryViewModel, mapClinicSummaryToClinic, mapListingDetailToListing } from './view-model-mappers'
 import type {
@@ -29,12 +31,21 @@ const DEFAULT_MODERATOR_ID = 'moderator-demo'
  * Uses the server-backed runtime façade so UI flows now mutate the same typed
  * backend use cases the future TanStack Start app shell will call.
  */
+export interface MediaDraft {
+  id: string
+  fileName: string
+  previewUrl: string
+  objectKey: string | null
+  status: 'uploading' | 'ready' | 'error'
+  error?: string
+}
+
 export interface ReportForm {
   kind: 'lost' | 'found'
   species: Species
   area: string
   desc: string
-  photo: boolean
+  photo: MediaDraft | null
 }
 
 export interface AddForm {
@@ -45,6 +56,7 @@ export interface AddForm {
   breed: string
   desc: string
   tags: string[]
+  images: MediaDraft[]
 }
 
 export interface ReportReceipt {
@@ -87,9 +99,10 @@ const emptyAdd: AddForm = {
   breed: 'Budgerigar',
   desc: '',
   tags: [],
+  images: [],
 }
 
-const emptyRep: ReportForm = { kind: 'lost', species: 'cat', area: '', desc: '', photo: false }
+const emptyRep: ReportForm = { kind: 'lost', species: 'cat', area: '', desc: '', photo: null }
 
 const LS_KEY = 'petbuddies.flags'
 function loadFlags(): { onboarded: boolean; installed: boolean; installDismissed: boolean } {
@@ -161,6 +174,8 @@ export interface Store {
   closeAdd: () => void
   patchAdd: (p: Partial<AddForm>) => void
   toggleAddTag: (tag: string) => void
+  addListingImages: (files: File[]) => Promise<void>
+  removeListingImage: (id: string) => void
   submitListing: () => void
   openMod: () => void
   closeMod: () => void
@@ -169,7 +184,8 @@ export interface Store {
   markAdopted: (id: string) => void
   patchRep: (p: Partial<ReportForm>) => void
   useMyLocation: () => void
-  toggleRepPhoto: () => void
+  setReportPhoto: (file: File) => Promise<void>
+  removeReportPhoto: () => void
   submitReport: () => void
   resetReport: () => void
   callClinic: (name: string) => void
@@ -275,6 +291,29 @@ export function StoreProvider({
   const store = useMemo<Store>(() => {
     const setAdd = (p: Partial<AddForm>) => setState((s) => ({ ...s, add: { ...s.add, ...p } }))
     const setRep = (p: Partial<ReportForm>) => setState((s) => ({ ...s, rep: { ...s.rep, ...p } }))
+
+    const uploadDraft = async (draft: MediaDraft, file: File, kind: MediaUploadKind): Promise<MediaDraft> => {
+      try {
+        const result = await mutations.uploadMedia({
+          kind,
+          contentType: file.type,
+          sizeBytes: file.size,
+          bytes: new Uint8Array(await file.arrayBuffer()),
+        })
+        if (!result.ok) {
+          return { ...draft, status: 'error', error: result.error.message }
+        }
+        return { ...draft, status: 'ready', objectKey: result.data.objectKey }
+      } catch {
+        return { ...draft, status: 'error', error: 'Upload failed. Try again.' }
+      }
+    }
+
+    const patchListingImage = (updated: MediaDraft) =>
+      setState((s) => ({
+        ...s,
+        add: { ...s.add, images: s.add.images.map((image) => (image.id === updated.id ? updated : image)) },
+      }))
 
     return {
       state,
@@ -384,6 +423,29 @@ export function StoreProvider({
         ),
       closeAdd: () => patch({ overlay: null, addDone: false }),
       patchAdd: setAdd,
+      addListingImages: async (files) => {
+        const remaining = MAX_LISTING_IMAGES - state.add.images.length
+        const accepted = files.slice(0, Math.max(0, remaining))
+        if (accepted.length < files.length) {
+          showToast(`Up to ${MAX_LISTING_IMAGES} photos per listing`)
+        }
+        if (accepted.length === 0) return
+
+        const drafts = accepted.map((file) => createMediaDraft(file))
+        setState((s) => ({ ...s, add: { ...s.add, images: [...s.add.images, ...drafts] } }))
+
+        await Promise.all(
+          drafts.map(async (draft, index) => {
+            patchListingImage(await uploadDraft(draft, accepted[index], 'listing-image'))
+          }),
+        )
+      },
+      removeListingImage: (id) =>
+        setState((s) => {
+          const image = s.add.images.find((item) => item.id === id)
+          if (image) revokePreviewUrl(image.previewUrl)
+          return { ...s, add: { ...s.add, images: s.add.images.filter((item) => item.id !== id) } }
+        }),
       toggleAddTag: (tag) =>
         setState((s) => ({
           ...s,
@@ -398,6 +460,10 @@ export function StoreProvider({
           showToast('Add a name first')
           return
         }
+        if (add.images.some((image) => image.status === 'uploading')) {
+          showToast('Photos are still uploading')
+          return
+        }
 
         const result = mutations.createListing({
           actorUserId: state.user?.name ?? null,
@@ -410,7 +476,9 @@ export function StoreProvider({
             areaLabel: add.area.trim() || 'Malé',
             story: add.desc.trim(),
             tagIds: add.tags.map((tag) => backend.getTagId(tag)),
-            imageObjectKeys: [],
+            imageObjectKeys: add.images
+              .filter((image) => image.status === 'ready' && image.objectKey !== null)
+              .map((image) => image.objectKey as string),
           },
         })
         if (!result.ok) {
@@ -437,8 +505,22 @@ export function StoreProvider({
       },
       patchRep: setRep,
       useMyLocation: () => setRep({ area: 'Maafannu, Malé' }),
-      toggleRepPhoto: () => setState((s) => ({ ...s, rep: { ...s.rep, photo: true } })),
+      setReportPhoto: async (file) => {
+        const draft = createMediaDraft(file)
+        setRep({ photo: draft })
+        const uploaded = await uploadDraft(draft, file, 'report-photo')
+        setState((s) => (s.rep.photo?.id === draft.id ? { ...s, rep: { ...s.rep, photo: uploaded } } : s))
+      },
+      removeReportPhoto: () =>
+        setState((s) => {
+          if (s.rep.photo) revokePreviewUrl(s.rep.photo.previewUrl)
+          return { ...s, rep: { ...s.rep, photo: null } }
+        }),
       submitReport: () => {
+        if (state.rep.photo?.status === 'uploading') {
+          showToast('Photo is still uploading')
+          return
+        }
         const result = mutations.createReport({
           request: {
             reportKind: state.rep.kind,
@@ -448,7 +530,7 @@ export function StoreProvider({
             reporterEmail: state.user?.email,
             areaLabel: state.rep.area.trim() || 'Maafannu, Malé',
             description: state.rep.desc.trim() || 'No additional description provided.',
-            photoObjectKey: state.rep.photo ? 'report-photos/demo-upload.jpg' : undefined,
+            photoObjectKey: state.rep.photo?.objectKey ?? undefined,
           },
         })
         if (!result.ok) {
@@ -485,6 +567,33 @@ export function useStore(): Store {
   const ctx = useContext(StoreContext)
   if (!ctx) throw new Error('useStore must be used within a StoreProvider')
   return ctx
+}
+
+function createMediaDraft(file: File): MediaDraft {
+  return {
+    id: crypto.randomUUID(),
+    fileName: file.name,
+    previewUrl: toPreviewUrl(file),
+    objectKey: null,
+    status: 'uploading',
+  }
+}
+
+function toPreviewUrl(file: File): string {
+  try {
+    return URL.createObjectURL(file)
+  } catch {
+    return ''
+  }
+}
+
+function revokePreviewUrl(previewUrl: string): void {
+  if (!previewUrl) return
+  try {
+    URL.revokeObjectURL(previewUrl)
+  } catch {
+    /* ignore */
+  }
 }
 
 export function listMeta(l: Listing): string {
