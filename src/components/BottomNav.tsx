@@ -1,31 +1,7 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import { colors } from '../theme'
-import type { Tab } from '../types'
 import { ROUTE_PATHS, getTabFromPathname } from '../router/paths'
-import { CrossIcon, GridIcon, HeartIcon, PersonIcon, PinIcon } from './icons'
-
-const TABS: { tab: Tab; label: string }[] = [
-  { tab: 'browse', label: 'Browse' },
-  { tab: 'report', label: 'Report' },
-  { tab: 'vets', label: 'Vets' },
-  { tab: 'inbox', label: 'You' },
-  { tab: 'saved', label: 'Saved' },
-]
-
-function TabIcon({ tab, color }: { tab: Tab; color: string }) {
-  switch (tab) {
-    case 'browse':
-      return <GridIcon stroke={color} />
-    case 'report':
-      return <PinIcon size={23} stroke={color} />
-    case 'vets':
-      return <CrossIcon stroke={color} />
-    case 'inbox':
-      return <PersonIcon size={23} stroke={color} strokeWidth={2} />
-    case 'saved':
-      return <HeartIcon size={23} stroke={color} strokeWidth={2} />
-  }
-}
+import { NAV_DESTINATIONS, TabIcon } from './nav-model'
 
 export function BottomNav() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
@@ -47,7 +23,7 @@ export function BottomNav() {
         padding: '8px 10px',
       }}
     >
-      {TABS.map(({ tab, label }) => {
+      {NAV_DESTINATIONS.map(({ tab, label }) => {
         const active = activeTab === tab
         const color = active ? colors.navActive : colors.navInactive
         return (

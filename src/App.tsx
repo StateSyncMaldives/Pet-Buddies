@@ -1,7 +1,8 @@
 import { Outlet } from '@tanstack/react-router'
-import { StatusBar } from './components/StatusBar'
 import { BottomNav } from './components/BottomNav'
+import { RailNav } from './components/RailNav'
 import { Toast } from './components/Toast'
+import { useViewportMode } from './layout/viewport-mode'
 import { DetailOverlay } from './screens/DetailOverlay'
 import { AuthOverlay } from './screens/AuthOverlay'
 import { AddOverlay } from './screens/AddOverlay'
@@ -11,24 +12,31 @@ import { Onboarding } from './screens/Onboarding'
 import { InstallSheet } from './screens/InstallSheet'
 
 export function App() {
-  return (
-    <div className="pb-stage">
-      <div className="pb-phone">
-        <StatusBar />
+  const mode = useViewportMode()
+  const desktop = mode === 'desktop'
 
+  return (
+    <div className="pb-stage" data-mode={mode}>
+      {desktop && <RailNav />}
+
+      <div className="pb-phone">
         <div className="pbscroll pb-scroll">
           <Outlet />
         </div>
 
-        <BottomNav />
+        {!desktop && <BottomNav />}
 
         <DetailOverlay />
         <AddOverlay />
         <AuthOverlay />
         <InquiryOverlay />
         <ModOverlay />
-        <InstallSheet />
-        <Onboarding />
+        {mode === 'phone' && (
+          <>
+            <InstallSheet />
+            <Onboarding />
+          </>
+        )}
 
         <Toast />
       </div>
