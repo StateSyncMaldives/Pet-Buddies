@@ -41,4 +41,54 @@ describe('create report', () => {
       },
     })
   })
+
+  it('accepts a report photo key from the report-photos namespace', () => {
+    const saveReport = vi.fn()
+    const useCase = createCreateReportUseCase({
+      now: () => '2026-07-02T08:00:00.000Z',
+      generateId: () => 'report-2',
+      generateReferenceCode: () => 'PB-5678',
+      saveReport,
+    })
+
+    const result = useCase.execute({
+      reportKind: 'lost',
+      species: 'cat',
+      areaLabel: 'Hulhumale',
+      description: 'Grey tabby, red collar',
+      photoObjectKey: 'report-photos/media-9.webp',
+    })
+
+    expect(result.ok).toBe(true)
+    expect(saveReport).toHaveBeenCalledWith(
+      expect.objectContaining({ photoObjectKey: 'report-photos/media-9.webp' }),
+    )
+  })
+
+  it('rejects a photo key outside the report-photos namespace', () => {
+    const saveReport = vi.fn()
+    const useCase = createCreateReportUseCase({
+      now: () => '2026-07-02T08:00:00.000Z',
+      generateId: () => 'report-3',
+      generateReferenceCode: () => 'PB-9999',
+      saveReport,
+    })
+
+    for (const badKey of ['listing-images/media-1.jpg', 'seed/mango', 'photo-1']) {
+      const result = useCase.execute({
+        reportKind: 'lost',
+        species: 'cat',
+        areaLabel: 'Hulhumale',
+        description: 'Grey tabby, red collar',
+        photoObjectKey: badKey,
+      })
+
+      expect(result.ok).toBe(false)
+      if (result.ok === false) {
+        expect(result.error.code).toBe('VALIDATION_ERROR')
+      }
+    }
+
+    expect(saveReport).not.toHaveBeenCalled()
+  })
 })

@@ -11,6 +11,7 @@ import type {
   TagRecord,
   UserRecord,
 } from '../../../../backend/contracts'
+import { resolveMediaUrl } from '../media/media-url'
 
 export interface ListingAggregate {
   listing: ListingRecord
@@ -43,7 +44,7 @@ function sortImages(images: ListingImageRecord[]): ListingImageRecord[] {
 function toListingImages(images: ListingImageRecord[]): ListingImage[] {
   return sortImages(images).map((image) => ({
     id: image.id,
-    url: image.publicUrl ?? '',
+    url: resolveMediaUrl(image) ?? '',
     width: image.width,
     height: image.height,
     sortOrder: image.sortOrder,
@@ -63,7 +64,7 @@ export function toListingSummary(aggregate: ListingAggregate): ListingSummary {
     sex: aggregate.listing.sex,
     areaLabel: aggregate.listing.areaLabel,
     status: aggregate.listing.status === 'rejected' ? 'pending' : aggregate.listing.status,
-    primaryImageUrl: primaryImage?.publicUrl ?? null,
+    primaryImageUrl: primaryImage ? resolveMediaUrl(primaryImage) : null,
     tags: aggregate.tags.map((tag) => tag.slug),
     organization: toOrganizationSummary(aggregate.organization),
     savedByViewer: aggregate.savedByViewer,

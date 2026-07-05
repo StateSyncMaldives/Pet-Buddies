@@ -30,6 +30,8 @@ import { createModerateListingUseCase } from '../domain/listings/moderate-listin
 import { createInMemoryListingRepository } from '../domain/listings/listing-repository'
 import { createToggleSavedListingUseCase } from '../domain/listings/toggle-saved-listing'
 import { createCreateReportUseCase } from '../domain/reports/create-report'
+import { createUploadMediaUseCase, type UploadMediaResponse } from '../domain/media/upload-media'
+import type { ValidateMediaUploadInput } from '../domain/media/media-upload-policy'
 import { getClinics } from '../http/clinics/get-clinics'
 import { postInquiry } from '../http/inquiries/post-inquiry'
 import { getListingDetail } from '../http/listings/get-listing-detail'
@@ -94,6 +96,8 @@ export interface PrototypeBackend {
     request: UpdateListingModerationRequest
   }): ReturnType<typeof postListingAction>
   createReport(input: { request: CreateLostFoundReportRequest }): ReturnType<typeof postReport>
+  uploadMedia(input: ValidateMediaUploadInput): Promise<ApiResult<UploadMediaResponse>>
+  getMediaObject(objectKey: string): { bytes: Uint8Array; contentType: string | null } | null
   getOrganizationName(id: string): string | null
   getTagId(label: string): string
 }
@@ -140,7 +144,19 @@ export function createPrototypeBackend(deps: PrototypeBackendDeps = {}): Prototy
     now,
     generateId: () => generateId('listing'),
     generateSlug: slugify,
-    toPublicImageUrl: (objectKey) => objectKey,
+  })
+  const mediaObjects = new Map<string, { bytes: Uint8Array; contentType: string | null }>()
+  const uploadMedia = createUploadMediaUseCase({
+    mediaObjects: {
+      async put({ objectKey, body, contentType }) {
+        mediaObjects.set(objectKey, {
+          bytes: body instanceof Uint8Array ? body : new Uint8Array(0),
+          contentType: contentType ?? null,
+        })
+        return { objectKey, publicUrl: null }
+      },
+    },
+    generateId: () => generateId('media'),
   })
 
   function seedListingToAggregate(listing: (typeof SEED_LISTINGS)[number]): ListingAggregate {
@@ -329,6 +345,12 @@ export function createPrototypeBackend(deps: PrototypeBackendDeps = {}): Prototy
     },
     createReport(input) {
       return postReport({ request: input.request, createReport })
+    },
+    uploadMedia(input) {
+      return uploadMedia.execute(input)
+    },
+    getMediaObject(objectKey) {
+      return mediaObjects.get(objectKey) ?? null
     },
     getOrganizationName(id) {
       return organizations.get(id)?.name ?? null

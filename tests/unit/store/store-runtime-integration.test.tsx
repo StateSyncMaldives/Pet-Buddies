@@ -43,6 +43,7 @@ describe('StoreProvider runtime integration', () => {
       createInquiry: vi.fn<AppMutationAdapter['createInquiry']>(),
       createListing: vi.fn<AppMutationAdapter['createListing']>(),
       createReport: vi.fn<AppMutationAdapter['createReport']>(),
+      uploadMedia: vi.fn<AppMutationAdapter['uploadMedia']>(),
       updateListingLifecycle: vi.fn<AppMutationAdapter['updateListingLifecycle']>(),
     }
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper({ mutations }) })

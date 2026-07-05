@@ -13,20 +13,25 @@ const validBirdRequest: CreateListingRequest = {
   areaLabel: 'Male',
   story: 'Sweet rescue bird',
   tagIds: ['hand-tame'],
-  imageObjectKeys: ['image-1'],
+  imageObjectKeys: ['listing-images/media-1.jpg'],
   organizationId: 'org-1',
 }
 
-describe('create listing use case', () => {
-  it('creates a valid listing and returns a mapped CreateListingResponse', () => {
-    const repository = createInMemoryListingRepository({ listings: [] })
-    const useCase = createCreateListingUseCase({
+function createUseCase(repository = createInMemoryListingRepository({ listings: [] })) {
+  return {
+    repository,
+    useCase: createCreateListingUseCase({
       repository,
       now: () => '2026-07-02T08:00:00.000Z',
       generateId: () => 'listing-new',
       generateSlug: (name) => name.toLowerCase(),
-      toPublicImageUrl: (objectKey) => `https://cdn.example/${objectKey}`,
-    })
+    }),
+  }
+}
+
+describe('create listing use case', () => {
+  it('creates a valid listing and returns a mapped CreateListingResponse', () => {
+    const { useCase } = createUseCase()
 
     const result = useCase.execute({
       request: validBirdRequest,
@@ -54,14 +59,7 @@ describe('create listing use case', () => {
   })
 
   it('rejects invalid cat/bird combinations with VALIDATION_ERROR', () => {
-    const repository = createInMemoryListingRepository({ listings: [] })
-    const useCase = createCreateListingUseCase({
-      repository,
-      now: () => '2026-07-02T08:00:00.000Z',
-      generateId: () => 'listing-new',
-      generateSlug: (name) => name.toLowerCase(),
-      toPublicImageUrl: (objectKey) => `https://cdn.example/${objectKey}`,
-    })
+    const { useCase } = createUseCase()
 
     const result = useCase.execute({
       request: {
@@ -83,14 +81,7 @@ describe('create listing use case', () => {
   })
 
   it('stores every new listing as pending in the repository', () => {
-    const repository = createInMemoryListingRepository({ listings: [] })
-    const useCase = createCreateListingUseCase({
-      repository,
-      now: () => '2026-07-02T08:00:00.000Z',
-      generateId: () => 'listing-new',
-      generateSlug: (name) => name.toLowerCase(),
-      toPublicImageUrl: (objectKey) => `https://cdn.example/${objectKey}`,
-    })
+    const { repository, useCase } = createUseCase()
 
     useCase.execute({
       request: {
@@ -103,5 +94,60 @@ describe('create listing use case', () => {
     })
 
     expect(repository.getById('listing-new')?.listing.status).toBe('pending')
+  })
+
+  it('rejects image object keys outside the listing-images namespace', () => {
+    const { useCase } = createUseCase()
+
+    for (const badKey of ['image-1', 'report-photos/media-1.jpg', 'listing-images/../x.jpg']) {
+      const result = useCase.execute({
+        request: { ...validBirdRequest, imageObjectKeys: [badKey] },
+        actorUserId: 'user-1',
+        organization: null,
+        tags: [],
+      })
+
+      expect(result.ok).toBe(false)
+      if (result.ok === false) {
+        expect(result.error.code).toBe('VALIDATION_ERROR')
+      }
+    }
+  })
+
+  it('rejects more than 6 listing images', () => {
+    const { useCase } = createUseCase()
+
+    const result = useCase.execute({
+      request: {
+        ...validBirdRequest,
+        imageObjectKeys: Array.from({ length: 7 }, (_, index) => `listing-images/media-${index}.jpg`),
+      },
+      actorUserId: 'user-1',
+      organization: null,
+      tags: [],
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok === false) {
+      expect(result.error.code).toBe('VALIDATION_ERROR')
+      expect(result.error.message).toMatch(/6/)
+    }
+  })
+
+  it('persists no write-time public url and serves images by derived url', () => {
+    const { repository, useCase } = createUseCase()
+
+    const result = useCase.execute({
+      request: { ...validBirdRequest, organizationId: undefined },
+      actorUserId: 'user-1',
+      organization: null,
+      tags: [],
+    })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.listing.images[0].url).toBe('/media/listing-images/media-1.jpg')
+    }
+    expect(repository.getById('listing-new')?.images[0]?.publicUrl).toBe(null)
   })
 })

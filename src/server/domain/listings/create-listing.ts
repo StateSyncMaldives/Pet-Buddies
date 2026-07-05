@@ -5,16 +5,18 @@ import type {
   OrganizationSummary,
 } from '../../contracts/api'
 import type { ListingImageRecord, TagRecord } from '../../../../backend/contracts'
+import { isAdmissibleMediaObjectKey } from '../media/media-object-keys'
 import { toListingDetail, type ListingAggregate } from './listing-mapper'
 import type { ListingRepository } from './listing-repository'
 import { validateListingDraft } from './listing-policy'
+
+export const MAX_LISTING_IMAGES = 6
 
 export interface CreateListingDependencies {
   repository: ListingRepository
   now: () => string
   generateId: () => string
   generateSlug: (name: string) => string
-  toPublicImageUrl: (objectKey: string) => string
 }
 
 export interface CreateListingInput {
@@ -31,6 +33,29 @@ export interface CreateListingUseCase {
 export function createCreateListingUseCase(dependencies: CreateListingDependencies): CreateListingUseCase {
   return {
     execute(input) {
+      if (input.request.imageObjectKeys.length > MAX_LISTING_IMAGES) {
+        return {
+          ok: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: `A listing can carry at most ${MAX_LISTING_IMAGES} images.`,
+          },
+        }
+      }
+
+      const inadmissibleKey = input.request.imageObjectKeys.find(
+        (objectKey) => !isAdmissibleMediaObjectKey('listing-image', objectKey),
+      )
+      if (inadmissibleKey !== undefined) {
+        return {
+          ok: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'One or more listing images are not valid uploaded listing images.',
+          },
+        }
+      }
+
       const policyResult = validateListingDraft({
         species: input.request.species,
         birdSpecies: input.request.birdSpecies,
@@ -78,7 +103,7 @@ export function createCreateListingUseCase(dependencies: CreateListingDependenci
           id: `${listingId}-image-${index}`,
           listingId,
           objectKey,
-          publicUrl: dependencies.toPublicImageUrl(objectKey),
+          publicUrl: null,
           sortOrder: index,
           width: null,
           height: null,

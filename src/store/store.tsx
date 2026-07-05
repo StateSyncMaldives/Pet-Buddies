@@ -448,7 +448,7 @@ export function StoreProvider({
             reporterEmail: state.user?.email,
             areaLabel: state.rep.area.trim() || 'Maafannu, Malé',
             description: state.rep.desc.trim() || 'No additional description provided.',
-            photoObjectKey: state.rep.photo ? 'report-photo/demo-upload.jpg' : undefined,
+            photoObjectKey: state.rep.photo ? 'report-photos/demo-upload.jpg' : undefined,
           },
         })
         if (!result.ok) {

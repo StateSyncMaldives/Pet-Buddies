@@ -8,6 +8,7 @@ import {
   updateListingLifecycleInputSchema,
 } from '../mutations/mutation-schemas'
 import { createRuntimeMutationAdapter } from '../mutations/mutation-adapter'
+import { parseMediaUploadFormData } from '../mutations/media-upload-form'
 import { createAppRuntime } from '../runtime/app-session'
 
 function createDemoServerMutationAdapter() {
@@ -47,4 +48,15 @@ export const updateListingLifecycle = createServerFn({ method: 'POST' })
   .validator(updateListingLifecycleInputSchema)
   .handler(async ({ data }) => {
     return createDemoServerMutationAdapter().updateListingLifecycle(data)
+  })
+
+export const uploadMedia = createServerFn({ method: 'POST' })
+  .validator((formData: FormData) => formData)
+  .handler(async ({ data }) => {
+    const parsed = await parseMediaUploadFormData(data)
+    if (parsed.ok === false) {
+      return parsed
+    }
+
+    return createDemoServerMutationAdapter().uploadMedia(parsed.value)
   })

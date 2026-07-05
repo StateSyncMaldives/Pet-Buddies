@@ -10,6 +10,8 @@ import type {
   UpdateListingModerationRequest,
   UpdateListingModerationResponse,
 } from '../contracts/api'
+import type { ValidateMediaUploadInput } from '../domain/media/media-upload-policy'
+import type { UploadMediaResponse } from '../domain/media/upload-media'
 import type { PrototypeBackend } from '../runtime/prototype-backend'
 
 export interface AppMutationAdapter {
@@ -18,6 +20,7 @@ export interface AppMutationAdapter {
   createListing(input: CreateListingInput): ApiResult<CreateListingResponse>
   createReport(input: CreateReportInput): ApiResult<CreateLostFoundReportResponse>
   updateListingLifecycle(input: UpdateListingLifecycleInput): ApiResult<UpdateListingModerationResponse>
+  uploadMedia(input: ValidateMediaUploadInput): Promise<ApiResult<UploadMediaResponse>>
 }
 
 export interface ToggleSavedListingInput {
@@ -71,6 +74,9 @@ export function createRuntimeMutationAdapter({ backend, viewerId }: RuntimeMutat
     },
     updateListingLifecycle(input) {
       return backend.moderateListing(input)
+    },
+    uploadMedia(input) {
+      return backend.uploadMedia(input)
     },
   }
 }

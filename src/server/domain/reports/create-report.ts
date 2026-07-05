@@ -1,5 +1,6 @@
 import type { LostFoundReportRecord } from '../../../../backend/contracts'
 import type { ApiResult, CreateLostFoundReportRequest, CreateLostFoundReportResponse } from '../../contracts/api'
+import { isAdmissibleMediaObjectKey } from '../media/media-object-keys'
 import { routeLostFoundReport } from './report-routing'
 
 export interface CreateReportUseCase {
@@ -14,6 +15,16 @@ export function createCreateReportUseCase(input: {
 }): CreateReportUseCase {
   return {
     execute(request) {
+      if (request.photoObjectKey != null && !isAdmissibleMediaObjectKey('report-photo', request.photoObjectKey)) {
+        return {
+          ok: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'The report photo is not a valid uploaded report photo.',
+          },
+        }
+      }
+
       const routing = routeLostFoundReport({
         species: request.species,
         reportKind: request.reportKind,

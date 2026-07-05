@@ -106,7 +106,7 @@ describe('app mutation adapter', () => {
         birdSpecies: 'Budgerigar',
         areaLabel: 'Maafannu, Male',
         description: 'Found a tame budgie near the harbour.',
-        photoObjectKey: 'report-photo/demo-upload.jpg',
+        photoObjectKey: 'report-photos/demo-upload.jpg',
       },
     })
 
@@ -119,6 +119,27 @@ describe('app mutation adapter', () => {
       expect(result.data.report.referenceCode).toMatch(/^MV\d+$/)
     }
     expectTypeOf(result).toEqualTypeOf<ApiResult<CreateLostFoundReportResponse>>()
+  })
+
+  it('uploads media through the injected runtime adapter', async () => {
+    const mutations = createRuntimeMutationAdapter({
+      backend: createPrototypeBackend(),
+      viewerId: 'viewer-test',
+      moderatorId: 'moderator-test',
+    })
+
+    const result = await mutations.uploadMedia({
+      kind: 'report-photo',
+      contentType: 'image/jpeg',
+      sizeBytes: 11,
+      bytes: Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00]),
+    })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.data.objectKey).toMatch(/^report-photos\/media-[a-z0-9-]+\.jpg$/)
+      expect(result.data.url).toBe(`/media/${result.data.objectKey}`)
+    }
   })
 
   it('applies a Listing lifecycle action through the injected runtime adapter', () => {

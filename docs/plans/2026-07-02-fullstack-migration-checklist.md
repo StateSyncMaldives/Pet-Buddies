@@ -49,6 +49,8 @@ Completed:
 - Created and bound the Cloudflare R2 bucket `pet-buddies-mv-media` as `MEDIA_BUCKET`, added a typed R2 media object store seam, and stored `CLOUDFLARE_API_TOKEN` as a GitHub Actions secret for fork-scoped automation
 - Prepared the responsive desktop layout PRD at `docs/prds/2026-07-05-responsive-desktop-layout.md` (plan: `docs/plans/2026-07-05-responsive-desktop-layout.md`, ADR 0004, plus new `PRODUCT.md`/`DESIGN.md` design context)
 - Implemented the first responsive desktop layout pass: retired the desktop phone bezel, added desktop rail navigation, Browse grid/hero layout, route-rendered desktop listing detail, desktop dialog promotion, Review queue dialog layout, and responsive Saved/You/Vets/Report passes
+- Added a dedicated Lost/found report repository seam with in-memory and Miniflare-backed Drizzle coverage for report receipts and routed-organization history
+- Added media domain helpers for upload policy validation, managed object-key admission, upload object-key construction, and read-time URL derivation; recorded ADR 0005 and ADR 0006 for those media decisions
 - Ran the impeccable audit/critique pass on the desktop surfaces and applied the fixes (hero recomposition, inquiry-draft scrim protection, official Google mark, card hover, contrast-safe `textSecondary`); open follow-ups are recorded in `docs/plans/2026-07-05-responsive-desktop-layout.md`
 
 Verification:
@@ -83,7 +85,7 @@ Issue tracker note:
 - [x] Persist saved listings by user
 - [x] Persist inquiries
 - [x] Persist moderation events
-- [ ] Persist reports and routing history
+- [x] Persist reports and routing history
 - [x] Add full D1 migration / Drizzle schema wiring for organizations, users, listings, tags, images, saved listings, inquiries, reports, clinics, and moderation events
 - [x] Bind the production Cloudflare D1 database to the Worker environment
 
@@ -105,7 +107,7 @@ Issue tracker note:
 - [ ] Replace fake image object keys with real upload flow
 - [ ] Add listing image upload + preview pipeline
 - [ ] Add report photo upload pipeline
-- [ ] Validate media size/type server-side
+- [x] Validate media size/type server-side
 - [x] Add Cloudflare-compatible object storage binding and typed media store seam
 
 ### 7) Production UX/state cleanup
@@ -122,6 +124,7 @@ Issue tracker note:
 - [ ] Add direct Start server function RPC tests once runtime identity can be preserved across real RPC calls
 - [ ] Add auth-gated flow tests for add/apply resume behavior
 - [x] Add persistence tests against the Listing, Saved listing, Adoption inquiry, and Moderation event DB repositories
+- [x] Add persistence tests against the Lost/found report DB repository
 - [x] Add Miniflare D1 setup tests for the full migration and Drizzle schema map
 - [ ] Add end-to-end tests for browse -> detail -> inquiry, add -> moderation, and report routing
 

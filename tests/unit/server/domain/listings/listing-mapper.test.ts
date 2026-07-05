@@ -123,6 +123,41 @@ describe('listing mapper', () => {
     expect('createdAt' in summary).toBe(false)
   })
 
+  it('derives urls from managed object keys at read time, ignoring stored public urls', () => {
+    const managedImages: ListingImageRecord[] = [
+      {
+        id: 'image-managed',
+        listingId: 'listing-1',
+        objectKey: 'listing-images/media-1.jpg',
+        publicUrl: 'https://stale-domain.example.com/media-1.jpg',
+        sortOrder: 0,
+        width: null,
+        height: null,
+        createdAt: '2026-07-06T08:00:00.000Z',
+      },
+    ]
+
+    const summary = toListingSummary({
+      listing,
+      images: managedImages,
+      tags,
+      organization,
+      listedByUser: null,
+      savedByViewer: false,
+    })
+    const detail = toListingDetail({
+      listing,
+      images: managedImages,
+      tags,
+      organization,
+      listedByUser: null,
+      savedByViewer: false,
+    })
+
+    expect(summary.primaryImageUrl).toBe('/media/listing-images/media-1.jpg')
+    expect(detail.images[0].url).toBe('/media/listing-images/media-1.jpg')
+  })
+
   it('maps a full aggregate into ListingDetail with stable public image shapes', () => {
     const detail = toListingDetail({
       listing: { ...listing, organizationId: null, listedByUserId: 'user-1' },

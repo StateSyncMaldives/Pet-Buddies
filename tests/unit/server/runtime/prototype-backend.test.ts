@@ -2,7 +2,47 @@ import { describe, expect, it } from 'vitest'
 
 import { createPrototypeBackend } from '../../../../src/server/runtime/prototype-backend'
 
+const JPEG_BYTES = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00])
+
 describe('prototype backend runtime', () => {
+  it('uploads media through the runtime and serves it back by object key', async () => {
+    const backend = createPrototypeBackend({ generateId: (prefix) => `${prefix}-1` })
+
+    const result = await backend.uploadMedia({
+      kind: 'listing-image',
+      contentType: 'image/jpeg',
+      sizeBytes: JPEG_BYTES.byteLength,
+      bytes: JPEG_BYTES,
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      data: {
+        objectKey: 'listing-images/media-1.jpg',
+        url: '/media/listing-images/media-1.jpg',
+      },
+    })
+
+    const stored = backend.getMediaObject('listing-images/media-1.jpg')
+    expect(stored?.contentType).toBe('image/jpeg')
+    expect(stored ? Array.from(stored.bytes) : null).toEqual(Array.from(JPEG_BYTES))
+    expect(backend.getMediaObject('listing-images/missing.jpg')).toBe(null)
+  })
+
+  it('rejects an invalid media upload and stores nothing', async () => {
+    const backend = createPrototypeBackend({ generateId: (prefix) => `${prefix}-1` })
+
+    const result = await backend.uploadMedia({
+      kind: 'report-photo',
+      contentType: 'image/png',
+      sizeBytes: JPEG_BYTES.byteLength,
+      bytes: JPEG_BYTES,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(backend.getMediaObject('report-photos/media-1.png')).toBe(null)
+  })
+
   it('hydrates the app shell with seeded listings and clinics', () => {
     const backend = createPrototypeBackend()
 
