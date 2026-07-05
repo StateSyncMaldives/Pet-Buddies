@@ -47,3 +47,7 @@ _Avoid_: Status history row
 **Bird species allowlist**:
 The restricted set of legal bird species supported by the product for listings and reports.
 _Avoid_: Free-form species text
+
+**Review queue**:
+The moderator-facing list of listings awaiting a moderation decision.
+_Avoid_: Mod panel, admin screen, pending list
