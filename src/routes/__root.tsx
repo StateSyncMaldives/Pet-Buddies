@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { createRootRouteWithContext } from '@tanstack/react-router'
+import { useEffect, type ReactNode } from 'react'
+import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 
 import { App } from '../App'
 import { StoreProvider } from '../store/store'
@@ -27,9 +27,25 @@ function RootRouteComponent() {
   }, [])
 
   return (
-    <StoreProvider backend={backend} viewerId={viewerId} mockUser={mockUser} moderatorId={moderatorId}>
-      <App />
-    </StoreProvider>
+    <RootDocument>
+      <StoreProvider backend={backend} viewerId={viewerId} mockUser={mockUser} moderatorId={moderatorId}>
+        <App />
+      </StoreProvider>
+    </RootDocument>
+  )
+}
+
+function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
   )
 }
 
