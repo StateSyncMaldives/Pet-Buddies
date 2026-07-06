@@ -4,6 +4,7 @@ import { createRootRouteWithContext } from '@tanstack/react-router'
 import { App } from '../App'
 import { StoreProvider } from '../store/store'
 import type { AppRouterContext } from '../router/context'
+import '../index.css'
 
 function DefaultNotFound() {
   return (
