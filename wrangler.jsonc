@@ -4,6 +4,12 @@
   "compatibility_date": "2026-07-03",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
+  "routes": [
+    {
+      "pattern": "pet-buddies.dev.statesync.mv",
+      "custom_domain": true
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
