@@ -1,5 +1,3 @@
-// @vitest-environment happy-dom
-
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider } from '@tanstack/react-router'
@@ -74,7 +72,7 @@ describe('app router shell', () => {
     const router = renderAt('/browse')
 
     await screen.findByText('Find a buddy')
-    await user.click(screen.getByRole('button', { name: 'Birds' }))
+    await user.click(screen.getByRole('radio', { name: 'Birds' }))
 
     await waitFor(() => {
       expect(router.state.location.search).toMatchObject({ species: 'bird', query: '', tags: [] })
@@ -85,7 +83,7 @@ describe('app router shell', () => {
       expect(router.state.location.search).toMatchObject({ species: 'bird', query: '', tags: ['Hand-tame'] })
     })
 
-    await user.type(screen.getByRole('textbox'), 'kiwi')
+    await user.type(screen.getByRole('searchbox'), 'kiwi')
     await waitFor(() => {
       expect(router.state.location.search).toMatchObject({ species: 'bird', query: 'kiwi', tags: ['Hand-tame'] })
     })
@@ -298,4 +296,107 @@ describe('app router shell', () => {
     expect(await screen.findByText('Sunny is now live')).toBeTruthy()
   })
 
+})
+
+describe('redesigned browse listing menu', () => {
+  it('exposes the species choices as a radiogroup with checked state', async () => {
+    const user = userEvent.setup()
+    renderAt('/browse')
+
+    await screen.findByText('Find a buddy')
+    const group = screen.getByRole('radiogroup', { name: /species/i })
+    expect(group).toBeTruthy()
+
+    const cats = screen.getByRole('radio', { name: 'Cats' })
+    const birds = screen.getByRole('radio', { name: 'Birds' })
+    expect(cats.getAttribute('aria-checked')).toBe('true')
+    expect(birds.getAttribute('aria-checked')).toBe('false')
+
+    await user.click(birds)
+    await waitFor(() => {
+      expect(screen.getByRole('radio', { name: 'Birds' }).getAttribute('aria-checked')).toBe('true')
+    })
+    expect(screen.getByRole('radio', { name: 'Cats' }).getAttribute('aria-checked')).toBe('false')
+  })
+
+  it('switching species preserves the typed search and clears active trait filters', async () => {
+    const user = userEvent.setup()
+    const router = renderAt('/browse?q=luna&tags=Vaccinated')
+
+    await screen.findByDisplayValue('luna')
+    await user.click(screen.getByRole('radio', { name: 'Birds' }))
+
+    await waitFor(() => {
+      expect(router.state.location.search).toMatchObject({ species: 'bird', query: 'luna', tags: [] })
+    })
+    // The typed query survives the switch and is still shown in the field.
+    expect(screen.getByDisplayValue('luna')).toBeTruthy()
+  })
+
+  it('shows only cat trait filters for cats and only bird trait filters for birds', async () => {
+    const user = userEvent.setup()
+    renderAt('/browse')
+
+    await screen.findByText('Find a buddy')
+    // Cat vocabulary present, bird-only trait absent.
+    expect(screen.getByRole('button', { name: 'Kitten' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Bonded pair' })).toBeNull()
+
+    await user.click(screen.getByRole('radio', { name: 'Birds' }))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Bonded pair' })).toBeTruthy()
+    })
+    // Cat-only trait gone once Birds is active.
+    expect(screen.queryByRole('button', { name: 'Kitten' })).toBeNull()
+  })
+
+  it('narrows the feed and reflects pressed state when a trait chip is toggled', async () => {
+    const user = userEvent.setup()
+    const router = renderAt('/browse')
+
+    await screen.findByText('Find a buddy')
+    expect(screen.getByText('4 cats available')).toBeTruthy()
+
+    const kitten = screen.getByRole('button', { name: 'Kitten' })
+    expect(kitten.getAttribute('aria-pressed')).toBe('false')
+    await user.click(kitten)
+
+    await waitFor(() => {
+      expect(router.state.location.search).toMatchObject({ species: 'cat', tags: ['Kitten'] })
+    })
+    // Only Biscuit is a Kitten in the seed → feed narrows to 1.
+    await waitFor(() => {
+      expect(screen.getByText('1 cat available')).toBeTruthy()
+    })
+    // Scope to the feed card (unique aria-label); pet names also appear in the hero.
+    expect(screen.getByRole('button', { name: 'View Biscuit, cat in Villingili' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /View Mishka/ })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Kitten' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('hydrates a cat trait-filtered state directly from the URL', async () => {
+    renderAt('/browse?species=cat&tags=Kitten')
+
+    await screen.findByRole('button', { name: 'View Biscuit, cat in Villingili' })
+    expect(screen.getByText('1 cat available')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Kitten' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('radio', { name: 'Cats' }).getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('hides the count line and shows the species-named empty state when nothing matches', async () => {
+    renderAt('/browse?q=zzzzz')
+
+    await screen.findByText(/No cats match your search yet/i)
+    expect(screen.queryByText(/available$/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Clear filters' })).toBeTruthy()
+  })
+
+  it('announces the listing count as a polite status region', async () => {
+    renderAt('/browse')
+
+    const count = await screen.findByText('4 cats available')
+    const status = count.closest('[role="status"]')
+    expect(status).toBeTruthy()
+    expect(status?.getAttribute('aria-live')).toBe('polite')
+  })
 })

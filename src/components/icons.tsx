@@ -101,3 +101,24 @@ export function CrossIcon({ size = 23, stroke, strokeWidth = 2 }: IconProps) {
     </svg>
   )
 }
+
+export function CatIcon({ size = 18, stroke = 'currentColor', strokeWidth = 2 }: IconProps) {
+  return (
+    <svg {...base(size)} stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M5 9 4 4l4 2.6a7 7 0 0 1 8 0L20 4l-1 5a6.3 6.3 0 0 1 .8 3c0 3.6-3 6.3-7 6.3S5.2 15.6 5.2 12A6.3 6.3 0 0 1 5 9z" />
+      <path d="M9.5 12h.01M14.5 12h.01" />
+      <path d="M12 14.5v1M12 15.5l-2.5 1M12 15.5l2.5 1" />
+    </svg>
+  )
+}
+
+export function BirdIcon({ size = 18, stroke = 'currentColor', strokeWidth = 2 }: IconProps) {
+  return (
+    <svg {...base(size)} stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M15 6a4 4 0 0 0-4 4c0 2-1 3.6-3 4.6-2 1-3 1.6-3 3.4 4 .5 7-1 8.5-3.2C15 16.6 18 13.6 18 9.6a4 4 0 0 0-3-3.6z" />
+      <path d="M15 6l4-1.6" />
+      <path d="M9 17c1.6-1.6 2.6-3.6 3-6" />
+      <path d="M15.4 8.4h.01" />
+    </svg>
+  )
+}

@@ -1,76 +1,164 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { colors, font } from '../theme'
 import { useViewportMode } from '../layout/viewport-mode'
 import { useStore } from '../store/store'
-import { BIRD_FILTERS, CAT_FILTERS } from '../data/seed'
-import type { Listing } from '../types'
+import type { Listing, Species } from '../types'
 import type { ListingSummary } from '../server/contracts/api'
 import type { BrowseSearch } from '../router/browse-search'
-import { normalizeBrowseSearchUrl, toTagSlug } from '../router/browse-search'
+import {
+  clearFilters,
+  filterListings,
+  normalizeBrowseSearchUrl,
+  setQuery,
+  switchSpecies,
+  toggleTag,
+  traitChipsFor,
+} from '../router/browse-search'
 import { mapListingSummaryToListing } from '../store/view-model-mappers'
 import { ROUTE_PATHS } from '../router/paths'
 import { LogoMark, Wordmark } from '../components/Brand'
 import { ListingCard } from '../components/ListingCard'
 import { Hero } from '../components/Hero'
-import { Segmented } from '../components/Segmented'
-import { PlusIcon, SearchIcon, ShieldIcon } from '../components/icons'
+import { FilterChip } from '../components/FilterChip'
+import { BirdIcon, CatIcon, PlusIcon, SearchIcon, ShieldIcon } from '../components/icons'
 
-const HIDDEN: Listing['status'][] = ['pending', 'rejected', 'adopted']
+// Light pastel washes of the two brand species colors (powderBlue #8FC7E8, blush
+// #F2A9C4) — the active species tints the segmented thumb without a saturated fill.
+const SPECIES_OPTIONS = [
+  { value: 'cat' as const, label: 'Cats', Icon: CatIcon, thumb: '#E9F3FB', accent: colors.deepBlue },
+  { value: 'bird' as const, label: 'Birds', Icon: BirdIcon, thumb: '#FBEBF1', accent: colors.wordmarkPink },
+]
+
+/** Species-first control: a radiogroup styled as the app's sliding segmented pill. */
+function SpeciesRadioGroup({ value, onChange }: { value: Species; onChange: (species: Species) => void }) {
+  const activeIndex = value === 'cat' ? 0 : 1
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
+
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const forward = event.key === 'ArrowRight' || event.key === 'ArrowDown'
+    const backward = event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+    if (!forward && !backward) return
+    event.preventDefault()
+    const next = (activeIndex + (forward ? 1 : -1) + SPECIES_OPTIONS.length) % SPECIES_OPTIONS.length
+    optionRefs.current[next]?.focus()
+    onChange(SPECIES_OPTIONS[next].value)
+  }
+
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Species"
+      style={{ position: 'relative', display: 'flex', background: '#E4E7ED', borderRadius: 13, padding: 4 }}
+    >
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          top: 4,
+          bottom: 4,
+          left: 4,
+          width: 'calc(50% - 4px)',
+          background: SPECIES_OPTIONS[activeIndex].thumb,
+          borderRadius: 10,
+          boxShadow: '0 2px 6px rgba(0,0,0,.08)',
+          transition: 'transform .25s var(--pb-ease-out), background-color .25s var(--pb-ease-out)',
+          transform: `translateX(calc(${activeIndex * 100}% + ${activeIndex * 8}px))`,
+        }}
+      />
+      {SPECIES_OPTIONS.map((option, index) => {
+        const active = index === activeIndex
+        return (
+          <button
+            key={option.value}
+            ref={(element) => {
+              optionRefs.current[index] = element
+            }}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            tabIndex={active ? 0 : -1}
+            onClick={() => onChange(option.value)}
+            onKeyDown={onKeyDown}
+            style={{
+              position: 'relative',
+              zIndex: 1,
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 7,
+              border: 'none',
+              background: 'none',
+              padding: '12px 0',
+              fontSize: 14.5,
+              fontWeight: 700,
+              color: active ? colors.ink : colors.textSecondaryAlt,
+              cursor: 'pointer',
+            }}
+          >
+            <option.Icon size={17} stroke={active ? option.accent : colors.faint} strokeWidth={2} />
+            {option.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 export function Browse({ search, serverListings }: { search: BrowseSearch; serverListings?: ListingSummary[] }) {
   const navigate = useNavigate()
-  const { state, listings, setBrowseFilters, openMod, openAdd } = useStore()
-  const isCat = state.species === 'cat'
-  const searchTagsKey = search.tags.join('\0')
-  const serverFeed = useMemo(
-    () => serverListings?.map(mapListingSummaryToListing),
-    [serverListings],
-  )
+  const { listings, setBrowseFilters, openMod, openAdd } = useStore()
+  const isCat = search.species === 'cat'
+  const serverFeed = useMemo(() => serverListings?.map(mapListingSummaryToListing), [serverListings])
 
+  // Keep the store mirror fresh for other surfaces; the menu itself renders from `search`.
   useEffect(() => {
     setBrowseFilters(search)
-  }, [search.species, search.query, searchTagsKey, setBrowseFilters, search])
+  }, [search, setBrowseFilters])
 
-  const updateSearch = (next: BrowseSearch) => {
-    void navigate({
-      to: ROUTE_PATHS.browse,
-      search: normalizeBrowseSearchUrl(next),
-    })
+  // Live-typed value; the committed query lives in the URL. Debounced so typing
+  // neither spams history nor re-runs the route loader per keystroke.
+  const [draft, setDraft] = useState(search.query)
+  const lastSent = useRef(search.query)
+  const searchRef = useRef(search)
+  searchRef.current = search
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    // Resync only on external URL changes (shared link, back/forward), not our own echoes.
+    if (search.query !== lastSent.current) {
+      setDraft(search.query)
+      lastSent.current = search.query
+    }
+  }, [search.query])
+
+  useEffect(() => () => { if (debounce.current) clearTimeout(debounce.current) }, [])
+
+  const updateSearch = (next: BrowseSearch, replace = false) =>
+    void navigate({ to: ROUTE_PATHS.browse, search: normalizeBrowseSearchUrl(next), replace })
+
+  const onSpecies = (species: Species) => updateSearch(switchSpecies(search, species))
+  const onToggleTag = (tag: string) => updateSearch(toggleTag(search, tag))
+  const onClearFilters = () => {
+    if (debounce.current) clearTimeout(debounce.current)
+    setDraft('')
+    lastSent.current = ''
+    updateSearch(clearFilters(search))
+  }
+  const onSearchInput = (value: string) => {
+    setDraft(value)
+    lastSent.current = value
+    if (debounce.current) clearTimeout(debounce.current)
+    debounce.current = setTimeout(() => updateSearch(setQuery(searchRef.current, value), true), 220)
   }
 
-  const setSpecies = (species: BrowseSearch['species']) => updateSearch({ species, query: state.query, tags: [] })
-  const setQuery = (query: string) => updateSearch({ species: state.species, query, tags: state.tags })
-  const toggleTag = (tag: string) =>
-    updateSearch({
-      species: state.species,
-      query: state.query,
-      tags: state.tags.includes(tag) ? state.tags.filter((item) => item !== tag) : [...state.tags, tag],
-    })
-  const clearFilters = () => updateSearch({ species: state.species, query: '', tags: [] })
+  const pendingCount = useMemo(() => listings.filter((l) => l.status === 'pending').length, [listings])
 
-  const pendingCount = useMemo(
-    () => listings.filter((l) => l.status === 'pending').length,
-    [listings],
-  )
-
-  // Feed = visible status ∧ species ∧ all active tags ∧ search (name/breed/area/tags).
-  const localFeed = useMemo(() => {
-    const q = state.query.trim().toLowerCase()
-    const selectedTagSlugs = state.tags.map(toTagSlug)
-    return listings
-      .filter((l) => !HIDDEN.includes(l.status))
-      .filter((l) => l.species === state.species)
-      .filter((l) => selectedTagSlugs.every((tag) => l.tags.map(toTagSlug).includes(tag)))
-      .filter((l) => {
-        if (!q) return true
-        const hay = `${l.name} ${l.breed ?? ''} ${l.area} ${l.tags.join(' ')}`.toLowerCase()
-        return hay.includes(q)
-      })
-  }, [listings, state.species, state.tags, state.query])
+  const localFeed = useMemo(() => filterListings(listings, search), [listings, search])
   const feed = serverFeed ?? localFeed
 
-  const filters = isCat ? CAT_FILTERS : BIRD_FILTERS
+  const chips = useMemo(() => traitChipsFor(search), [search])
   const speciesPlural = isCat ? 'cats' : 'birds'
   const desktop = useViewportMode() === 'desktop'
 
@@ -84,14 +172,13 @@ export function Browse({ search, serverListings }: { search: BrowseSearch; serve
         border: `1.5px solid ${colors.line}`,
         borderRadius: 13,
         padding: '11px 14px',
-        marginBottom: desktop ? 0 : 16,
-        flex: desktop ? 1 : undefined,
       }}
     >
       <SearchIcon size={17} />
       <input
-        value={state.query}
-        onChange={(e) => setQuery(e.target.value)}
+        type="search"
+        value={draft}
+        onChange={(e) => onSearchInput(e.target.value)}
         placeholder="Search name, breed, area…"
         aria-label="Search listings"
         style={{ flex: 1, border: 'none', background: 'none', fontSize: 14, color: colors.ink }}
@@ -99,17 +186,13 @@ export function Browse({ search, serverListings }: { search: BrowseSearch; serve
     </div>
   )
 
-  const speciesToggle = (
-    <Segmented
-      options={['Cats', 'Birds']}
-      activeIndex={isCat ? 0 : 1}
-      onSelect={(i) => setSpecies(i === 0 ? 'cat' : 'bird')}
-    />
-  )
+  const speciesControl = <SpeciesRadioGroup value={search.species} onChange={onSpecies} />
 
   const filterChips = (
     <div
       className="pbscroll"
+      role="group"
+      aria-label={`${isCat ? 'Cat' : 'Bird'} trait filters`}
       style={{
         display: 'flex',
         gap: 8,
@@ -118,39 +201,20 @@ export function Browse({ search, serverListings }: { search: BrowseSearch; serve
         padding: desktop ? 0 : '2px 20px',
       }}
     >
-      {filters.map((label) => {
-        const active = state.tags.includes(label)
-        return (
-          <button
-            key={label}
-            onClick={() => toggleTag(label)}
-            aria-pressed={active}
-            style={{
-              flex: 'none',
-              border: `1.5px solid ${active ? colors.deepBlue : '#d8dce4'}`,
-              background: active ? colors.deepBlue : '#fff',
-              color: active ? '#fff' : '#6b7280',
-              padding: '7px 14px',
-              borderRadius: 999,
-              fontSize: 12.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              transition: 'background-color .15s var(--pb-ease-out), border-color .15s var(--pb-ease-out), color .15s var(--pb-ease-out)',
-            }}
-          >
-            {label}
-          </button>
-        )
-      })}
+      {chips.map((chip) => (
+        <FilterChip key={chip.slug} label={chip.label} active={chip.active} onToggle={() => onToggleTag(chip.label)} />
+      ))}
     </div>
   )
 
   const countLine =
     feed.length > 0 ? (
-      <div style={{ fontSize: 12.5, color: colors.faint, fontWeight: 600, margin: desktop ? '12px 0 0' : '0 0 12px' }}>
-        {feed.length} {isCat ? 'cat' : 'bird'}
-        {feed.length === 1 ? '' : 's'} available
+      <div
+        role="status"
+        aria-live="polite"
+        style={{ fontSize: 12.5, color: colors.faint, fontWeight: 600, margin: desktop ? '12px 0 0' : '0 0 12px' }}
+      >
+        {feed.length} {feed.length === 1 ? (isCat ? 'cat' : 'bird') : speciesPlural} available
       </div>
     ) : null
 
@@ -177,16 +241,15 @@ export function Browse({ search, serverListings }: { search: BrowseSearch; serve
         {/* Rotating hero: featured pets + promo / sponsor slides */}
         <Hero />
 
+        {/* Sticky listing menu: species row first, then search, then trait chips. */}
         <div className="pb-filterbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            {searchField}
-            {speciesToggle}
-          </div>
+          {speciesControl}
+          <div style={{ marginTop: 12 }}>{searchField}</div>
           {filterChips}
         </div>
         {countLine}
 
-        <BrowseFeed feed={feed} desktop speciesPlural={speciesPlural} onClearFilters={clearFilters} />
+        <BrowseFeed feed={feed} desktop speciesPlural={speciesPlural} onClearFilters={onClearFilters} />
       </div>
     )
   }
@@ -286,15 +349,13 @@ export function Browse({ search, serverListings }: { search: BrowseSearch; serve
         Cats &amp; birds looking for homes in Greater Malé.
       </p>
 
-      {searchField}
-
-      {/* Species segmented */}
-      <div style={{ marginBottom: 16 }}>{speciesToggle}</div>
-
+      {/* Listing menu (species-first): species, then search, then trait chips. */}
+      <div style={{ marginBottom: 12 }}>{speciesControl}</div>
+      <div style={{ marginBottom: 16 }}>{searchField}</div>
       {filterChips}
       {countLine}
 
-      <BrowseFeed feed={feed} speciesPlural={speciesPlural} onClearFilters={clearFilters} />
+      <BrowseFeed feed={feed} speciesPlural={speciesPlural} onClearFilters={onClearFilters} />
     </div>
   )
 }
