@@ -1,6 +1,4 @@
-import { drizzle } from 'drizzle-orm/d1'
-import { afterEach, describe, expect, it } from 'vitest'
-import { Miniflare } from 'miniflare'
+import { describe, expect, it } from 'vitest'
 
 import type { AdoptionInquiryRecord } from '../../../../../backend/contracts'
 import type { ListingAggregate } from '../../../../../src/server/domain/listings/listing-mapper'
@@ -8,11 +6,10 @@ import {
   createInMemoryAsyncAdoptionInquiryRepository,
   type AsyncAdoptionInquiryRepository,
 } from '../../../../../src/server/domain/inquiries/adoption-inquiry-repository'
-import { createD1MigrationClient } from '../../../../../src/server/infra/db/client'
-import { applyDbMigrations } from '../../../../../src/server/infra/db/migrate'
 import * as schema from '../../../../../src/server/infra/db/schema'
 import { createDrizzleAdoptionInquiryRepository } from '../../../../../src/server/infra/repositories/drizzle-adoption-inquiry-repository'
 import { createDrizzleListingRepository } from '../../../../../src/server/infra/repositories/drizzle-listing-repository'
+import { useMiniflareD1 } from '../../../../helpers/miniflare-d1'
 
 const sender = {
   id: 'user-sender',
@@ -88,27 +85,15 @@ const secondInquiry: AdoptionInquiryRecord = {
   updatedAt: '2026-07-03T08:00:00.000Z',
 }
 
-let miniflare: Miniflare | undefined
+const createMiniflareD1 = useMiniflareD1('pet-buddies-adoption-inquiry-repository-test-db')
 
 async function createMiniflareRepository() {
-  miniflare = new Miniflare({
-    modules: true,
-    script: `export default { fetch() { return new Response("ok") } }`,
-    d1Databases: { DB: 'pet-buddies-adoption-inquiry-repository-test-db' },
-  })
-  const d1 = await miniflare.getD1Database('DB')
-  await applyDbMigrations(createD1MigrationClient(d1))
-  const db = drizzle(d1, { schema })
+  const { db } = await createMiniflareD1()
   await db.insert(schema.users).values(sender).run()
   await createDrizzleListingRepository({ db }).create(listing)
 
   return createDrizzleAdoptionInquiryRepository({ db })
 }
-
-afterEach(async () => {
-  await miniflare?.dispose()
-  miniflare = undefined
-})
 
 describe.each([
   {

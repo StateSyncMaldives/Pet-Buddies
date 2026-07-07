@@ -6,7 +6,7 @@ import { createPrototypeBackend, type PrototypeBackend } from './prototype-backe
  * with real authenticated session resolution threaded from the server layer.
  */
 const DEMO_MOCK_USER: User = { name: 'Aishath Ali', email: 'aishath.ali@gmail.com' }
-const DEMO_MODERATOR_ID = 'moderator-demo'
+export const DEMO_MODERATOR_ID = 'moderator-demo'
 
 export interface DemoSession {
   viewerId: string

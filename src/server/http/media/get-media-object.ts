@@ -1,5 +1,8 @@
 import { isManagedMediaObjectKey } from '../../domain/media/media-url'
 
+// Managed keys are unique per upload, so the bytes never change.
+const MEDIA_CACHE_CONTROL = 'public, max-age=31536000, immutable'
+
 export interface StoredMediaBytes {
   bytes: Uint8Array
   contentType: string | null
@@ -22,8 +25,7 @@ export async function serveMediaObject(input: {
     status: 200,
     headers: {
       'content-type': stored.contentType ?? 'application/octet-stream',
-      // Managed keys are unique per upload, so the bytes never change.
-      'cache-control': 'public, max-age=31536000, immutable',
+      'cache-control': MEDIA_CACHE_CONTROL,
     },
   })
 }

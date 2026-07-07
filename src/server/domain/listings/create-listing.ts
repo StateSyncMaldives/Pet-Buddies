@@ -1,8 +1,10 @@
-import type {
-  ApiResult,
-  CreateListingRequest,
-  CreateListingResponse,
-  OrganizationSummary,
+import {
+  apiResultErr,
+  apiResultOk,
+  type ApiResult,
+  type CreateListingRequest,
+  type CreateListingResponse,
+  type OrganizationSummary,
 } from '../../contracts/api'
 import type { ListingImageRecord, TagRecord } from '../../../../backend/contracts'
 import { isAdmissibleMediaObjectKey } from '../media/media-object-keys'
@@ -34,26 +36,14 @@ export function createCreateListingUseCase(dependencies: CreateListingDependenci
   return {
     execute(input) {
       if (input.request.imageObjectKeys.length > MAX_LISTING_IMAGES) {
-        return {
-          ok: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: `A listing can carry at most ${MAX_LISTING_IMAGES} images.`,
-          },
-        }
+        return apiResultErr('VALIDATION_ERROR', `A listing can carry at most ${MAX_LISTING_IMAGES} images.`)
       }
 
       const inadmissibleKey = input.request.imageObjectKeys.find(
         (objectKey) => !isAdmissibleMediaObjectKey('listing-image', objectKey),
       )
       if (inadmissibleKey !== undefined) {
-        return {
-          ok: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'One or more listing images are not valid uploaded listing images.',
-          },
-        }
+        return apiResultErr('VALIDATION_ERROR', 'One or more listing images are not valid uploaded listing images.')
       }
 
       const policyResult = validateListingDraft({
@@ -69,10 +59,7 @@ export function createCreateListingUseCase(dependencies: CreateListingDependenci
       })
 
       if (policyResult.ok === false) {
-        return {
-          ok: false,
-          error: policyResult.error,
-        }
+        return apiResultErr(policyResult.error.code, policyResult.error.message)
       }
 
       const now = dependencies.now()
@@ -143,12 +130,9 @@ export function createCreateListingUseCase(dependencies: CreateListingDependenci
 
       const created = dependencies.repository.create(listing)
 
-      return {
-        ok: true,
-        data: {
-          listing: toListingDetail(created),
-        },
-      }
+      return apiResultOk({
+        listing: toListingDetail(created),
+      })
     },
   }
 }

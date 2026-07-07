@@ -1,24 +1,18 @@
-// @vitest-environment happy-dom
-
 import { act, cleanup, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { apiResultOk } from '../../../src/server/contracts/api'
+import { MAX_LISTING_IMAGES } from '../../../src/server/domain/listings/create-listing'
 import type { AppMutationAdapter } from '../../../src/server/mutations/mutation-adapter'
 import { createPrototypeBackend } from '../../../src/server/runtime/prototype-backend'
 import { StoreProvider, useStore, type StoreProviderProps } from '../../../src/store/store'
 import type { User } from '../../../src/types'
+import { jpegFile } from '../../helpers/media-fixtures'
 
 const TEST_USER: User = {
   name: 'Test Adopter',
   email: 'test-adopter@example.com',
-}
-
-const JPEG_BYTES = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00])
-
-function jpegFile(name = 'mango.jpg'): File {
-  return new File([JPEG_BYTES], name, { type: 'image/jpeg' })
 }
 
 function createMutationAdapter(overrides: Partial<AppMutationAdapter> = {}): AppMutationAdapter {
@@ -431,5 +425,79 @@ describe('StoreProvider runtime integration', () => {
     })
 
     expect(result.current.state.rep.photo).toBe(null)
+  })
+
+  it('drops listing images beyond the maximum and shows the limit toast', async () => {
+    const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
+
+    const files = Array.from({ length: MAX_LISTING_IMAGES + 2 }, (_, index) => jpegFile(`photo-${index}.jpg`))
+
+    await act(async () => {
+      await result.current.addListingImages(files)
+    })
+
+    expect(result.current.state.add.images).toHaveLength(MAX_LISTING_IMAGES)
+    expect(result.current.state.toast).toBe(`Up to ${MAX_LISTING_IMAGES} photos per listing`)
+    expect(result.current.state.add.images.every((image) => image.status === 'ready')).toBe(true)
+  })
+
+  it('removes a previously added listing image draft', async () => {
+    const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
+
+    await act(async () => {
+      await result.current.addListingImages([jpegFile()])
+    })
+
+    const image = result.current.state.add.images[0]
+    expect(image).toBeDefined()
+
+    act(() => {
+      result.current.removeListingImage(image.id)
+    })
+
+    expect(result.current.state.add.images).toEqual([])
+  })
+
+  it('approves then marks a pending listing adopted through the real backend', () => {
+    const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
+
+    expect(result.current.listings.find((listing) => listing.id === 'pending-simba')?.status).toBe('pending')
+
+    act(() => {
+      result.current.approveListing('pending-simba')
+    })
+
+    expect(result.current.listings.find((listing) => listing.id === 'pending-simba')?.status).toBe('live')
+    expect(result.current.state.toast).toBe('Simba is now live')
+
+    act(() => {
+      result.current.markAdopted('pending-simba')
+    })
+
+    expect(result.current.listings.find((listing) => listing.id === 'pending-simba')?.status).toBe('adopted')
+    expect(result.current.state.toast).toBe('Simba marked as adopted')
+  })
+
+  it('rejects a pending listing through the real backend', () => {
+    const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
+
+    act(() => {
+      result.current.rejectListing('pending-simba')
+    })
+
+    expect(result.current.state.toast).toBe('Simba rejected')
+    // KNOWN QUIRK: the public read model masks 'rejected' as 'pending'
+    // (toListingSummary in src/server/domain/listings/listing-mapper.ts), so
+    // the listing synced back into the store still reports 'pending' — which
+    // also means it stays in the ModOverlay review queue after rejection.
+    expect(result.current.listings.find((listing) => listing.id === 'pending-simba')?.status).toBe('pending')
+
+    // The backend really did transition: a rejected listing can no longer be
+    // approved, so the moderation error surfaces as the toast.
+    act(() => {
+      result.current.approveListing('pending-simba')
+    })
+
+    expect(result.current.state.toast).toBe('Only pending listings can be approved or rejected.')
   })
 })

@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-03
+- **Note (2026-07-07):** Partially superseded by ADR 0007 for the media upload path — `uploadMedia` now goes through the Start server function to R2. Everything else here still holds.
 
 ## Context
 

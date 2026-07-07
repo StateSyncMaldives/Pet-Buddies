@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { serveMediaObject } from '../server/http/media/get-media-object'
-import type { PetBuddiesCloudflareBindings } from '../server/infra/cloudflare/bindings'
+import { getWorkerEnv } from '../server/infra/cloudflare/worker-env'
 
 export const Route = createFileRoute('/media/$')({
   server: {
@@ -31,14 +31,6 @@ export const Route = createFileRoute('/media/$')({
 })
 
 async function getMediaBucket(): Promise<R2Bucket | null> {
-  try {
-    // Resolved by workerd at runtime; unavailable outside the Worker (vitest, plain dev).
-    const importWorkers = new Function('return import("cloudflare:workers")') as () => Promise<{
-      env?: Partial<PetBuddiesCloudflareBindings>
-    }>
-    const workers = await importWorkers()
-    return workers.env?.MEDIA_BUCKET ?? null
-  } catch {
-    return null
-  }
+  const env = await getWorkerEnv()
+  return env?.MEDIA_BUCKET ?? null
 }

@@ -1,5 +1,3 @@
-import type { OrganizationSummary } from '../../contracts/api'
-import type { TagRecord } from '../../../../backend/contracts'
 import type { CreateListingInput, CreateListingUseCase } from '../../domain/listings/create-listing'
 
 export function postListing(input: CreateListingInput & { createListing: CreateListingUseCase }) {
@@ -10,5 +8,3 @@ export function postListing(input: CreateListingInput & { createListing: CreateL
     tags: input.tags,
   })
 }
-
-export type { OrganizationSummary, TagRecord }

@@ -1,6 +1,6 @@
 import type { MediaUploadKind, ValidatedMediaUpload } from './media-upload-policy'
 
-const KIND_PREFIXES: Record<MediaUploadKind, string> = {
+export const KIND_PREFIXES: Record<MediaUploadKind, string> = {
   'listing-image': 'listing-images',
   'report-photo': 'report-photos',
 }

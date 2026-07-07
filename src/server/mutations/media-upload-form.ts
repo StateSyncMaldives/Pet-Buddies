@@ -1,4 +1,4 @@
-import type { ApiError } from '../contracts/api'
+import { apiResultErr, type ApiError } from '../contracts/api'
 import type { MediaUploadKind, ValidateMediaUploadInput } from '../domain/media/media-upload-policy'
 
 const UPLOAD_KINDS: MediaUploadKind[] = ['listing-image', 'report-photo']
@@ -30,11 +30,5 @@ export async function parseMediaUploadFormData(formData: FormData): Promise<Pars
 }
 
 function formError(message: string): ParsedMediaUploadForm {
-  return {
-    ok: false,
-    error: {
-      code: 'VALIDATION_ERROR',
-      message,
-    },
-  }
+  return apiResultErr('VALIDATION_ERROR', message)
 }

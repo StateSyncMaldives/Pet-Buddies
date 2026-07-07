@@ -9,10 +9,11 @@ import {
   type ReactNode,
 } from 'react'
 import type { PrototypeBackend } from '../server/runtime/prototype-backend'
+import { DEMO_MODERATOR_ID } from '../server/runtime/app-session'
 import { MAX_LISTING_IMAGES } from '../server/domain/listings/create-listing'
 import type { MediaUploadKind } from '../server/domain/media/media-upload-policy'
 import { createRuntimeMutationAdapter, type AppMutationAdapter } from '../server/mutations/mutation-adapter'
-import type { BirdSpecies } from '../server/contracts/api'
+import { isBirdSpecies, type BirdSpecies } from '../server/contracts/api'
 import { createInquiryViewModel, mapClinicSummaryToClinic, mapListingDetailToListing } from './view-model-mappers'
 import type {
   AuthIntent,
@@ -25,7 +26,9 @@ import type {
   User,
 } from '../types'
 
-const DEFAULT_MODERATOR_ID = 'moderator-demo'
+const DEFAULT_MODERATOR_ID = DEMO_MODERATOR_ID
+
+const TOAST_DURATION_MS = 2200
 
 /**
  * In-memory app store mirroring the prototype's logic class.
@@ -291,7 +294,7 @@ export function StoreProvider({
     (msg: string) => {
       patch({ toast: msg })
       if (toastTimer.current) clearTimeout(toastTimer.current)
-      toastTimer.current = setTimeout(() => patch({ toast: '' }), 2200)
+      toastTimer.current = setTimeout(() => patch({ toast: '' }), TOAST_DURATION_MS)
     },
     [patch],
   )
@@ -511,7 +514,7 @@ export function StoreProvider({
           actorUserId: state.user?.name ?? null,
           request: {
             species: add.species,
-            birdSpecies: add.species === 'bird' ? (add.breed as 'Budgerigar' | 'Cockatiel' | 'Lovebird' | 'Finch' | 'Canary') : undefined,
+            birdSpecies: add.species === 'bird' && isBirdSpecies(add.breed) ? add.breed : undefined,
             name: add.name.trim(),
             ageText: add.age.trim(),
             sex: 'unknown',
@@ -519,8 +522,11 @@ export function StoreProvider({
             story: add.desc.trim(),
             tagIds: add.tags.map((tag) => backend.getTagId(tag)),
             imageObjectKeys: add.images
-              .filter((image) => image.status === 'ready' && image.objectKey !== null)
-              .map((image) => image.objectKey as string),
+              .filter(
+                (image): image is MediaDraft & { objectKey: string } =>
+                  image.status === 'ready' && image.objectKey !== null,
+              )
+              .map((image) => image.objectKey),
           },
         })
         if (!result.ok) {
@@ -576,7 +582,8 @@ export function StoreProvider({
           showToast('Choose the bird species')
           return
         }
-        const birdSpecies: BirdSpecies | undefined = report.species === 'bird' ? (report.birdSpecies as BirdSpecies) : undefined
+        const birdSpecies: BirdSpecies | undefined =
+          report.species === 'bird' && report.birdSpecies !== '' ? report.birdSpecies : undefined
         const result = mutations.createReport({
           request: {
             reportKind: report.kind,

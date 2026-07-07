@@ -1,6 +1,4 @@
-import { drizzle } from 'drizzle-orm/d1'
-import { afterEach, describe, expect, it } from 'vitest'
-import { Miniflare } from 'miniflare'
+import { describe, expect, it } from 'vitest'
 
 import type { ListingAggregate } from '../../../../../src/server/domain/listings/listing-mapper'
 import {
@@ -9,10 +7,8 @@ import {
   type AsyncListingRepository,
   type ListingRepository,
 } from '../../../../../src/server/domain/listings/listing-repository'
-import { createD1MigrationClient } from '../../../../../src/server/infra/db/client'
-import { applyDbMigrations } from '../../../../../src/server/infra/db/migrate'
-import * as schema from '../../../../../src/server/infra/db/schema'
 import { createDrizzleListingRepository } from '../../../../../src/server/infra/repositories/drizzle-listing-repository'
+import { useMiniflareD1 } from '../../../../helpers/miniflare-d1'
 
 const initialAggregate: ListingAggregate = {
   listing: {
@@ -103,26 +99,13 @@ const catAggregate: ListingAggregate = {
   savedByViewer: false,
 }
 
-let miniflare: Miniflare | undefined
+const createMiniflareD1 = useMiniflareD1('pet-buddies-listing-repository-test-db')
 
 async function createMiniflareRepository() {
-  miniflare = new Miniflare({
-    modules: true,
-    script: `export default { fetch() { return new Response("ok") } }`,
-    d1Databases: { DB: 'pet-buddies-listing-repository-test-db' },
-  })
-  const d1 = await miniflare.getD1Database('DB')
-  await applyDbMigrations(createD1MigrationClient(d1))
+  const { db } = await createMiniflareD1()
 
-  return createDrizzleListingRepository({
-    db: drizzle(d1, { schema }),
-  })
+  return createDrizzleListingRepository({ db })
 }
-
-afterEach(async () => {
-  await miniflare?.dispose()
-  miniflare = undefined
-})
 
 describe('listing repository seam', () => {
   it('supports browse/get/create/update/toggle against an in-memory adapter', () => {

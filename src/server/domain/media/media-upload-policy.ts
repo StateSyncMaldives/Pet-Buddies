@@ -1,9 +1,10 @@
-import type { ApiError } from '../../contracts/api'
+import { apiResultErr, type ApiError } from '../../contracts/api'
 
 export type MediaUploadKind = 'listing-image' | 'report-photo'
 export type AllowedMediaContentType = 'image/jpeg' | 'image/png' | 'image/webp'
 
 export const MEDIA_UPLOAD_MAX_BYTES = 5 * 1024 * 1024
+export const MEDIA_UPLOAD_MAX_LABEL = `${MEDIA_UPLOAD_MAX_BYTES / (1024 * 1024)} MB`
 
 export interface ValidateMediaUploadInput {
   kind: MediaUploadKind
@@ -38,7 +39,7 @@ export function validateMediaUpload(input: ValidateMediaUploadInput): MediaUploa
   }
 
   if (input.sizeBytes > MEDIA_UPLOAD_MAX_BYTES) {
-    return validationError('The file is larger than the 5 MB limit.')
+    return validationError(`The file is larger than the ${MEDIA_UPLOAD_MAX_LABEL} limit.`)
   }
 
   const detectedType = detectImageContentType(input.bytes)
@@ -84,11 +85,5 @@ function matchesAt(bytes: Uint8Array, offset: number, signature: number[]): bool
 }
 
 function validationError(message: string): MediaUploadPolicyResult {
-  return {
-    ok: false,
-    error: {
-      code: 'VALIDATION_ERROR',
-      message,
-    },
-  }
+  return apiResultErr('VALIDATION_ERROR', message)
 }

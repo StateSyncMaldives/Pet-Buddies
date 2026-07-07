@@ -10,7 +10,7 @@ interface BrowseListingsInput {
   tags: string[]
 }
 
-function validateBrowseListingsInput(input: unknown): BrowseListingsInput {
+export function validateBrowseListingsInput(input: unknown): BrowseListingsInput {
   if (!input || typeof input !== 'object') {
     return { species: 'cat', query: '', tags: [] }
   }

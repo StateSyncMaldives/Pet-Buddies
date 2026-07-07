@@ -1,3 +1,5 @@
+import { joinPublicMediaUrl } from '../../domain/media/media-url'
+
 export interface PutMediaObjectInput {
   objectKey: string
   body: ReadableStream | ArrayBuffer | ArrayBufferView | string | Blob | null
@@ -45,11 +47,13 @@ export function createR2MediaObjectStore(input: {
   }
 }
 
+// Unlike resolveMediaUrl, the store never falls back to the local /media/
+// route: without a configured public base URL there is no public URL, even
+// for managed keys.
 function toPublicUrl(objectKey: string, publicBaseUrl?: string): string | null {
   if (!publicBaseUrl) {
     return null
   }
 
-  const base = publicBaseUrl.endsWith('/') ? publicBaseUrl : `${publicBaseUrl}/`
-  return new URL(objectKey.split('/').map(encodeURIComponent).join('/'), base).toString()
+  return joinPublicMediaUrl(publicBaseUrl, objectKey)
 }

@@ -90,7 +90,7 @@ export const SEED_CLINICS: Clinic[] = [
 ]
 
 // Legally-importable pet birds only (PRD §7/§11).
-export const BIRD_SPECIES = ['Budgerigar', 'Cockatiel', 'Lovebird', 'Finch', 'Canary']
+export { BIRD_SPECIES } from '../server/contracts/api'
 
 export const CAT_FILTERS = ['Vaccinated', 'Needs foster', 'Hand-tame', 'Kitten']
 export const BIRD_FILTERS = ['Hand-tame', 'Needs foster', 'Bonded pair']

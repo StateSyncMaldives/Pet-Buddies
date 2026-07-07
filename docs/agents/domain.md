@@ -16,7 +16,7 @@ There is no `CONTEXT-MAP.md` in the current layout. Skills should assume one roo
 ## Current root domain docs
 
 - `CONTEXT.md`
-- `docs/adr/0001-backend-foundation.md`
+- `docs/adr/` — all ADRs, currently 0001 (backend foundation) through 0007 (hybrid media upload runtime)
 
 ## Consumer rules
 

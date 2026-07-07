@@ -2,7 +2,14 @@ export type GlobalRole = 'user' | 'moderator' | 'admin'
 export type OrganizationKind = 'rescue' | 'ngo' | 'partner' | 'community'
 export type OrganizationMemberRole = 'member' | 'admin' | 'listing_manager'
 export type Species = 'cat' | 'bird'
-export type BirdSpecies = 'Budgerigar' | 'Cockatiel' | 'Lovebird' | 'Finch' | 'Canary'
+
+// Legally-importable pet birds only (PRD §7/§11).
+export const BIRD_SPECIES = ['Budgerigar', 'Cockatiel', 'Lovebird', 'Finch', 'Canary'] as const
+export type BirdSpecies = (typeof BIRD_SPECIES)[number]
+
+export function isBirdSpecies(value: unknown): value is BirdSpecies {
+  return typeof value === 'string' && (BIRD_SPECIES as readonly string[]).includes(value)
+}
 export type Sex = 'male' | 'female' | 'unknown'
 export type ListingStatus = 'pending' | 'live' | 'rejected' | 'adopted'
 export type InquiryStatus = 'awaiting_reply' | 'replied' | 'withdrawn' | 'closed'
@@ -215,4 +222,17 @@ export const API_RESULT_READY = 'server-contracts-ready'
 export const apiResultOk = <T>(data: T): ApiResult<T> => ({
   ok: true,
   data,
+})
+
+export const apiResultErr = (
+  code: ApiErrorCode,
+  message: string,
+  fieldErrors?: Record<string, string[]>,
+): ApiFailure => ({
+  ok: false,
+  error: {
+    code,
+    message,
+    ...(fieldErrors ? { fieldErrors } : {}),
+  },
 })

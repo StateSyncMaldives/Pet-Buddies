@@ -1,15 +1,14 @@
 # Pet Buddies backend data model
 
 ## Status
-Initial backend foundation for the Pet Buddies fullstack migration.
+Backend data model for the Pet Buddies fullstack migration. Originally drafted as the backend foundation; the stack below is now decided and wired in the codebase.
 
-## Stack assumption
-This draft assumes:
-- **frontend/fullstack framework:** TanStack Start
-- **deployment:** Cloudflare Workers
-- **database:** relational SQL, designed to stay **D1-compatible**
-- **file storage:** R2 for listing/report images
-- **auth:** Google sign-in
+## Stack
+- **frontend/fullstack framework:** TanStack Start (wired)
+- **deployment:** Cloudflare Workers (deployed; live at https://pet-buddies.dev.statesync.mv)
+- **database:** relational SQL, **D1-compatible** (Drizzle schema + Miniflare-tested D1 repositories; durable runtime composition still pending)
+- **file storage:** R2 for listing/report images (implemented; see ADR 0005–0007)
+- **auth:** Google sign-in (not yet wired; the app still runs on the demo Viewer identity)
 
 If we later switch to external Postgres, the domain model still holds; only the SQL dialect and migration tooling need to change.
 

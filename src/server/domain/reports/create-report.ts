@@ -1,5 +1,11 @@
 import type { LostFoundReportRecord } from '../../../../backend/contracts'
-import type { ApiResult, CreateLostFoundReportRequest, CreateLostFoundReportResponse } from '../../contracts/api'
+import {
+  apiResultErr,
+  apiResultOk,
+  type ApiResult,
+  type CreateLostFoundReportRequest,
+  type CreateLostFoundReportResponse,
+} from '../../contracts/api'
 import { isAdmissibleMediaObjectKey } from '../media/media-object-keys'
 import { routeLostFoundReport } from './report-routing'
 
@@ -16,13 +22,7 @@ export function createCreateReportUseCase(input: {
   return {
     execute(request) {
       if (request.photoObjectKey != null && !isAdmissibleMediaObjectKey('report-photo', request.photoObjectKey)) {
-        return {
-          ok: false,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'The report photo is not a valid uploaded report photo.',
-          },
-        }
+        return apiResultErr('VALIDATION_ERROR', 'The report photo is not a valid uploaded report photo.')
       }
 
       const routing = routeLostFoundReport({
@@ -32,10 +32,7 @@ export function createCreateReportUseCase(input: {
       })
 
       if (routing.ok === false) {
-        return {
-          ok: false,
-          error: routing.error,
-        }
+        return apiResultErr(routing.error.code, routing.error.message)
       }
 
       const createdAt = input.now()
@@ -60,18 +57,15 @@ export function createCreateReportUseCase(input: {
         updatedAt: createdAt,
       })
 
-      return {
-        ok: true,
-        data: {
-          report: {
-            id,
-            referenceCode,
-            routedToOrganizationId: routing.value.routedToOrganizationId,
-            status: 'submitted',
-            createdAt,
-          },
+      return apiResultOk<CreateLostFoundReportResponse>({
+        report: {
+          id,
+          referenceCode,
+          routedToOrganizationId: routing.value.routedToOrganizationId,
+          status: 'submitted',
+          createdAt,
         },
-      }
+      })
     },
   }
 }

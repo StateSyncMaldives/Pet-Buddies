@@ -9,14 +9,17 @@ import {
 } from '../mutations/mutation-schemas'
 import { createRuntimeMutationAdapter } from '../mutations/mutation-adapter'
 import { parseMediaUploadFormData } from '../mutations/media-upload-form'
-import { createAppRuntime } from '../runtime/app-session'
+import { createUploadMediaUseCase } from '../domain/media/upload-media'
+import { getWorkerEnv } from '../infra/cloudflare/worker-env'
+import { resolveWorkerMediaStore } from '../infra/media/worker-media-store'
+import { createAppRuntime, DEMO_MODERATOR_ID } from '../runtime/app-session'
 
 function createDemoServerMutationAdapter() {
   const { backend, session } = createAppRuntime()
   return createRuntimeMutationAdapter({
     backend,
     viewerId: session.viewerId,
-    moderatorId: session.moderatorId ?? 'moderator-demo',
+    moderatorId: session.moderatorId ?? DEMO_MODERATOR_ID,
   })
 }
 
@@ -56,6 +59,16 @@ export const uploadMedia = createServerFn({ method: 'POST' })
     const parsed = await parseMediaUploadFormData(data)
     if (parsed.ok === false) {
       return parsed
+    }
+
+    // Durable R2 store when running in the Worker; per-request demo store otherwise.
+    const workerMediaStore = resolveWorkerMediaStore(await getWorkerEnv())
+    if (workerMediaStore) {
+      const upload = createUploadMediaUseCase({
+        mediaObjects: workerMediaStore,
+        generateId: () => `media-${crypto.randomUUID()}`,
+      })
+      return upload.execute(parsed.value)
     }
 
     return createDemoServerMutationAdapter().uploadMedia(parsed.value)

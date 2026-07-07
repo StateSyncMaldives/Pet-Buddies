@@ -1,8 +1,12 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useMemo, type ReactNode } from 'react'
 import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 
 import { App } from '../App'
 import { StoreProvider } from '../store/store'
+import { createRuntimeMutationAdapter } from '../server/mutations/mutation-adapter'
+import { createServerFnUploadMedia } from '../server/mutations/server-fn-upload'
+import { DEMO_MODERATOR_ID } from '../server/runtime/app-session'
+import { uploadMedia } from '../server/functions/mutations.functions'
 import type { AppRouterContext } from '../router/context'
 import '../index.css'
 
@@ -20,6 +24,17 @@ function DefaultNotFound() {
 function RootRouteComponent() {
   const { backend, viewerId, mockUser, moderatorId } = Route.useRouteContext()
 
+  // Media uploads are the one mutation routed through the Start server
+  // function today: they are stateless with respect to the demo session, and
+  // only the Worker can reach the durable R2 bucket.
+  const mutations = useMemo(
+    () => ({
+      ...createRuntimeMutationAdapter({ backend, viewerId, moderatorId: moderatorId ?? DEMO_MODERATOR_ID }),
+      uploadMedia: createServerFnUploadMedia(uploadMedia),
+    }),
+    [backend, viewerId, moderatorId],
+  )
+
   useEffect(() => {
     if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return
 
@@ -28,7 +43,7 @@ function RootRouteComponent() {
 
   return (
     <RootDocument>
-      <StoreProvider backend={backend} viewerId={viewerId} mockUser={mockUser} moderatorId={moderatorId}>
+      <StoreProvider backend={backend} viewerId={viewerId} mockUser={mockUser} moderatorId={moderatorId} mutations={mutations}>
         <App />
       </StoreProvider>
     </RootDocument>

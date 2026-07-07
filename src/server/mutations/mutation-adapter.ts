@@ -49,7 +49,8 @@ export interface UpdateListingLifecycleInput {
 export interface RuntimeMutationAdapterDeps {
   backend: PrototypeBackend
   viewerId: string
-  moderatorId: string
+  /** Accepted for call-site symmetry; the adapter itself never reads it. */
+  moderatorId?: string
 }
 
 export function createRuntimeMutationAdapter({ backend, viewerId }: RuntimeMutationAdapterDeps): AppMutationAdapter {

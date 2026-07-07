@@ -12,12 +12,21 @@ The files in this bundle are **design references created in HTML** — prototype
 - **PWA**: React + Vite + `vite-plugin-pwa` (installable, offline, no app store). Mobile-first, single-column, ~390px design width.
 - **Auth**: Google Sign-In (the chosen provider). Browsing/saving/reporting need no account; **listing creation requires sign-in**.
 - **Data**: a lightweight hosted store is enough for Malé-scale v1 (managed Postgres/Supabase, or even a managed sheet to start). Revisit when volume grows.
-- **Storage**: image uploads for listing/report photos (the prototype uses placeholders).
+- **Storage**: image uploads for listing/report photos are implemented — server-validated (JPEG/PNG/WebP, 5 MB, magic-byte sniffing) and stored in R2 under managed object keys (see ADR 0005–0007). Only the seed listings still use placeholder art.
 
 The HTML prototype is built as a single "Design Component" (`.dc.html`) using a small runtime — treat its **logic class** as the spec for state & behavior, and its **template** as the spec for layout & styling. Do not depend on the `.dc.html` runtime in production.
 
 ## Fidelity
 **High-fidelity.** Final colors, typography, spacing, copy, iconography, and interactions are all specified below and present in the files. Recreate pixel-closely using the target codebase's component library, then wire the real backend.
+
+## Development
+
+- `pnpm install` — install dependencies
+- `pnpm dev` — run the app locally
+- `pnpm test` — run the vitest suite
+- `pnpm typecheck` — type-check (`tsc --noEmit`)
+- Deploy: `pnpm build`, then `wrangler deploy --config dist/server/wrangler.json` (wrapped by the `pnpm deploy` script)
+- Live: https://pet-buddies.dev.statesync.mv
 
 ---
 
@@ -145,7 +154,7 @@ Listings carry a `status` of live | pending | rejected | adopted. In production,
 
 ## Assets
 - **Logo / app icon / verified badge**: all inline SVG (geometric) — copy from `Pet Buddies Logo Final.dc.html`. No raster assets needed for the brand.
-- **Animal silhouettes** (card/onboarding placeholders): simple white SVG cat & bird — in the app file. Replace card placeholders with **real uploaded photos** in production (only outstanding asset gap).
+- **Animal silhouettes** (card/onboarding placeholders): simple white SVG cat & bird — in the app file. Real photo uploads are implemented for listings and reports; the silhouettes remain only for the **seed listings**, which ship without uploaded photos.
 - **Fonts**: Google Fonts — Quicksand, Hanken Grotesk.
 - **Icons**: simple stroked SVGs inline (search, heart, pin, cross, person, grid, shield, check, camera, share). Swap for the codebase's icon set if preferred.
 - **Seed data**: 7 live listings + 2 pending, 3 partner orgs (Maldives Cat Rescue, Feline Welfare Organization, Zoophilist Society Maldives), 2 clinics — all in the app's logic class.

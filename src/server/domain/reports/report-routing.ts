@@ -1,12 +1,4 @@
-import type { ApiErrorCode, BirdSpecies, ReportKind, Species } from '../../contracts/api'
-
-const ALLOWLISTED_BIRD_SPECIES = new Set<BirdSpecies>([
-  'Budgerigar',
-  'Cockatiel',
-  'Lovebird',
-  'Finch',
-  'Canary',
-])
+import { apiResultErr, isBirdSpecies, type ApiErrorCode, type BirdSpecies, type ReportKind, type Species } from '../../contracts/api'
 
 export type ReportRoutingResult =
   | { ok: true; value: { routedToOrganizationId: string } }
@@ -18,14 +10,8 @@ export function routeLostFoundReport(input: {
   birdSpecies?: BirdSpecies | string
 }): ReportRoutingResult {
   if (input.species === 'bird') {
-    if (!input.birdSpecies || !ALLOWLISTED_BIRD_SPECIES.has(input.birdSpecies as BirdSpecies)) {
-      return {
-        ok: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Bird reports require an allowlisted bird species.',
-        },
-      }
+    if (!isBirdSpecies(input.birdSpecies)) {
+      return apiResultErr('VALIDATION_ERROR', 'Bird reports require an allowlisted bird species.')
     }
 
     return {

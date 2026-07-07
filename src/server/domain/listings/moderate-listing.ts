@@ -1,8 +1,10 @@
 import type { ModerationEventRecord } from '../../../../backend/contracts'
-import type {
-  ApiResult,
-  UpdateListingModerationRequest,
-  UpdateListingModerationResponse,
+import {
+  apiResultErr,
+  apiResultOk,
+  type ApiResult,
+  type UpdateListingModerationRequest,
+  type UpdateListingModerationResponse,
 } from '../../contracts/api'
 import { toListingDetail } from './listing-mapper'
 import type { ListingRepository } from './listing-repository'
@@ -27,13 +29,7 @@ export function createModerateListingUseCase(input: {
     execute({ listingId, actorUserId, request }) {
       const aggregate = input.repository.getById(listingId)
       if (!aggregate) {
-        return {
-          ok: false,
-          error: {
-            code: 'NOT_FOUND',
-            message: 'Listing not found.',
-          },
-        }
+        return apiResultErr('NOT_FOUND', 'Listing not found.')
       }
 
       const transition = transitionListing({
@@ -44,10 +40,7 @@ export function createModerateListingUseCase(input: {
       })
 
       if (transition.ok === false) {
-        return {
-          ok: false,
-          error: transition.error,
-        }
+        return apiResultErr(transition.error.code, transition.error.message)
       }
 
       const moderationEventId = input.generateEventId()
@@ -66,13 +59,10 @@ export function createModerateListingUseCase(input: {
         createdAt: transition.value.updatedAt,
       })
 
-      return {
-        ok: true,
-        data: {
-          listing: toListingDetail(savedAggregate),
-          moderationEventId,
-        },
-      }
+      return apiResultOk({
+        listing: toListingDetail(savedAggregate),
+        moderationEventId,
+      })
     },
   }
 }

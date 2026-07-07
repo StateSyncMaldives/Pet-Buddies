@@ -1,5 +1,5 @@
 import type { AdoptionInquiryRecord } from '../../../../backend/contracts'
-import type { ApiResult, CreateInquiryResponse } from '../../contracts/api'
+import { apiResultErr, apiResultOk, type ApiResult, type CreateInquiryResponse } from '../../contracts/api'
 import type { ListingRepository } from '../listings/listing-repository'
 
 export interface CreateInquiryUseCase {
@@ -16,23 +16,11 @@ export function createCreateInquiryUseCase(input: {
     execute({ listingId, message, senderUserId }) {
       const aggregate = input.repository.getById(listingId)
       if (!aggregate) {
-        return {
-          ok: false,
-          error: {
-            code: 'NOT_FOUND',
-            message: 'Listing not found.',
-          },
-        }
+        return apiResultErr('NOT_FOUND', 'Listing not found.')
       }
 
       if (aggregate.listing.status !== 'live') {
-        return {
-          ok: false,
-          error: {
-            code: 'CONFLICT',
-            message: 'Only live listings can receive adoption inquiries.',
-          },
-        }
+        return apiResultErr('CONFLICT', 'Only live listings can receive adoption inquiries.')
       }
 
       const createdAt = input.now()
@@ -53,17 +41,14 @@ export function createCreateInquiryUseCase(input: {
         updatedAt: createdAt,
       })
 
-      return {
-        ok: true,
-        data: {
-          inquiry: {
-            id: inquiryId,
-            listingId,
-            status: 'awaiting_reply',
-            createdAt,
-          },
+      return apiResultOk<CreateInquiryResponse>({
+        inquiry: {
+          id: inquiryId,
+          listingId,
+          status: 'awaiting_reply',
+          createdAt,
         },
-      }
+      })
     },
   }
 }

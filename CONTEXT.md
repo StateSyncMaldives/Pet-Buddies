@@ -52,9 +52,21 @@ _Avoid_: Attachment, media file, upload
 The single optional photo attached to a lost/found report to help the routed organization identify the animal.
 _Avoid_: Attachment, listing image, evidence
 
+**Managed media object key**:
+The namespaced storage key (`listing-images/<id>.<ext>` or `report-photos/<id>.<ext>`) under which uploaded media lives; the source of truth for media URLs, which are derived from it at read time.
+_Avoid_: Public URL, file path, raw key
+
+**Media upload kind**:
+The kind of media being uploaded — `listing-image` or `report-photo` — which selects the validation policy and the managed object-key prefix.
+_Avoid_: File type, media category
+
 **Bird species allowlist**:
 The restricted set of legal bird species supported by the product for listings and reports.
 _Avoid_: Free-form species text
+
+**Supported species**:
+The animal categories Pet Buddies supports for listings and reports: cats and legally importable pet birds.
+_Avoid_: Dogs, all pets, every animal
 
 **Review queue**:
 The moderator-facing list of listings awaiting a moderation decision.

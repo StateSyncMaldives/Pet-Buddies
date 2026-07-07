@@ -10,6 +10,7 @@ import type {
 } from '../../../../src/server/contracts/api'
 import { createRuntimeMutationAdapter, type AppMutationAdapter } from '../../../../src/server/mutations/mutation-adapter'
 import { createPrototypeBackend } from '../../../../src/server/runtime/prototype-backend'
+import { JPEG_BYTES } from '../../../helpers/media-fixtures'
 
 describe('app mutation adapter', () => {
   it('toggles a Saved listing through the injected runtime adapter', () => {
@@ -131,8 +132,8 @@ describe('app mutation adapter', () => {
     const result = await mutations.uploadMedia({
       kind: 'report-photo',
       contentType: 'image/jpeg',
-      sizeBytes: 11,
-      bytes: Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00]),
+      sizeBytes: JPEG_BYTES.byteLength,
+      bytes: JPEG_BYTES,
     })
 
     expect(result.ok).toBe(true)

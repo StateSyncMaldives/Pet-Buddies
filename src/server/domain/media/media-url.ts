@@ -1,9 +1,20 @@
+import { KIND_PREFIXES } from './media-object-keys'
+
 export const MEDIA_ROUTE_BASE_PATH = '/media'
 
-const MANAGED_KEY_PREFIXES = ['listing-images/', 'report-photos/']
+const MANAGED_KEY_PREFIXES = Object.values(KIND_PREFIXES).map((prefix) => `${prefix}/`)
 
 export function isManagedMediaObjectKey(objectKey: string): boolean {
   return MANAGED_KEY_PREFIXES.some((prefix) => objectKey.startsWith(prefix))
+}
+
+export function encodeObjectKeyPath(objectKey: string): string {
+  return objectKey.split('/').map(encodeURIComponent).join('/')
+}
+
+export function joinPublicMediaUrl(publicBaseUrl: string, objectKey: string): string {
+  const base = publicBaseUrl.endsWith('/') ? publicBaseUrl : `${publicBaseUrl}/`
+  return new URL(encodeObjectKeyPath(objectKey), base).toString()
 }
 
 /**
@@ -19,12 +30,9 @@ export function resolveMediaUrl(
     return record.publicUrl ?? null
   }
 
-  const encodedKey = record.objectKey.split('/').map(encodeURIComponent).join('/')
-
   if (options?.publicBaseUrl) {
-    const base = options.publicBaseUrl.endsWith('/') ? options.publicBaseUrl : `${options.publicBaseUrl}/`
-    return new URL(encodedKey, base).toString()
+    return joinPublicMediaUrl(options.publicBaseUrl, record.objectKey)
   }
 
-  return `${MEDIA_ROUTE_BASE_PATH}/${encodedKey}`
+  return `${MEDIA_ROUTE_BASE_PATH}/${encodeObjectKeyPath(record.objectKey)}`
 }

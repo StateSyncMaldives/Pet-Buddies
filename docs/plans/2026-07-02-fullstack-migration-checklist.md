@@ -62,11 +62,12 @@ Verification:
 - Last clean build checkpoint before the current responsive-layout dirty worktree: `pnpm build` passed and generated `dist/client/sw.js`
 - D1/R2 wiring verification: remote D1 schema apply processed 29 SQL queries; `pnpm cf-typegen` regenerated `DB` and `MEDIA_BUCKET` bindings; `pnpm test -- tests/unit/server/infra/cloudflare-bindings.test.ts` passes
 - Responsive desktop verification: `pnpm exec tsc --noEmit`, `pnpm test -- tests/unit/layout/rail-nav.test.tsx tests/unit/layout/desktop-detail.test.tsx tests/unit/layout/desktop-dialogs.test.tsx tests/unit/layout/desktop-review-queue.test.tsx`, full `pnpm test`, and `pnpm build` pass
-- Media UI wiring verification: targeted store/media tests, route/layout tests, `pnpm exec tsc --noEmit`, full `pnpm test` (178 tests), and `pnpm build` pass
+- Media UI wiring verification: targeted store/media tests, route/layout tests, `pnpm exec tsc --noEmit`, full `pnpm test`, and `pnpm build` pass
 - Production UX/state cleanup verification: `pnpm test -- tests/unit/store/store-runtime-integration.test.tsx tests/unit/router/router-shell.test.tsx` passes with coverage for explicit report/listing fields, durable form drafts, auth-gated add/apply resume, report routing, and add-to-moderation approval
+- Media uploads slice final checkpoint (2026-07-06): full `pnpm test` passes (48 files, 189 tests) including Miniflare R2 end-to-end coverage for the upload path (valid upload stored with content type and derived URL; spoofed/oversized uploads rejected before any write); `pnpm exec tsc --noEmit` and `pnpm build` pass with the regenerated route tree including `/media/$`
 
 Issue tracker note:
-- GitHub Issue publication is currently blocked because the fork repository `iyadhali/Pet-Buddies` has Issues disabled. Keep the PRD local until Issues are enabled on the fork.
+- Issues are enabled on `iyadhali/Pet-Buddies` and the five-label triage vocabulary exists; the media uploads PRD is published as issue #2 (`ready-for-agent`) and is implemented by this slice.
 
 ## Remaining checklist for the broader fullstack migration
 

@@ -1,8 +1,10 @@
-import type {
-  ApiResult,
-  BrowseListingsQuery,
-  BrowseListingsResponse,
-  GetListingDetailResponse,
+import {
+  apiResultErr,
+  apiResultOk,
+  type ApiResult,
+  type BrowseListingsQuery,
+  type BrowseListingsResponse,
+  type GetListingDetailResponse,
 } from '../../contracts/api'
 import { toListingDetail, toListingSummary } from './listing-mapper'
 import type { ListingRepository } from './listing-repository'
@@ -47,35 +49,23 @@ export function createListingService(input: { repository: ListingRepository }): 
       const items = aggregates.map(toListingSummary)
       const availableTags = uniqueTags(aggregates)
 
-      return {
-        ok: true,
-        data: {
-          items,
-          pageInfo: {
-            nextCursor: null,
-          },
-          availableTags,
+      return apiResultOk({
+        items,
+        pageInfo: {
+          nextCursor: null,
         },
-      }
+        availableTags,
+      })
     },
     getListingDetail({ slugOrId }) {
       const aggregate = input.repository.getBySlug(slugOrId) ?? input.repository.getById(slugOrId)
       if (!aggregate) {
-        return {
-          ok: false,
-          error: {
-            code: 'NOT_FOUND',
-            message: 'Listing not found.',
-          },
-        }
+        return apiResultErr('NOT_FOUND', 'Listing not found.')
       }
 
-      return {
-        ok: true,
-        data: {
-          item: toListingDetail(aggregate),
-        },
-      }
+      return apiResultOk({
+        item: toListingDetail(aggregate),
+      })
     },
   }
 }

@@ -1,11 +1,10 @@
 import { eq } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/d1'
-import { afterEach, describe, expect, it } from 'vitest'
-import { Miniflare } from 'miniflare'
+import { describe, expect, it } from 'vitest'
 
 import { createD1MigrationClient } from '../../../../../src/server/infra/db/client'
 import { applyDbMigrations, getDbMigrations } from '../../../../../src/server/infra/db/migrate'
 import * as schema from '../../../../../src/server/infra/db/schema'
+import { useMiniflareD1 } from '../../../../helpers/miniflare-d1'
 
 const expectedTableNames = [
   'adoption_inquiries',
@@ -23,26 +22,13 @@ const expectedTableNames = [
   'users',
 ]
 
-let miniflare: Miniflare | undefined
-
-async function createMiniflareD1() {
-  miniflare = new Miniflare({
-    modules: true,
-    script: `export default { fetch() { return new Response("ok") } }`,
-    d1Databases: { DB: 'pet-buddies-test-db' },
-  })
-
-  return miniflare.getD1Database('DB')
-}
-
-afterEach(async () => {
-  await miniflare?.dispose()
-  miniflare = undefined
-})
+// These tests exercise migration application themselves, so the helper must
+// hand back a pristine database.
+const createMiniflareD1 = useMiniflareD1('pet-buddies-test-db', { applyMigrations: false })
 
 describe('Drizzle D1 setup', () => {
   it('applies the canonical migrations to a Miniflare D1 database', async () => {
-    const d1 = await createMiniflareD1()
+    const { d1 } = await createMiniflareD1()
 
     await applyDbMigrations(createD1MigrationClient(d1), getDbMigrations())
 
@@ -58,9 +44,8 @@ describe('Drizzle D1 setup', () => {
   }, 15_000)
 
   it('maps every canonical table through Drizzle against Miniflare D1', async () => {
-    const d1 = await createMiniflareD1()
+    const { d1, db } = await createMiniflareD1()
     await applyDbMigrations(createD1MigrationClient(d1), getDbMigrations())
-    const db = drizzle(d1, { schema })
 
     await db
       .insert(schema.users)

@@ -1,7 +1,9 @@
 import { z } from 'zod'
 
+import { BIRD_SPECIES } from '../contracts/api'
+
 const speciesSchema = z.enum(['cat', 'bird'])
-const birdSpeciesSchema = z.enum(['Budgerigar', 'Cockatiel', 'Lovebird', 'Finch', 'Canary'])
+const birdSpeciesSchema = z.enum(BIRD_SPECIES)
 const sexSchema = z.enum(['male', 'female', 'unknown'])
 const reportKindSchema = z.enum(['lost', 'found'])
 const listingLifecycleActionSchema = z.enum(['approved', 'rejected', 'adopted', 'restored'])

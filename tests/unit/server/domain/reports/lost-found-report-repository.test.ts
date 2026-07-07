@@ -1,16 +1,13 @@
-import { drizzle } from 'drizzle-orm/d1'
-import { Miniflare } from 'miniflare'
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import type { LostFoundReportRecord } from '../../../../../backend/contracts'
 import {
   createInMemoryAsyncLostFoundReportRepository,
   type AsyncLostFoundReportRepository,
 } from '../../../../../src/server/domain/reports/lost-found-report-repository'
-import { createD1MigrationClient } from '../../../../../src/server/infra/db/client'
-import { applyDbMigrations } from '../../../../../src/server/infra/db/migrate'
 import * as schema from '../../../../../src/server/infra/db/schema'
 import { createDrizzleLostFoundReportRepository } from '../../../../../src/server/infra/repositories/drizzle-lost-found-report-repository'
+import { useMiniflareD1 } from '../../../../helpers/miniflare-d1'
 
 const catRescue = {
   id: 'org-cat-rescue',
@@ -76,26 +73,14 @@ const birdReport: LostFoundReportRecord = {
   updatedAt: '2026-07-03T08:00:00.000Z',
 }
 
-let miniflare: Miniflare | undefined
+const createMiniflareD1 = useMiniflareD1('pet-buddies-lost-found-report-repository-test-db')
 
 async function createMiniflareRepository() {
-  miniflare = new Miniflare({
-    modules: true,
-    script: `export default { fetch() { return new Response("ok") } }`,
-    d1Databases: { DB: 'pet-buddies-lost-found-report-repository-test-db' },
-  })
-  const d1 = await miniflare.getD1Database('DB')
-  await applyDbMigrations(createD1MigrationClient(d1))
-  const db = drizzle(d1, { schema })
+  const { db } = await createMiniflareD1()
   await db.insert(schema.organizations).values([catRescue, birdRescue]).run()
 
   return createDrizzleLostFoundReportRepository({ db })
 }
-
-afterEach(async () => {
-  await miniflare?.dispose()
-  miniflare = undefined
-})
 
 describe.each([
   {

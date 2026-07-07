@@ -1,7 +1,7 @@
 # PRD: Responsive desktop layout
 
 - **Triage label:** `ready-for-agent`
-- **Status:** local-only — GitHub Issues are disabled on `iyadhali/Pet-Buddies`; publish this PRD as an issue once Issues are enabled.
+- **Status:** Implemented. (GitHub Issues are now enabled on `iyadhali/Pet-Buddies`; this PRD predates that and was delivered from this local copy.)
 - **Sources:** `docs/plans/2026-07-05-responsive-desktop-layout.md`, `PRODUCT.md`, `DESIGN.md`, ADR 0002, ADR 0004, `CONTEXT.md`
 
 ## Problem Statement

@@ -1,7 +1,6 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
 import {
-  API_RESULT_READY,
   apiResultOk,
   type ApiResult,
   type BrowseListingsResponse,
@@ -161,7 +160,6 @@ describe('server api transport contracts', () => {
 
     const result = apiResultOk(browseResponse)
 
-    expect(API_RESULT_READY).toBe('server-contracts-ready')
     expect(browseQuery.limit).toBe(12)
     expect('createdAt' in createListingRequest).toBe(false)
     expect('updatedAt' in moderationRequest).toBe(false)

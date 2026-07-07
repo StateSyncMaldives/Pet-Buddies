@@ -3,6 +3,7 @@ import { useRef } from 'react'
 import { colors, z } from '../theme'
 import { useStore } from '../store/store'
 import { MAX_LISTING_IMAGES } from '../server/domain/listings/create-listing'
+import { MEDIA_UPLOAD_MAX_LABEL } from '../server/domain/media/media-upload-policy'
 import { BIRD_ADD_TAGS, BIRD_SPECIES, CAT_ADD_TAGS } from '../data/seed'
 import {
   ButtonPair,
@@ -197,7 +198,7 @@ export function AddOverlay() {
               )}
             </div>
             <p style={{ fontSize: 11.5, color: colors.faintAlt, margin: '0 0 18px' }}>
-              Up to {MAX_LISTING_IMAGES} photos — JPEG, PNG, or WebP, 5 MB each. The first photo is the cover.
+              Up to {MAX_LISTING_IMAGES} photos — JPEG, PNG, or WebP, {MEDIA_UPLOAD_MAX_LABEL} each. The first photo is the cover.
             </p>
 
             <FieldLabel>Name</FieldLabel>

@@ -1,12 +1,4 @@
-import type { ApiErrorCode, BirdSpecies, ListingStatus, Species } from '../../contracts/api'
-
-const ALLOWLISTED_BIRD_SPECIES = new Set<BirdSpecies>([
-  'Budgerigar',
-  'Cockatiel',
-  'Lovebird',
-  'Finch',
-  'Canary',
-])
+import { isBirdSpecies, type ApiErrorCode, type BirdSpecies, type ListingStatus, type Species } from '../../contracts/api'
 
 export interface ListingPolicyOwner {
   id: string
@@ -76,17 +68,19 @@ export function validateListingDraft(input: ListingDraftInput): ListingPolicyRes
     return CAT_BIRD_SPECIES_ERROR
   }
 
+  let birdSpecies: BirdSpecies | undefined
   if (input.species === 'bird') {
-    if (!input.birdSpecies || !ALLOWLISTED_BIRD_SPECIES.has(input.birdSpecies as BirdSpecies)) {
+    if (!isBirdSpecies(input.birdSpecies)) {
       return BIRD_SPECIES_ERROR
     }
+    birdSpecies = input.birdSpecies
   }
 
   return {
     ok: true,
     value: {
       status: 'pending',
-      ...(input.species === 'bird' && input.birdSpecies ? { birdSpecies: input.birdSpecies as BirdSpecies } : {}),
+      ...(birdSpecies ? { birdSpecies } : {}),
       listedByUserId: input.listedByUserId ?? null,
       organizationId: input.organization?.id ?? null,
     },

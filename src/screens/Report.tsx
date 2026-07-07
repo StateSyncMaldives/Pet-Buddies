@@ -2,6 +2,8 @@ import { useRef } from 'react'
 
 import { colors } from '../theme'
 import { BIRD_SPECIES } from '../data/seed'
+import { isBirdSpecies } from '../server/contracts/api'
+import { MEDIA_UPLOAD_MAX_LABEL } from '../server/domain/media/media-upload-policy'
 import { useStore } from '../store/store'
 import { Screen } from '../layout/primitives'
 import { ButtonPair, CheckMedallion, FieldLabel, inputStyle } from '../components/primitives'
@@ -68,7 +70,7 @@ export function Report() {
           <FieldLabel>Bird species</FieldLabel>
           <select
             value={rep.birdSpecies}
-            onChange={(e) => patchRep({ birdSpecies: e.target.value as typeof rep.birdSpecies })}
+            onChange={(e) => patchRep({ birdSpecies: isBirdSpecies(e.target.value) ? e.target.value : '' })}
             style={{ ...inputStyle, marginBottom: 20 }}
           >
             <option value="">Select species</option>
@@ -139,7 +141,7 @@ export function Report() {
               <circle cx="12" cy="13" r="3.5" />
               <path d="M8 6l1.5-2h5L16 6" />
             </svg>
-            <span style={{ fontSize: 13, color: colors.faint }}>Add a photo — JPEG, PNG, or WebP, up to 5 MB</span>
+            <span style={{ fontSize: 13, color: colors.faint }}>Add a photo — JPEG, PNG, or WebP, up to {MEDIA_UPLOAD_MAX_LABEL}</span>
           </>
         )}
       </button>

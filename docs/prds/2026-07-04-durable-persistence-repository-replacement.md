@@ -1,8 +1,8 @@
 # PRD: Durable persistence and repository replacement
 
-Status: In progress
+Status: In progress — durable repositories for Listings, Saved listings, Adoption inquiries, Moderation events, and Lost/found reports are implemented with Miniflare-backed Drizzle D1 contract coverage; the app runtime still composes the in-memory backend, so durable runtime composition (step 10) remains outstanding
 Labels: ready-for-agent
-Issue: Blocked from publication because `iyadhali/Pet-Buddies` has GitHub Issues disabled
+Issue: not yet published — GitHub Issues are now enabled on `iyadhali/Pet-Buddies`; publish there if this PRD needs further grooming
 
 ## Problem Statement
 
@@ -70,7 +70,7 @@ Use Zod only at network/user-input boundaries. Repository methods should rely on
 5. Implement Saved listing persistence second, because it is small and exercises Viewer-scoped join data. Status: completed as a dedicated async repository with in-memory and Drizzle D1 contract coverage.
 6. Implement Adoption inquiry persistence third, including sent-inquiry reads. Status: completed as a dedicated async repository with in-memory and Drizzle D1 contract coverage.
 7. Implement Moderation event and lifecycle persistence fourth, preserving lifecycle status and audit event creation. Status: completed for moderation event persistence with in-memory and Drizzle D1 contract coverage; lifecycle runtime wiring remains deferred.
-8. Implement Lost/found report persistence fifth, preserving reference code and routed organization receipt behavior.
+8. Implement Lost/found report persistence fifth, preserving reference code and routed organization receipt behavior. Status: completed as a dedicated async repository with in-memory and Drizzle D1 contract coverage.
 9. Implement Clinic persistence last, because it is read-only and can be seeded independently.
 10. Add a persistence-backed runtime composition seam, but keep the existing demo runtime as the default until environment binding is explicitly configured.
 
