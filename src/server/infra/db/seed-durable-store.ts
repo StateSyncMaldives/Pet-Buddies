@@ -2,6 +2,8 @@ import type { drizzle } from 'drizzle-orm/d1'
 
 import type { UserRecord } from '../../../../backend/contracts'
 import { DEMO_SEED_USERS } from '../../runtime/demo-identity'
+import { buildSeedListingAggregates } from '../../runtime/seed-listing-aggregates'
+import { seedListingAggregates } from '../repositories/drizzle-listing-repository'
 import * as schema from './schema'
 
 type PetBuddiesDb = ReturnType<typeof drizzle<typeof schema>>
@@ -20,15 +22,20 @@ function toUserInsert(user: UserRecord): typeof schema.users.$inferInsert {
 }
 
 /**
- * Idempotently seeds the durable store's baseline identity: the demo Viewer and
- * moderator User rows that Viewer-owned writes (saved listings, adoption
- * inquiries, moderation events) reference by users.id. Safe to run on every
- * deploy — conflicting rows are left untouched. See ADR 0008.
+ * Idempotently seeds the durable store's baseline data:
+ *  - the demo Viewer and moderator User rows that Viewer-owned writes (saved
+ *    listings, adoption inquiries, moderation events) reference by users.id;
+ *  - the seed listings and their owning organizations, owner users, and tags.
  *
- * Listing/organization/clinic/tag seeding is a follow-up increment.
+ * Safe to run on every deploy — user rows use insert-or-ignore and the listing
+ * batch skips existing rows, so repeated runs neither duplicate nor drift.
+ * Clinics are static directory data served from the seed repository, so they
+ * are not persisted here. See ADR 0008.
  */
 export async function seedDurableStore(input: { db: PetBuddiesDb }): Promise<void> {
   for (const user of DEMO_SEED_USERS) {
     await input.db.insert(schema.users).values(toUserInsert(user)).onConflictDoNothing().run()
   }
+
+  await seedListingAggregates(input.db, buildSeedListingAggregates())
 }

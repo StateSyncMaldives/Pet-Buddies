@@ -54,6 +54,20 @@ describe('seedDurableStore', () => {
     expect(ids.filter((id) => id === DEMO_MODERATOR_USER.id)).toHaveLength(1)
   }, 15_000)
 
+  it('persists the seed listings idempotently so a fresh repository can browse them', async () => {
+    const { db } = await createMiniflareD1()
+
+    await seedDurableStore({ db })
+    await seedDurableStore({ db }) // re-seeding must not duplicate
+
+    const repository = createDrizzleListingRepository({ db })
+    const cats = await repository.browse({ species: 'cat' })
+    expect(cats.some((aggregate) => aggregate.listing.id === 'mishka')).toBe(true)
+
+    const rows = await db.select({ id: schema.listings.id }).from(schema.listings).all()
+    expect(rows.filter((row) => row.id === 'mishka')).toHaveLength(1)
+  }, 15_000)
+
   it('lets the seeded demo Viewer save a listing that survives a fresh repository read', async () => {
     const { db } = await createMiniflareD1()
     await seedDurableStore({ db })

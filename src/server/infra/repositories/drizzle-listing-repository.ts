@@ -208,6 +208,46 @@ export function createDrizzleListingRepository(input: { db: PetBuddiesDb }): Asy
   }
 }
 
+/**
+ * Bulk-inserts seed aggregates in a single D1 batch, skipping rows that already
+ * exist (idempotent) and never reading anything back — much cheaper than
+ * calling create() per aggregate, which re-scans on every write. Insert order
+ * satisfies the foreign keys: owners/organizations and tags precede listings,
+ * and listings precede their images and tag assignments.
+ */
+export async function seedListingAggregates(db: PetBuddiesDb, aggregates: ListingAggregate[]): Promise<void> {
+  const users = new Map<string, ReturnType<typeof toUserInsert>>()
+  const organizations = new Map<string, ReturnType<typeof toOrganizationInsert>>()
+  const tags = new Map<string, ReturnType<typeof toTagInsert>>()
+
+  for (const aggregate of aggregates) {
+    if (aggregate.listedByUser) users.set(aggregate.listedByUser.id, toUserInsert(aggregate.listedByUser))
+    if (aggregate.organization) organizations.set(aggregate.organization.id, toOrganizationInsert(aggregate.organization))
+    for (const tag of aggregate.tags) tags.set(tag.id, toTagInsert(tag))
+  }
+
+  const statements = [
+    ...Array.from(users.values()).map((user) => db.insert(schema.users).values(user).onConflictDoNothing()),
+    ...Array.from(organizations.values()).map((org) => db.insert(schema.organizations).values(org).onConflictDoNothing()),
+    ...Array.from(tags.values()).map((tag) => db.insert(schema.tags).values(tag).onConflictDoNothing()),
+    ...aggregates.map((aggregate) => db.insert(schema.listings).values(toListingInsert(aggregate.listing)).onConflictDoNothing()),
+    ...aggregates.flatMap((aggregate) =>
+      aggregate.images.map((image) => db.insert(schema.listingImages).values(toListingImageInsert(image)).onConflictDoNothing()),
+    ),
+    ...aggregates.flatMap((aggregate) =>
+      aggregate.tags.map((tag) =>
+        db
+          .insert(schema.listingTagAssignments)
+          .values({ listingId: aggregate.listing.id, tagId: tag.id, createdAt: tag.createdAt })
+          .onConflictDoNothing(),
+      ),
+    ),
+  ]
+
+  if (statements.length === 0) return
+  await db.batch(statements as unknown as Parameters<typeof db.batch>[0])
+}
+
 function toListingRecord(row: typeof schema.listings.$inferSelect): ListingRecord {
   return {
     id: row.id,
