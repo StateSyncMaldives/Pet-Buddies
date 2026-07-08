@@ -15,6 +15,13 @@ describe('createServerBackend', () => {
     expect(cats.ok && cats.data.items.map((item) => item.id)).toContain('mishka')
   })
 
+  it('auto-seeds an empty (migrated) D1 on first use', async () => {
+    const { db } = await createMiniflareD1() // schema applied, no data
+    const backend = await createServerBackend({ database: db })
+    const cats = await backend.browseListings({ query: { species: 'cat' } })
+    expect(cats.ok && cats.data.items.map((item) => item.id)).toContain('mishka')
+  }, 15_000)
+
   it('uses the durable D1 backend when a database is provided, persisting writes', async () => {
     const { db } = await createMiniflareD1()
     await seedDurableStore({ db })
