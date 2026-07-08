@@ -13,8 +13,8 @@ Listings for which the current viewer is the listing owner in the current identi
 _Avoid_: My posts, authored cards
 
 **Viewer**:
-The current session actor viewing or interacting with listings before real authentication is wired.
-_Avoid_: Anonymous visitor, browser session
+The current session actor viewing or interacting with listings before real authentication is wired. In the demo model the Viewer resolves to a stable, durably-stored User identity (not the display name), so the actions the Viewer owns — saved listings, adoption inquiries, and the moderator's moderation events — persist and reference a real user record.
+_Avoid_: Anonymous visitor, browser session, display-name-as-identity
 
 **Verified organization**:
 A rescue, NGO, partner, or community group that can publish listings under its own identity and receive routed reports.
