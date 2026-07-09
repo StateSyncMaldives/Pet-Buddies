@@ -1,12 +1,12 @@
 import { useNavigate } from '@tanstack/react-router'
 import type { KeyboardEvent, MouseEvent } from 'react'
-import { colors, shadow } from '../theme'
-import type { BrowseSearchUrl } from '../router/browse-search'
-import { getDetailPath } from '../router/paths'
-import { listMeta, useStore } from '../store/store'
-import type { Listing } from '../types'
-import { PetPhoto, VerifiedBadge } from './Brand'
-import { HeartIcon } from './icons'
+import { colors, shadow } from '../../theme'
+import type { BrowseSearchUrl } from '../../router/browse-search'
+import { getDetailPath } from '../../router/paths'
+import { listMeta, useStore } from '../../store/store'
+import type { Listing } from '../../types'
+import { PetPhoto, VerifiedBadge } from '../../components/Brand'
+import { HeartIcon } from '../../components/icons'
 
 /** Compact Browse grid card: square photo + save heart, name, meta, area. */
 export function ListingCard({ listing }: { listing: Listing }) {

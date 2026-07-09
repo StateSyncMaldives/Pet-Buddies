@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { colors, font } from '../theme'
-import { useViewportMode } from '../layout/viewport-mode'
-import { useStore } from '../store/store'
-import type { Listing, Species } from '../types'
-import type { ListingSummary } from '../server/contracts/api'
-import type { BrowseSearch } from '../router/browse-search'
+import { colors, font } from '../../theme'
+import { useViewportMode } from '../../layout/viewport-mode'
+import { useStore } from '../../store/store'
+import type { Listing, Species } from '../../types'
+import type { ListingSummary } from '../../server/contracts/api'
+import type { BrowseSearch } from '../../router/browse-search'
 import {
   clearFilters,
   filterListings,
@@ -14,14 +14,14 @@ import {
   switchSpecies,
   toggleTag,
   traitChipsFor,
-} from '../router/browse-search'
-import { mapListingSummaryToListing } from '../store/view-model-mappers'
-import { ROUTE_PATHS } from '../router/paths'
-import { LogoMark, Wordmark } from '../components/Brand'
-import { ListingCard } from '../components/ListingCard'
-import { Hero } from '../components/Hero'
-import { FilterChip } from '../components/FilterChip'
-import { BirdIcon, CatIcon, PlusIcon, SearchIcon, ShieldIcon } from '../components/icons'
+} from '../../router/browse-search'
+import { mapListingSummaryToListing } from '../../store/view-model-mappers'
+import { ROUTE_PATHS } from '../../router/paths'
+import { LogoMark, Wordmark } from '../../components/Brand'
+import { ListingCard } from './ListingCard'
+import { Hero } from '../../components/Hero'
+import { FilterChip } from '../../components/FilterChip'
+import { BirdIcon, CatIcon, PlusIcon, SearchIcon, ShieldIcon } from '../../components/icons'
 
 // Light pastel washes of the two brand species colors (powderBlue #8FC7E8, blush
 // #F2A9C4) — the active species tints the segmented thumb without a saturated fill.

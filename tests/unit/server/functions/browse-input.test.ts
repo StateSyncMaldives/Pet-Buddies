@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import * as listingsFunctions from '../../../../src/server/functions/listings.functions'
+import * as listingsFunctions from '../../../../src/features/listings/listings.functions'
 
 // Namespace import so a missing export surfaces as one focused test failure
 // below instead of crashing collection of the whole file.

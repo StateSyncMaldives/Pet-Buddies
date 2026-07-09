@@ -14,7 +14,7 @@ import {
   updateListingLifecycle,
   uploadMedia,
 } from './server/functions/mutations.functions'
-import { getBrowseListings } from './server/functions/listings.functions'
+import { getBrowseListings } from './features/listings/listings.functions'
 import { fetchClinics } from './features/clinics/clinics.functions'
 import { fetchListingDetail, fetchSavedListings, fetchYouReadModel } from './server/functions/read.functions'
 

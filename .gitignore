@@ -11,3 +11,6 @@ dist-ssr
 .impeccable/
 .claude/
 *.tsbuildinfo
+
+# Windows/MSYS crash dumps
+*.stackdump
