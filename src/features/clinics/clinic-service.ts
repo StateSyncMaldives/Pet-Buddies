@@ -1,4 +1,4 @@
-import type { ApiResult, ListClinicsResponse } from '../../contracts/api'
+import type { ApiResult, ListClinicsResponse } from '../../server/contracts/api'
 import type { ClinicRepository } from './clinic-repository'
 
 export interface ClinicService {

@@ -1,8 +1,8 @@
-import { colors, shadow } from '../theme'
-import type { ClinicSummary } from '../server/contracts/api'
-import { mapClinicSummaryToClinic } from '../store/view-model-mappers'
-import { CardGrid, Screen } from '../layout/primitives'
-import { useStore } from '../store/store'
+import { colors, shadow } from '../../theme'
+import type { ClinicSummary } from '../../server/contracts/api'
+import { mapClinicSummaryToClinic } from '../../store/view-model-mappers'
+import { CardGrid, Screen } from '../../layout/primitives'
+import { useStore } from '../../store/store'
 
 export function Vets({ clinics: serverClinics }: { clinics?: ClinicSummary[] }) {
   const { clinics: storeClinics, callClinic, directionsClinic } = useStore()

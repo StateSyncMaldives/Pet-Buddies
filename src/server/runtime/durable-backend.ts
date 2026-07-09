@@ -6,8 +6,8 @@ import type {
   ModerationEventRecord,
 } from '../../../backend/contracts'
 import { apiResultErr, apiResultOk } from '../contracts/api'
-import { createClinicService } from '../domain/clinics/clinic-service'
-import { createSeedClinicRepository } from '../domain/clinics/clinic-repository'
+import { createClinicService } from '../../features/clinics/clinic-service'
+import { createSeedClinicRepository } from '../../features/clinics/clinic-repository'
 import { createCreateInquiryUseCase } from '../domain/inquiries/create-inquiry'
 import { createCreateListingUseCase } from '../domain/listings/create-listing'
 import { createModerateListingUseCase } from '../domain/listings/moderate-listing'

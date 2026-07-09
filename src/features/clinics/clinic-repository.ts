@@ -1,5 +1,5 @@
-import { SEED_CLINICS } from '../../../data/seed'
-import type { ClinicRecord } from '../../../../backend/contracts'
+import { SEED_CLINICS } from '../../data/seed'
+import type { ClinicRecord } from '../../../backend/contracts'
 
 export interface ClinicSeedRecord extends ClinicRecord {
   services: string[]

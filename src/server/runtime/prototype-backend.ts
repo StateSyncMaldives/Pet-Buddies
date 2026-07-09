@@ -27,8 +27,8 @@ import type {
   UpdateListingModerationResponse,
 } from '../contracts/api'
 import { apiResultOk } from '../contracts/api'
-import { createSeedClinicRepository } from '../domain/clinics/clinic-repository'
-import { createClinicService } from '../domain/clinics/clinic-service'
+import { createSeedClinicRepository } from '../../features/clinics/clinic-repository'
+import { createClinicService } from '../../features/clinics/clinic-service'
 import { createCreateInquiryUseCase } from '../domain/inquiries/create-inquiry'
 import { createCreateListingUseCase } from '../domain/listings/create-listing'
 import { createListingService } from '../domain/listings/listing-service'

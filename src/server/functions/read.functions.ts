@@ -3,7 +3,6 @@ import { createServerFn } from '@tanstack/react-start'
 import type {
   GetListingDetailResponse,
   GetYouReadModelResponse,
-  ListClinicsResponse,
   ListSavedListingsResponse,
 } from '../contracts/api'
 import { createDemoSession } from '../runtime/app-session'
@@ -33,13 +32,6 @@ export const fetchYouReadModel = createServerFn({ method: 'GET' }).handler(
     return result.data
   },
 )
-
-export const fetchClinics = createServerFn({ method: 'GET' }).handler(async (): Promise<ListClinicsResponse> => {
-  const backend = await createServerBackend()
-  const result = await backend.listClinics()
-  if (!result.ok) throw new Error(result.error.message)
-  return result.data
-})
 
 export const fetchListingDetail = createServerFn({ method: 'GET' })
   .validator((slugOrId: string) => slugOrId)

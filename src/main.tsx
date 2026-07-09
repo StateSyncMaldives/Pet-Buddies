@@ -15,12 +15,8 @@ import {
   uploadMedia,
 } from './server/functions/mutations.functions'
 import { getBrowseListings } from './server/functions/listings.functions'
-import {
-  fetchClinics,
-  fetchListingDetail,
-  fetchSavedListings,
-  fetchYouReadModel,
-} from './server/functions/read.functions'
+import { fetchClinics } from './features/clinics/clinics.functions'
+import { fetchListingDetail, fetchSavedListings, fetchYouReadModel } from './server/functions/read.functions'
 
 const runtime = createAppRuntime()
 

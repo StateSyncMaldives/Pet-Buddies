@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { Vets } from '../screens/Vets'
+import { Vets } from '../features/clinics/Vets'
 
 export const Route = createFileRoute('/vets')({
   loader: async ({ context }) => {
