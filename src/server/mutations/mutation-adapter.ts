@@ -12,14 +12,14 @@ import type {
 } from '../contracts/api'
 import type { ValidateMediaUploadInput } from '../domain/media/media-upload-policy'
 import type { UploadMediaResponse } from '../domain/media/upload-media'
-import type { PrototypeBackend } from '../runtime/prototype-backend'
+import type { AsyncAppBackend } from '../runtime/app-backend'
 
 export interface AppMutationAdapter {
-  toggleSavedListing(input: ToggleSavedListingInput): ApiResult<ToggleSavedListingResponse>
-  createInquiry(input: CreateInquiryInput): ApiResult<CreateInquiryResponse>
-  createListing(input: CreateListingInput): ApiResult<CreateListingResponse>
-  createReport(input: CreateReportInput): ApiResult<CreateLostFoundReportResponse>
-  updateListingLifecycle(input: UpdateListingLifecycleInput): ApiResult<UpdateListingModerationResponse>
+  toggleSavedListing(input: ToggleSavedListingInput): Promise<ApiResult<ToggleSavedListingResponse>>
+  createInquiry(input: CreateInquiryInput): Promise<ApiResult<CreateInquiryResponse>>
+  createListing(input: CreateListingInput): Promise<ApiResult<CreateListingResponse>>
+  createReport(input: CreateReportInput): Promise<ApiResult<CreateLostFoundReportResponse>>
+  updateListingLifecycle(input: UpdateListingLifecycleInput): Promise<ApiResult<UpdateListingModerationResponse>>
   uploadMedia(input: ValidateMediaUploadInput): Promise<ApiResult<UploadMediaResponse>>
 }
 
@@ -47,7 +47,7 @@ export interface UpdateListingLifecycleInput {
 }
 
 export interface RuntimeMutationAdapterDeps {
-  backend: PrototypeBackend
+  backend: AsyncAppBackend
   viewerId: string
   /** Accepted for call-site symmetry; the adapter itself never reads it. */
   moderatorId?: string

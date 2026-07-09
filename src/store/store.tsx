@@ -8,11 +8,12 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { PrototypeBackend } from '../server/runtime/prototype-backend'
+import { createPrototypeBackend } from '../server/runtime/prototype-backend'
 import { DEMO_MODERATOR_ID } from '../server/runtime/app-session'
 import { MAX_LISTING_IMAGES } from '../server/domain/listings/create-listing'
 import type { MediaUploadKind } from '../server/domain/media/media-upload-policy'
-import { createRuntimeMutationAdapter, type AppMutationAdapter } from '../server/mutations/mutation-adapter'
+import type { AppMutationAdapter } from '../server/mutations/mutation-adapter'
+import { toTagSlug } from '../router/browse-search'
 import { isBirdSpecies, type BirdSpecies } from '../server/contracts/api'
 import { createInquiryViewModel, mapClinicSummaryToClinic, mapListingDetailToListing } from './view-model-mappers'
 import type {
@@ -27,6 +28,14 @@ import type {
 } from '../types'
 
 const DEFAULT_MODERATOR_ID = DEMO_MODERATOR_ID
+
+// Lost/found reports route to one of two fixed partner organisations (see
+// report-routing). Their display names for the receipt, resolved client-side
+// now that the store no longer holds a synchronous backend.
+const ROUTED_ORGANIZATION_NAMES: Record<string, string> = {
+  'org-cat-rescue': 'Maldives Cat Rescue',
+  'org-bird-rescue': 'Zoophilist Society Maldives',
+}
 
 const TOAST_DURATION_MS = 2200
 
@@ -227,19 +236,25 @@ export interface Store {
 
 export interface StoreProviderProps {
   children: ReactNode
-  backend: PrototypeBackend
   viewerId: string
   mockUser: User
   moderatorId?: string
-  mutations?: AppMutationAdapter
+  /** Write seam (durable server functions on the client; in-memory in tests). */
+  mutations: AppMutationAdapter
 }
 
-function createInitialHydration(backend: PrototypeBackend, viewerId: string) {
-  const hydration = backend.hydrateAppShell({ viewerId })
+/**
+ * Seeds the store's optimistic client state from the static seed shell. This is
+ * deterministic (identical on server and client, so no hydration mismatch); the
+ * durable server data is delivered to screens through the route loaders. The
+ * store no longer reads the request-scoped backend. See ADR 0008.
+ */
+function createInitialHydration(viewerId: string) {
+  const shell = createPrototypeBackend().hydrateAppShell({ viewerId })
   return {
-    listings: hydration.listings.map(mapListingDetailToListing),
-    clinics: hydration.clinics.map(mapClinicSummaryToClinic),
-    saved: hydration.listings.filter((listing) => listing.savedByViewer).map((listing) => listing.id),
+    listings: shell.listings.map(mapListingDetailToListing),
+    clinics: shell.clinics.map(mapClinicSummaryToClinic),
+    saved: shell.listings.filter((listing) => listing.savedByViewer).map((listing) => listing.id),
   }
 }
 
@@ -247,17 +262,12 @@ const StoreContext = createContext<Store | null>(null)
 
 export function StoreProvider({
   children,
-  backend,
   viewerId,
   mockUser,
   moderatorId = DEFAULT_MODERATOR_ID,
-  mutations: injectedMutations,
+  mutations,
 }: StoreProviderProps) {
-  const hydration = useMemo(() => createInitialHydration(backend, viewerId), [backend, viewerId])
-  const mutations = useMemo(
-    () => injectedMutations ?? createRuntimeMutationAdapter({ backend, viewerId, moderatorId }),
-    [backend, injectedMutations, moderatorId, viewerId],
-  )
+  const hydration = useMemo(() => createInitialHydration(viewerId), [viewerId])
   const [state, setState] = useState<AppState>(() => initialState(hydration.saved))
   const [listings, setListings] = useState<Listing[]>(() => hydration.listings.map((listing) => ({ ...listing, tags: [...listing.tags] })))
   const [clinics] = useState<Clinic[]>(() => hydration.clinics.map((clinic) => ({ ...clinic, services: [...clinic.services] })))
@@ -308,8 +318,8 @@ export function StoreProvider({
   }, [])
 
   const transitionListing = useCallback(
-    (id: string, action: 'approved' | 'rejected' | 'adopted') => {
-      const result = mutations.updateListingLifecycle({
+    async (id: string, action: 'approved' | 'rejected' | 'adopted') => {
+      const result = await mutations.updateListingLifecycle({
         listingId: id,
         actorUserId: moderatorId,
         request: { action },
@@ -370,10 +380,19 @@ export function StoreProvider({
           tags: s.tags.includes(tag) ? s.tags.filter((t) => t !== tag) : [...s.tags, tag],
         })),
       clearFilters: () => patch({ tags: [], query: '' }),
-      toggleSave: (id) => {
-        const result = mutations.toggleSavedListing({ listingId: id })
+      toggleSave: async (id) => {
+        // Optimistic toggle for instant feedback; reconcile / revert on the result.
+        setState((s) => ({
+          ...s,
+          saved: s.saved.includes(id) ? s.saved.filter((savedId) => savedId !== id) : [...new Set([...s.saved, id])],
+        }))
+        const result = await mutations.toggleSavedListing({ listingId: id })
         if (!result.ok) {
           showToast(result.error.message)
+          setState((s) => ({
+            ...s,
+            saved: s.saved.includes(id) ? s.saved.filter((savedId) => savedId !== id) : [...new Set([...s.saved, id])],
+          }))
           return
         }
         setState((s) => ({
@@ -418,12 +437,12 @@ export function StoreProvider({
         }),
       setInquiryMessage: (msg) => setState((s) => ({ ...s, inquiry: { ...s.inquiry, message: msg } })),
       cancelInquiry: () => setState((s) => ({ ...s, overlay: s.detailId ? 'detail' : null })),
-      sendInquiry: () => {
+      sendInquiry: async () => {
         const listingId = state.inquiry.listingId
         const listing = listings.find((item) => item.id === listingId)
         if (!listingId || !listing || !state.user) return
 
-        const result = mutations.createInquiry({
+        const result = await mutations.createInquiry({
           request: {
             listingId,
             message: state.inquiry.message,
@@ -491,7 +510,7 @@ export function StoreProvider({
             tags: s.add.tags.includes(tag) ? s.add.tags.filter((t) => t !== tag) : [...s.add.tags, tag],
           },
         })),
-      submitListing: () => {
+      submitListing: async () => {
         const add = state.add
         if (!add.name.trim()) {
           showToast('Add a name first')
@@ -510,7 +529,7 @@ export function StoreProvider({
           return
         }
 
-        const result = mutations.createListing({
+        const result = await mutations.createListing({
           actorUserId: state.user?.name ?? null,
           request: {
             species: add.species,
@@ -520,7 +539,7 @@ export function StoreProvider({
             sex: 'unknown',
             areaLabel: add.area.trim(),
             story: add.desc.trim(),
-            tagIds: add.tags.map((tag) => backend.getTagId(tag)),
+            tagIds: add.tags.map((tag) => toTagSlug(tag)),
             imageObjectKeys: add.images
               .filter(
                 (image): image is MediaDraft & { objectKey: string } =>
@@ -539,16 +558,16 @@ export function StoreProvider({
       },
       openMod: () => patch({ overlay: 'mod' }),
       closeMod: () => patch({ overlay: null }),
-      approveListing: (id) => {
-        const listing = transitionListing(id, 'approved')
+      approveListing: async (id) => {
+        const listing = await transitionListing(id, 'approved')
         if (listing) showToast(`${listing.name} is now live`)
       },
-      rejectListing: (id) => {
-        const listing = transitionListing(id, 'rejected')
+      rejectListing: async (id) => {
+        const listing = await transitionListing(id, 'rejected')
         if (listing) showToast(`${listing.name} rejected`)
       },
-      markAdopted: (id) => {
-        const listing = transitionListing(id, 'adopted')
+      markAdopted: async (id) => {
+        const listing = await transitionListing(id, 'adopted')
         if (listing) showToast(`${listing.name} marked as adopted`)
       },
       patchRep: setRep,
@@ -564,7 +583,7 @@ export function StoreProvider({
           if (s.rep.photo) revokePreviewUrl(s.rep.photo.previewUrl)
           return { ...s, rep: { ...s.rep, photo: null } }
         }),
-      submitReport: () => {
+      submitReport: async () => {
         const report = state.rep
         if (report.photo?.status === 'uploading') {
           showToast('Photo is still uploading')
@@ -584,7 +603,7 @@ export function StoreProvider({
         }
         const birdSpecies: BirdSpecies | undefined =
           report.species === 'bird' && report.birdSpecies !== '' ? report.birdSpecies : undefined
-        const result = mutations.createReport({
+        const result = await mutations.createReport({
           request: {
             reportKind: report.kind,
             species: report.species,
@@ -603,7 +622,7 @@ export function StoreProvider({
         patch({
           reportDone: true,
           reportReceipt: {
-            routedTo: backend.getOrganizationName(result.data.report.routedToOrganizationId) ?? 'Partner organisation',
+            routedTo: ROUTED_ORGANIZATION_NAMES[result.data.report.routedToOrganizationId] ?? 'Partner organisation',
             referenceCode: result.data.report.referenceCode,
           },
         })
@@ -621,7 +640,7 @@ export function StoreProvider({
       installDismiss: () => patch({ installDismissed: true }),
       showToast,
     }
-  }, [backend, mockUser, state, listings, clinics, mutations, patch, showToast, syncListing, transitionListing])
+  }, [mockUser, state, listings, clinics, mutations, patch, showToast, syncListing, transitionListing])
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>
 }

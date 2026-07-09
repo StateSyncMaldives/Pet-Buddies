@@ -12,9 +12,10 @@ import type { AppRouterContext } from './context'
 export type { AppRouterContext } from './context'
 
 function createDefaultRouterContext(): AppRouterContext {
-  const { backend, session } = createAppRuntime()
+  const { backend, mutations, session } = createAppRuntime()
   return {
     backend,
+    mutations,
     viewerId: session.viewerId,
     mockUser: session.mockUser,
     moderatorId: session.moderatorId,

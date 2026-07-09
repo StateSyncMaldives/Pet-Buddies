@@ -9,8 +9,8 @@ import { validateBrowseSearch } from '../router/browse-search'
 
 export const Route = createFileRoute('/browse/listings/$listingId')({
   validateSearch: validateBrowseSearch,
-  loader: ({ context, params }) => {
-    const result = context.backend.getListingDetail({ slugOrId: params.listingId })
+  loader: async ({ context, params }) => {
+    const result = await context.backend.getListingDetail({ slugOrId: params.listingId })
     if (!result.ok) throw notFound()
     return result.data.item
   },

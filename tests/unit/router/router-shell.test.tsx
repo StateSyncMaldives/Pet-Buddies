@@ -19,10 +19,11 @@ function renderAt(
 
   const runtime = createAppRuntime()
   setupRuntime?.(runtime)
-  const { backend, session } = runtime
+  const { backend, mutations, session } = runtime
   const router = createAppRouter({
     context: {
       backend,
+      mutations,
       viewerId: session.viewerId,
       mockUser: session.mockUser,
       moderatorId: session.moderatorId,

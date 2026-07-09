@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 
 import { toTagSlug } from '../../router/browse-search'
-import { createAppRuntime } from '../runtime/app-session'
+import { createServerBackend } from '../runtime/server-backend'
 import type { BrowseListingsResponse, Species } from '../contracts/api'
 
 interface BrowseListingsInput {
@@ -28,8 +28,8 @@ export function validateBrowseListingsInput(input: unknown): BrowseListingsInput
 export const getBrowseListings = createServerFn({ method: 'GET' })
   .validator(validateBrowseListingsInput)
   .handler(async ({ data }): Promise<BrowseListingsResponse> => {
-    const { backend } = createAppRuntime()
-    const result = backend.browseListings({
+    const backend = await createServerBackend()
+    const result = await backend.browseListings({
       query: {
         species: data.species,
         search: data.query || undefined,

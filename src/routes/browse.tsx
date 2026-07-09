@@ -9,7 +9,7 @@ export const Route = createFileRoute('/browse')({
   validateSearch: validateBrowseSearch,
   loaderDeps: ({ search }) => search,
   loader: async ({ context, deps }) => {
-    const result = context.backend.browseListings({
+    const result = await context.backend.browseListings({
       query: {
         species: deps.species,
         search: deps.query || undefined,

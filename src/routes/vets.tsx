@@ -4,7 +4,7 @@ import { Vets } from '../screens/Vets'
 
 export const Route = createFileRoute('/vets')({
   loader: async ({ context }) => {
-    const result = context.backend.listClinics()
+    const result = await context.backend.listClinics()
     if (!result.ok) {
       throw new Error(result.error.message)
     }

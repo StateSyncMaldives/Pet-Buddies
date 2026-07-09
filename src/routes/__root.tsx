@@ -1,12 +1,9 @@
-import { useEffect, useMemo, type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 
 import { App } from '../App'
 import { StoreProvider } from '../store/store'
-import { createRuntimeMutationAdapter } from '../server/mutations/mutation-adapter'
-import { createServerFnUploadMedia } from '../server/mutations/server-fn-upload'
-import { DEMO_MODERATOR_ID } from '../server/runtime/app-session'
-import { uploadMedia } from '../server/functions/mutations.functions'
+import { createServerBackend } from '../server/runtime/server-backend'
 import type { AppRouterContext } from '../router/context'
 import '../index.css'
 
@@ -22,18 +19,7 @@ function DefaultNotFound() {
 }
 
 function RootRouteComponent() {
-  const { backend, viewerId, mockUser, moderatorId } = Route.useRouteContext()
-
-  // Media uploads are the one mutation routed through the Start server
-  // function today: they are stateless with respect to the demo session, and
-  // only the Worker can reach the durable R2 bucket.
-  const mutations = useMemo(
-    () => ({
-      ...createRuntimeMutationAdapter({ backend, viewerId, moderatorId: moderatorId ?? DEMO_MODERATOR_ID }),
-      uploadMedia: createServerFnUploadMedia(uploadMedia),
-    }),
-    [backend, viewerId, moderatorId],
-  )
+  const { mutations, viewerId, mockUser, moderatorId } = Route.useRouteContext()
 
   useEffect(() => {
     if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return
@@ -43,7 +29,7 @@ function RootRouteComponent() {
 
   return (
     <RootDocument>
-      <StoreProvider backend={backend} viewerId={viewerId} mockUser={mockUser} moderatorId={moderatorId} mutations={mutations}>
+      <StoreProvider viewerId={viewerId} mockUser={mockUser} moderatorId={moderatorId} mutations={mutations}>
         <App />
       </StoreProvider>
     </RootDocument>
@@ -65,6 +51,12 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 }
 
 export const Route = createRootRouteWithContext<AppRouterContext>()({
+  beforeLoad: async ({ context }) => {
+    // On the server, resolve the durable (D1) backend per request so loaders
+    // read persisted data. On the client, keep the context's in-memory backend.
+    if (typeof window !== 'undefined') return { backend: context.backend }
+    return { backend: await createServerBackend() }
+  },
   head: () => ({
     meta: [
       { title: 'Pet Buddies MV' },
