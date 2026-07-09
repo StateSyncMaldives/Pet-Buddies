@@ -14,7 +14,8 @@
     {
       "binding": "DB",
       "database_name": "pet-buddies-mv-db",
-      "database_id": "5a134b5b-1631-4f98-aec2-0774217b9d53"
+      "database_id": "5a134b5b-1631-4f98-aec2-0774217b9d53",
+      "migrations_dir": "drizzle"
     }
   ],
   "r2_buckets": [

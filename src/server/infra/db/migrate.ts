@@ -3,7 +3,9 @@ import { join, resolve } from 'node:path'
 
 import type { DbClient, DbMigration } from './types'
 
-const MIGRATIONS_DIR = resolve(process.cwd(), 'backend/sql')
+// Drizzle-kit generates migrations here from src/server/infra/db/schema.ts
+// (the single source of truth). See drizzle.config.ts and ADR 0008.
+const MIGRATIONS_DIR = resolve(process.cwd(), 'drizzle')
 
 export function getDbMigrations(): DbMigration[] {
   return readdirSync(MIGRATIONS_DIR)

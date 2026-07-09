@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { check, index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 const timestamps = {
   createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -20,6 +20,7 @@ export const users = sqliteTable(
   (table) => [
     uniqueIndex('users_google_sub_unique').on(table.googleSub),
     uniqueIndex('users_email_unique').on(table.email),
+    check('users_global_role_check', sql`${table.globalRole} in ('user', 'moderator', 'admin')`),
   ],
 )
 
@@ -41,6 +42,8 @@ export const organizations = sqliteTable(
   (table) => [
     uniqueIndex('organizations_slug_unique').on(table.slug),
     uniqueIndex('organizations_name_unique').on(table.name),
+    check('organizations_kind_check', sql`${table.kind} in ('rescue', 'ngo', 'partner', 'community')`),
+    check('organizations_is_verified_check', sql`${table.isVerified} in (0, 1)`),
   ],
 )
 
@@ -59,6 +62,7 @@ export const organizationMembers = sqliteTable(
   (table) => [
     primaryKey({ columns: [table.organizationId, table.userId] }),
     index('idx_organization_members_user').on(table.userId),
+    check('organization_members_role_check', sql`${table.role} in ('member', 'admin', 'listing_manager')`),
   ],
 )
 
@@ -75,6 +79,7 @@ export const tags = sqliteTable(
     uniqueIndex('tags_slug_unique').on(table.slug),
     uniqueIndex('tags_label_unique').on(table.label),
     index('idx_tags_species_scope').on(table.speciesScope),
+    check('tags_species_scope_check', sql`${table.speciesScope} in ('cat', 'bird', 'both')`),
   ],
 )
 
@@ -107,6 +112,14 @@ export const listings = sqliteTable(
     index('idx_listings_listed_by_user').on(table.listedByUserId, table.status, table.createdAt),
     index('idx_listings_organization').on(table.organizationId, table.status, table.createdAt),
     index('idx_listings_area_label').on(table.areaLabel),
+    check('listings_species_check', sql`${table.species} in ('cat', 'bird')`),
+    check('listings_sex_check', sql`${table.sex} in ('male', 'female', 'unknown')`),
+    check('listings_status_check', sql`${table.status} in ('pending', 'live', 'rejected', 'adopted')`),
+    check(
+      'listings_bird_species_check',
+      sql`(${table.species} = 'bird' and ${table.birdSpecies} in ('Budgerigar', 'Cockatiel', 'Lovebird', 'Finch', 'Canary')) or (${table.species} = 'cat' and ${table.birdSpecies} is null)`,
+    ),
+    check('listings_owner_check', sql`${table.organizationId} is not null or ${table.listedByUserId} is not null`),
   ],
 )
 
@@ -187,6 +200,14 @@ export const adoptionInquiries = sqliteTable(
     index('idx_adoption_inquiries_sender_created').on(table.senderUserId, table.createdAt),
     index('idx_adoption_inquiries_recipient_user_created').on(table.recipientUserId, table.createdAt),
     index('idx_adoption_inquiries_recipient_org_created').on(table.recipientOrganizationId, table.createdAt),
+    check(
+      'adoption_inquiries_status_check',
+      sql`${table.status} in ('awaiting_reply', 'replied', 'withdrawn', 'closed')`,
+    ),
+    check(
+      'adoption_inquiries_recipient_check',
+      sql`${table.recipientUserId} is not null or ${table.recipientOrganizationId} is not null`,
+    ),
   ],
 )
 
@@ -222,6 +243,16 @@ export const lostFoundReports = sqliteTable(
       table.createdAt,
     ),
     index('idx_lost_found_reports_status_created').on(table.status, table.createdAt),
+    check('lost_found_reports_report_kind_check', sql`${table.reportKind} in ('lost', 'found')`),
+    check('lost_found_reports_species_check', sql`${table.species} in ('cat', 'bird')`),
+    check(
+      'lost_found_reports_status_check',
+      sql`${table.status} in ('submitted', 'reviewing', 'resolved', 'closed')`,
+    ),
+    check(
+      'lost_found_reports_bird_species_check',
+      sql`(${table.species} = 'bird' and ${table.birdSpecies} in ('Budgerigar', 'Cockatiel', 'Lovebird', 'Finch', 'Canary')) or (${table.species} = 'cat' and ${table.birdSpecies} is null)`,
+    ),
   ],
 )
 
@@ -242,6 +273,7 @@ export const clinics = sqliteTable(
   (table) => [
     uniqueIndex('clinics_slug_unique').on(table.slug),
     uniqueIndex('clinics_name_unique').on(table.name),
+    check('clinics_is_active_check', sql`${table.isActive} in (0, 1)`),
   ],
 )
 
@@ -272,5 +304,11 @@ export const moderationEvents = sqliteTable(
     metadataJson: text('metadata_json'),
     createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
   },
-  (table) => [index('idx_moderation_events_listing_created').on(table.listingId, table.createdAt)],
+  (table) => [
+    index('idx_moderation_events_listing_created').on(table.listingId, table.createdAt),
+    check(
+      'moderation_events_action_check',
+      sql`${table.action} in ('submitted', 'approved', 'rejected', 'adopted', 'restored')`,
+    ),
+  ],
 )
