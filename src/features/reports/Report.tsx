@@ -1,12 +1,12 @@
 import { useRef } from 'react'
 
-import { colors } from '../theme'
-import { BIRD_SPECIES } from '../data/seed'
-import { isBirdSpecies } from '../server/contracts/api'
-import { MEDIA_UPLOAD_MAX_LABEL } from '../server/domain/media/media-upload-policy'
-import { useStore } from '../store/store'
-import { Screen } from '../layout/primitives'
-import { ButtonPair, CheckMedallion, FieldLabel, inputStyle } from '../components/primitives'
+import { colors } from '../../theme'
+import { BIRD_SPECIES } from '../../data/seed'
+import { isBirdSpecies } from '../../server/contracts/api'
+import { MEDIA_UPLOAD_MAX_LABEL } from '../../server/domain/media/media-upload-policy'
+import { useStore } from '../../store/store'
+import { Screen } from '../../layout/primitives'
+import { ButtonPair, CheckMedallion, FieldLabel, inputStyle } from '../../components/primitives'
 
 export function Report() {
   const { state, patchRep, useMyLocation, setReportPhoto, removeReportPhoto, submitReport, resetReport } = useStore()

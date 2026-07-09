@@ -4,7 +4,7 @@ import type { LostFoundReportRecord } from '../../../../../backend/contracts'
 import {
   createInMemoryAsyncLostFoundReportRepository,
   type AsyncLostFoundReportRepository,
-} from '../../../../../src/server/domain/reports/lost-found-report-repository'
+} from '../../../../../src/features/reports/lost-found-report-repository'
 import * as schema from '../../../../../src/server/infra/db/schema'
 import { createDrizzleLostFoundReportRepository } from '../../../../../src/server/infra/repositories/drizzle-lost-found-report-repository'
 import { useMiniflareD1 } from '../../../../helpers/miniflare-d1'

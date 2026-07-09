@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import type { drizzle } from 'drizzle-orm/d1'
 
 import type { LostFoundReportRecord } from '../../../../backend/contracts'
-import type { AsyncLostFoundReportRepository } from '../../domain/reports/lost-found-report-repository'
+import type { AsyncLostFoundReportRepository } from '../../../features/reports/lost-found-report-repository'
 import * as schema from '../db/schema'
 
 type PetBuddiesDb = ReturnType<typeof drizzle<typeof schema>>

@@ -1,4 +1,4 @@
-import { apiResultErr, isBirdSpecies, type ApiErrorCode, type BirdSpecies, type ReportKind, type Species } from '../../contracts/api'
+import { apiResultErr, isBirdSpecies, type ApiErrorCode, type BirdSpecies, type ReportKind, type Species } from '../../server/contracts/api'
 
 export type ReportRoutingResult =
   | { ok: true; value: { routedToOrganizationId: string } }

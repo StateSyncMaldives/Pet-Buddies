@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import type { drizzle } from 'drizzle-orm/d1'
 
 import type { AdoptionInquiryRecord } from '../../../../backend/contracts'
-import type { AsyncAdoptionInquiryRepository } from '../../domain/inquiries/adoption-inquiry-repository'
+import type { AsyncAdoptionInquiryRepository } from '../../../features/inquiries/adoption-inquiry-repository'
 import * as schema from '../db/schema'
 
 type PetBuddiesDb = ReturnType<typeof drizzle<typeof schema>>

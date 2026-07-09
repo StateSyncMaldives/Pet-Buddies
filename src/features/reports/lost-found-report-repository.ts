@@ -1,4 +1,4 @@
-import type { LostFoundReportRecord } from '../../../../backend/contracts'
+import type { LostFoundReportRecord } from '../../../backend/contracts'
 
 export interface AsyncLostFoundReportRepository {
   save(report: LostFoundReportRecord): Promise<LostFoundReportRecord>

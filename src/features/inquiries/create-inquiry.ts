@@ -1,6 +1,6 @@
-import type { AdoptionInquiryRecord } from '../../../../backend/contracts'
-import { apiResultErr, apiResultOk, type ApiResult, type CreateInquiryResponse } from '../../contracts/api'
-import type { ListingRepository } from '../listings/listing-repository'
+import type { AdoptionInquiryRecord } from '../../../backend/contracts'
+import { apiResultErr, apiResultOk, type ApiResult, type CreateInquiryResponse } from '../../server/contracts/api'
+import type { ListingRepository } from '../../server/domain/listings/listing-repository'
 
 export interface CreateInquiryUseCase {
   execute(input: { listingId: string; message: string; senderUserId: string }): ApiResult<CreateInquiryResponse>

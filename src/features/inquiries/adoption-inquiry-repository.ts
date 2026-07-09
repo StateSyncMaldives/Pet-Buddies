@@ -1,4 +1,4 @@
-import type { AdoptionInquiryRecord } from '../../../../backend/contracts'
+import type { AdoptionInquiryRecord } from '../../../backend/contracts'
 
 export interface AsyncAdoptionInquiryRepository {
   save(inquiry: AdoptionInquiryRecord): Promise<AdoptionInquiryRecord>

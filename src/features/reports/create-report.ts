@@ -1,12 +1,12 @@
-import type { LostFoundReportRecord } from '../../../../backend/contracts'
+import type { LostFoundReportRecord } from '../../../backend/contracts'
 import {
   apiResultErr,
   apiResultOk,
   type ApiResult,
   type CreateLostFoundReportRequest,
   type CreateLostFoundReportResponse,
-} from '../../contracts/api'
-import { isAdmissibleMediaObjectKey } from '../media/media-object-keys'
+} from '../../server/contracts/api'
+import { isAdmissibleMediaObjectKey } from '../../server/domain/media/media-object-keys'
 import { routeLostFoundReport } from './report-routing'
 
 export interface CreateReportUseCase {
