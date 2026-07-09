@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { serveMediaObject } from '../../../../../src/server/http/media/get-media-object'
+import { serveMediaObject } from '../../../../../src/server/infra/media/serve-media-object'
 import { JPEG_BYTES } from '../../../../helpers/media-fixtures'
 
 describe('serve media object', () => {
