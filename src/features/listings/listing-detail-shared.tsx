@@ -1,7 +1,7 @@
-import { colors, shadow } from '../theme'
-import type { Listing } from '../types'
-import { PersonIcon, PinIcon } from '../components/icons'
-import { VerifiedBadge } from '../components/Brand'
+import { colors, shadow } from '../../theme'
+import type { Listing } from '../../types'
+import { PersonIcon, PinIcon } from '../../components/icons'
+import { VerifiedBadge } from '../../components/Brand'
 
 /** Listing-detail content blocks shared by the phone overlay and the desktop
  * detail page, so the two presentations can never drift. */

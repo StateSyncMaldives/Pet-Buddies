@@ -4,7 +4,7 @@ import { createFileRoute, notFound } from '@tanstack/react-router'
 import { useStore } from '../store/store'
 import { useViewportMode } from '../layout/viewport-mode'
 import { mapListingDetailToListing } from '../store/view-model-mappers'
-import { ListingDetailSurface } from '../screens/ListingDetailSurface'
+import { ListingDetailSurface } from '../features/listings/ListingDetailSurface'
 import { validateBrowseSearch } from '../router/browse-search'
 
 export const Route = createFileRoute('/browse/listings/$listingId')({

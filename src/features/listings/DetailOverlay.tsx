@@ -1,10 +1,10 @@
 import { useNavigate } from '@tanstack/react-router'
-import { colors, z } from '../theme'
-import { detailMeta, useStore } from '../store/store'
-import { ChevronLeftIcon, HeartIcon, ShareIcon } from '../components/icons'
-import { PetPhoto } from '../components/Brand'
-import type { BrowseSearchUrl } from '../router/browse-search'
-import { getDetailPath, ROUTE_PATHS } from '../router/paths'
+import { colors, z } from '../../theme'
+import { detailMeta, useStore } from '../../store/store'
+import { ChevronLeftIcon, HeartIcon, ShareIcon } from '../../components/icons'
+import { PetPhoto } from '../../components/Brand'
+import type { BrowseSearchUrl } from '../../router/browse-search'
+import { getDetailPath, ROUTE_PATHS } from '../../router/paths'
 import {
   AdoptAction,
   ListingAreaNote,

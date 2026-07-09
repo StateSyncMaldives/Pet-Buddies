@@ -1,9 +1,9 @@
-import { colors, shadow, z } from '../theme'
-import { useStore } from '../store/store'
-import { useViewportMode } from '../layout/viewport-mode'
-import { PetThumb, CheckMedallion, InfoCircle } from '../components/primitives'
-import { OverlaySurface } from '../components/OverlaySurface'
-import { ChevronLeftIcon } from '../components/icons'
+import { colors, shadow, z } from '../../theme'
+import { useStore } from '../../store/store'
+import { useViewportMode } from '../../layout/viewport-mode'
+import { PetThumb, CheckMedallion, InfoCircle } from '../../components/primitives'
+import { OverlaySurface } from '../../components/OverlaySurface'
+import { ChevronLeftIcon } from '../../components/icons'
 
 export function ModOverlay() {
   const { state, listings, closeMod, approveListing, rejectListing } = useStore()

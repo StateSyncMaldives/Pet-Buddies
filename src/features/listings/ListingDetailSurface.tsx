@@ -1,11 +1,11 @@
 import { Link } from '@tanstack/react-router'
-import { ChevronLeftIcon, HeartIcon, ShareIcon } from '../components/icons'
-import { PetPhoto } from '../components/Brand'
-import type { BrowseSearchUrl } from '../router/browse-search'
-import { getDetailPath, ROUTE_PATHS } from '../router/paths'
-import { detailMeta, useStore } from '../store/store'
-import { colors } from '../theme'
-import type { Listing } from '../types'
+import { ChevronLeftIcon, HeartIcon, ShareIcon } from '../../components/icons'
+import { PetPhoto } from '../../components/Brand'
+import type { BrowseSearchUrl } from '../../router/browse-search'
+import { getDetailPath, ROUTE_PATHS } from '../../router/paths'
+import { detailMeta, useStore } from '../../store/store'
+import { colors } from '../../theme'
+import type { Listing } from '../../types'
 import {
   AdoptAction,
   ListingAreaNote,

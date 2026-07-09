@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { validateYouSearch } from '../router/you-search'
-import { Inbox } from '../screens/Inbox'
+import { Inbox } from '../features/profile/Inbox'
 
 export const Route = createFileRoute('/you')({
   validateSearch: validateYouSearch,

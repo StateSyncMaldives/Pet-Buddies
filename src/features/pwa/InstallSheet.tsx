@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { useRouterState } from '@tanstack/react-router'
-import { getTabFromPathname } from '../router/paths'
-import { colors, font, z } from '../theme'
-import { useStore } from '../store/store'
+import { getTabFromPathname } from '../../router/paths'
+import { colors, font, z } from '../../theme'
+import { useStore } from '../../store/store'
 
 /** Browser-fired install prompt event (not in the standard TS lib). */
 interface BeforeInstallPromptEvent extends Event {

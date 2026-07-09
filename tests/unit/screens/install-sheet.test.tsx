@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { InstallSheet } from '../../../src/screens/InstallSheet'
+import { InstallSheet } from '../../../src/features/pwa/InstallSheet'
 import { useStore } from '../../../src/store/store'
 import { useRouterState } from '@tanstack/react-router'
 

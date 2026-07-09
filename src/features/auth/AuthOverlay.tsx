@@ -1,8 +1,8 @@
-import { colors, shadow, z } from '../theme'
-import { useStore } from '../store/store'
-import { LogoMark } from '../components/Brand'
-import { OverlayHeader } from '../components/primitives'
-import { OverlaySurface } from '../components/OverlaySurface'
+import { colors, shadow, z } from '../../theme'
+import { useStore } from '../../store/store'
+import { LogoMark } from '../../components/Brand'
+import { OverlayHeader } from '../../components/primitives'
+import { OverlaySurface } from '../../components/OverlaySurface'
 
 export function AuthOverlay() {
   const { state, closeAuth, googleSignIn } = useStore()

@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { Saved } from '../screens/Saved'
+import { Saved } from '../features/saved/Saved'
 
 export const Route = createFileRoute('/saved')({
   loader: async ({ context }) => {

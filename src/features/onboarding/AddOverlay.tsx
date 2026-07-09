@@ -1,10 +1,10 @@
 import { useRef } from 'react'
 
-import { colors, z } from '../theme'
-import { useStore } from '../store/store'
-import { MAX_LISTING_IMAGES } from '../server/domain/listings/create-listing'
-import { MEDIA_UPLOAD_MAX_LABEL } from '../server/domain/media/media-upload-policy'
-import { BIRD_ADD_TAGS, BIRD_SPECIES, CAT_ADD_TAGS } from '../data/seed'
+import { colors, z } from '../../theme'
+import { useStore } from '../../store/store'
+import { MAX_LISTING_IMAGES } from '../../server/domain/listings/create-listing'
+import { MEDIA_UPLOAD_MAX_LABEL } from '../../server/domain/media/media-upload-policy'
+import { BIRD_ADD_TAGS, BIRD_SPECIES, CAT_ADD_TAGS } from '../../data/seed'
 import {
   ButtonPair,
   CheckMedallion,
@@ -14,8 +14,8 @@ import {
   WarnCircle,
   inputStyle,
   primaryBtn,
-} from '../components/primitives'
-import { OverlaySurface } from '../components/OverlaySurface'
+} from '../../components/primitives'
+import { OverlaySurface } from '../../components/OverlaySurface'
 
 export function AddOverlay() {
   const { state, closeAdd, signOut, patchAdd, toggleAddTag, addListingImages, removeListingImage, submitListing } = useStore()

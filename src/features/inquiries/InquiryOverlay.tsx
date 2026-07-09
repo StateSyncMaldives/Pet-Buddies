@@ -1,7 +1,7 @@
-import { colors, shadow, z } from '../theme'
-import { listMeta, orgLine, useStore } from '../store/store'
-import { OverlayHeader, PetThumb, InfoNote, FieldLabel } from '../components/primitives'
-import { OverlaySurface } from '../components/OverlaySurface'
+import { colors, shadow, z } from '../../theme'
+import { listMeta, orgLine, useStore } from '../../store/store'
+import { OverlayHeader, PetThumb, InfoNote, FieldLabel } from '../../components/primitives'
+import { OverlaySurface } from '../../components/OverlaySurface'
 
 export function InquiryOverlay() {
   const { state, listings, cancelInquiry, setInquiryMessage, sendInquiry } = useStore()

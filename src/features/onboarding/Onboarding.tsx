@@ -1,6 +1,6 @@
-import { colors, font, shadow, z } from '../theme'
-import { useStore } from '../store/store'
-import { LogoMark, Silhouette } from '../components/Brand'
+import { colors, font, shadow, z } from '../../theme'
+import { useStore } from '../../store/store'
+import { LogoMark, Silhouette } from '../../components/Brand'
 
 export function Onboarding() {
   const { state, obNext, obSkip } = useStore()
