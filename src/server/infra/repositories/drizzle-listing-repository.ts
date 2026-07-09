@@ -24,22 +24,17 @@ export function createDrizzleListingRepository(input: { db: PetBuddiesDb }): Asy
     species?: BrowseListingsQuery['species']
     viewerId?: string
   }): Promise<ListingAggregate[]> {
-    const listingRows = await db.select().from(schema.listings).all()
-    const filteredListings = listingRows.filter((listing) => {
-      if (input?.listingId && listing.id !== input.listingId) {
-        return false
-      }
+    // Push the primary access-pattern predicates (id / slug / species) into SQL
+    // so key lookups and species browse use the indexes instead of scanning
+    // every listing. See ADR 0008.
+    const conditions = []
+    if (input?.listingId) conditions.push(eq(schema.listings.id, input.listingId))
+    if (input?.slug) conditions.push(eq(schema.listings.slug, input.slug))
+    if (input?.species) conditions.push(eq(schema.listings.species, input.species))
 
-      if (input?.slug && listing.slug !== input.slug) {
-        return false
-      }
-
-      if (input?.species && listing.species !== input.species) {
-        return false
-      }
-
-      return true
-    })
+    const filteredListings = conditions.length
+      ? await db.select().from(schema.listings).where(and(...conditions)).all()
+      : await db.select().from(schema.listings).all()
 
     const aggregates: ListingAggregate[] = []
     const savedListingIds = input?.viewerId ? await getSavedListingIds(input.viewerId) : new Set<string>()
