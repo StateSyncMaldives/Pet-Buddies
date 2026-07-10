@@ -1,4 +1,4 @@
-import { describe, expect, expectTypeOf, it } from 'vitest'
+import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 
 import type {
   ApiResult,
@@ -9,19 +9,20 @@ import type {
   UpdateListingModerationResponse,
 } from '../../../../src/server/contracts/api'
 import { createRuntimeMutationAdapter, type AppMutationAdapter } from '../../../../src/server/mutations/mutation-adapter'
+import { createInMemoryAsyncBackend } from '../../../../src/server/runtime/app-backend'
 import { createPrototypeBackend } from '../../../../src/server/runtime/prototype-backend'
 import { JPEG_BYTES } from '../../../helpers/media-fixtures'
 
 describe('app mutation adapter', () => {
-  it('toggles a Saved listing through the injected runtime adapter', () => {
+  it('toggles a Saved listing through the injected runtime adapter', async () => {
     const backend = createPrototypeBackend()
     const mutations = createRuntimeMutationAdapter({
-      backend,
+      backend: createInMemoryAsyncBackend(backend),
       viewerId: 'viewer-test',
       moderatorId: 'moderator-test',
     })
 
-    const result = mutations.toggleSavedListing({ listingId: 'mishka' })
+    const result = await mutations.toggleSavedListing({ listingId: 'mishka' })
 
     expect(result).toEqual({
       ok: true,
@@ -35,14 +36,14 @@ describe('app mutation adapter', () => {
     expectTypeOf(mutations).toEqualTypeOf<AppMutationAdapter>()
   })
 
-  it('submits an Adoption inquiry through the injected runtime adapter', () => {
+  it('submits an Adoption inquiry through the injected runtime adapter', async () => {
     const mutations = createRuntimeMutationAdapter({
-      backend: createPrototypeBackend(),
+      backend: createInMemoryAsyncBackend(createPrototypeBackend()),
       viewerId: 'viewer-test',
       moderatorId: 'moderator-test',
     })
 
-    const result = mutations.createInquiry({
+    const result = await mutations.createInquiry({
       request: {
         listingId: 'mishka',
         message: 'Could we arrange a visit this weekend?',
@@ -59,15 +60,15 @@ describe('app mutation adapter', () => {
     expectTypeOf(result).toEqualTypeOf<ApiResult<CreateInquiryResponse>>()
   })
 
-  it('creates a Listing through the injected runtime adapter', () => {
+  it('creates a Listing through the injected runtime adapter', async () => {
     const backend = createPrototypeBackend()
     const mutations = createRuntimeMutationAdapter({
-      backend,
+      backend: createInMemoryAsyncBackend(backend),
       viewerId: 'viewer-test',
       moderatorId: 'moderator-test',
     })
 
-    const result = mutations.createListing({
+    const result = await mutations.createListing({
       actorUserId: 'viewer-test',
       request: {
         species: 'bird',
@@ -93,14 +94,58 @@ describe('app mutation adapter', () => {
     expectTypeOf(result).toEqualTypeOf<ApiResult<CreateListingResponse>>()
   })
 
-  it('submits a Lost/found report through the injected runtime adapter', () => {
+  it('owns created listings by the server viewer, ignoring the client-supplied display name', async () => {
+    const backend = createInMemoryAsyncBackend(createPrototypeBackend())
+    const spy = vi.spyOn(backend, 'createListing')
+    const mutations = createRuntimeMutationAdapter({ backend, viewerId: 'user-demo-viewer', moderatorId: 'moderator-test' })
+
+    await mutations.createListing({
+      actorUserId: 'Aishath Ali', // a display name — must never become the actor id
+      request: {
+        species: 'cat',
+        name: 'Nala',
+        ageText: '2 years',
+        sex: 'unknown',
+        areaLabel: 'Maafannu, Malé',
+        story: 'Gentle indoor cat.',
+        tagIds: [],
+        imageObjectKeys: [],
+      },
+    })
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 'user-demo-viewer' }))
+  })
+
+  it('preserves the anonymous signal (null actor stays null)', async () => {
+    const backend = createInMemoryAsyncBackend(createPrototypeBackend())
+    const spy = vi.spyOn(backend, 'createListing')
+    const mutations = createRuntimeMutationAdapter({ backend, viewerId: 'user-demo-viewer', moderatorId: 'moderator-test' })
+
+    await mutations.createListing({
+      actorUserId: null,
+      request: {
+        species: 'cat',
+        name: 'Nomad',
+        ageText: '1 year',
+        sex: 'unknown',
+        areaLabel: 'Malé',
+        story: 'Found stray.',
+        tagIds: [],
+        imageObjectKeys: [],
+      },
+    })
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: null }))
+  })
+
+  it('submits a Lost/found report through the injected runtime adapter', async () => {
     const mutations = createRuntimeMutationAdapter({
-      backend: createPrototypeBackend(),
+      backend: createInMemoryAsyncBackend(createPrototypeBackend()),
       viewerId: 'viewer-test',
       moderatorId: 'moderator-test',
     })
 
-    const result = mutations.createReport({
+    const result = await mutations.createReport({
       request: {
         reportKind: 'found',
         species: 'bird',
@@ -124,7 +169,7 @@ describe('app mutation adapter', () => {
 
   it('uploads media through the injected runtime adapter', async () => {
     const mutations = createRuntimeMutationAdapter({
-      backend: createPrototypeBackend(),
+      backend: createInMemoryAsyncBackend(createPrototypeBackend()),
       viewerId: 'viewer-test',
       moderatorId: 'moderator-test',
     })
@@ -143,14 +188,14 @@ describe('app mutation adapter', () => {
     }
   })
 
-  it('applies a Listing lifecycle action through the injected runtime adapter', () => {
+  it('applies a Listing lifecycle action through the injected runtime adapter', async () => {
     const mutations = createRuntimeMutationAdapter({
-      backend: createPrototypeBackend(),
+      backend: createInMemoryAsyncBackend(createPrototypeBackend()),
       viewerId: 'viewer-test',
       moderatorId: 'moderator-test',
     })
 
-    const result = mutations.updateListingLifecycle({
+    const result = await mutations.updateListingLifecycle({
       listingId: 'pending-simba',
       actorUserId: 'moderator-test',
       request: {

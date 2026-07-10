@@ -74,14 +74,24 @@ export function createInMemoryListingRepository(input: {
 
   return {
     browse(query) {
-      return listAll()
-        .filter((aggregate) => {
-          if (query.species && aggregate.listing.species !== query.species) {
+      // Browse means live listings of the species that carry every requested tag
+      // (AND-membership). Free-text search is layered on by the listing-service.
+      const tagSlugs = query.tagSlugs?.length ? [...new Set(query.tagSlugs)] : []
+      return listAll().filter((aggregate) => {
+        if (query.species && aggregate.listing.species !== query.species) {
+          return false
+        }
+        if (aggregate.listing.status !== 'live') {
+          return false
+        }
+        if (tagSlugs.length) {
+          const listingTagSlugs = new Set(aggregate.tags.map((tag) => tag.slug))
+          if (!tagSlugs.every((slug) => listingTagSlugs.has(slug))) {
             return false
           }
-
-          return true
-        })
+        }
+        return true
+      })
     },
     listAll,
     getById(id) {

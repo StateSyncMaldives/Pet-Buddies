@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { serveMediaObject } from '../server/http/media/get-media-object'
+import { serveMediaObject } from '../server/infra/media/serve-media-object'
 import { getWorkerEnv } from '../server/infra/cloudflare/worker-env'
 
 export const Route = createFileRoute('/media/$')({

@@ -5,9 +5,10 @@ import { createAppRouter } from '../../src/router'
 import { createAppRuntime } from '../../src/server/runtime/app-session'
 
 function testContext() {
-  const { backend, session } = createAppRuntime()
+  const { backend, mutations, session } = createAppRuntime()
   return {
     backend,
+    mutations,
     viewerId: session.viewerId,
     mockUser: session.mockUser,
     moderatorId: session.moderatorId,
@@ -171,7 +172,7 @@ describe('createAppRouter', () => {
 
   it('loads owned listings through the you route loader for the current viewer', async () => {
     const context = testContext()
-    const created = context.backend.createListing({
+    const created = await context.backend.createListing({
       actorUserId: context.viewerId,
       request: {
         species: 'cat',
@@ -217,7 +218,7 @@ describe('createAppRouter', () => {
 
   it('refreshes owned listing status after you route invalidation', async () => {
     const context = testContext()
-    const created = context.backend.createListing({
+    const created = await context.backend.createListing({
       actorUserId: context.viewerId,
       request: {
         species: 'cat',

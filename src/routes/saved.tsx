@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { Saved } from '../screens/Saved'
+import { Saved } from '../features/saved/Saved'
 
 export const Route = createFileRoute('/saved')({
   loader: async ({ context }) => {
-    const result = context.backend.listSavedListings({ viewerId: context.viewerId })
+    const result = await context.backend.listSavedListings({ viewerId: context.viewerId })
     if (!result.ok) {
       throw new Error(result.error.message)
     }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { routeLostFoundReport } from '../../../../../src/server/domain/reports/report-routing'
+import { routeLostFoundReport } from '../../../../../src/features/reports/report-routing'
 
 describe('report routing', () => {
   it('routes cat reports to the cat rescue organization', () => {

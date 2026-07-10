@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { createCreateReportUseCase } from '../../../../../src/server/domain/reports/create-report'
+import { createCreateReportUseCase } from '../../../../../src/features/reports/create-report'
 
 describe('create report', () => {
   it('returns the report transport shape with reference code and routed organization id', () => {

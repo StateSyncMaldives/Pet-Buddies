@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { Vets } from '../screens/Vets'
+import { Vets } from '../features/clinics/Vets'
 
 export const Route = createFileRoute('/vets')({
   loader: async ({ context }) => {
-    const result = context.backend.listClinics()
+    const result = await context.backend.listClinics()
     if (!result.ok) {
       throw new Error(result.error.message)
     }

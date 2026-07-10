@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { createSeedClinicRepository } from '../../../../../src/server/domain/clinics/clinic-repository'
-import { createClinicService } from '../../../../../src/server/domain/clinics/clinic-service'
+import { createSeedClinicRepository } from '../../../../../src/features/clinics/clinic-repository'
+import { createClinicService } from '../../../../../src/features/clinics/clinic-service'
 
 describe('clinic service', () => {
   it('maps the hardcoded seed clinics into the public response contract', () => {

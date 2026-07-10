@@ -17,18 +17,13 @@ export interface ListingService {
 export function createListingService(input: { repository: ListingRepository }): ListingService {
   return {
     browseListings(query) {
+      // Species, live-status, and tag-set membership are resolved by the
+      // repository's browse (in SQL for the durable adapter). The service layers
+      // the free-text search — its joined-haystack semantics (name, area, tag
+      // slugs and labels) have no strict SQL equivalent. See #10.
       const normalizedSearch = query.search?.trim().toLowerCase()
       const aggregates = input.repository
         .browse(query)
-        .filter((aggregate) => aggregate.listing.status === 'live')
-        .filter((aggregate) => {
-          if (!query.tagSlugs?.length) {
-            return true
-          }
-
-          const listingTagSlugs = new Set(aggregate.tags.map((tag) => tag.slug))
-          return query.tagSlugs.every((tagSlug) => listingTagSlugs.has(tagSlug))
-        })
         .filter((aggregate) => {
           if (!normalizedSearch) {
             return true

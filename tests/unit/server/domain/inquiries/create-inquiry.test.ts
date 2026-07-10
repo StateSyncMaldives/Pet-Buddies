@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { createCreateInquiryUseCase } from '../../../../../src/server/domain/inquiries/create-inquiry'
+import { createCreateInquiryUseCase } from '../../../../../src/features/inquiries/create-inquiry'
 import type { ListingAggregate } from '../../../../../src/server/domain/listings/listing-mapper'
 import { createInMemoryListingRepository } from '../../../../../src/server/domain/listings/listing-repository'
 

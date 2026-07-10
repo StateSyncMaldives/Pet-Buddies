@@ -1,12 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { validateYouSearch } from '../router/you-search'
-import { Inbox } from '../screens/Inbox'
+import { Inbox } from '../features/profile/Inbox'
 
 export const Route = createFileRoute('/you')({
   validateSearch: validateYouSearch,
   loader: async ({ context }) => {
-    const result = context.backend.getYouReadModel({ viewerId: context.viewerId })
+    const result = await context.backend.getYouReadModel({ viewerId: context.viewerId })
     if (!result.ok) {
       throw new Error(result.error.message)
     }

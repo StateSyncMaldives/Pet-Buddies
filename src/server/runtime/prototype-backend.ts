@@ -7,21 +7,29 @@ import type {
 } from '../../../backend/contracts'
 import type {
   BirdSpecies,
+  BrowseListingsResponse,
   ClinicSummary,
   CreateInquiryRequest,
+  CreateInquiryResponse,
   CreateListingRequest,
+  CreateListingResponse,
   CreateLostFoundReportRequest,
+  CreateLostFoundReportResponse,
   BrowseListingsQuery,
   ApiResult,
+  GetListingDetailResponse,
   GetYouReadModelResponse,
+  ListClinicsResponse,
   ListingDetail,
   ListSavedListingsResponse,
+  ToggleSavedListingResponse,
   UpdateListingModerationRequest,
+  UpdateListingModerationResponse,
 } from '../contracts/api'
 import { apiResultOk } from '../contracts/api'
-import { createSeedClinicRepository } from '../domain/clinics/clinic-repository'
-import { createClinicService } from '../domain/clinics/clinic-service'
-import { createCreateInquiryUseCase } from '../domain/inquiries/create-inquiry'
+import { createSeedClinicRepository } from '../../features/clinics/clinic-repository'
+import { createClinicService } from '../../features/clinics/clinic-service'
+import { createCreateInquiryUseCase } from '../../features/inquiries/create-inquiry'
 import { createCreateListingUseCase } from '../domain/listings/create-listing'
 import { createListingService } from '../domain/listings/listing-service'
 import type { ListingAggregate } from '../domain/listings/listing-mapper'
@@ -29,17 +37,9 @@ import { toListingDetail } from '../domain/listings/listing-mapper'
 import { createModerateListingUseCase } from '../domain/listings/moderate-listing'
 import { createInMemoryListingRepository } from '../domain/listings/listing-repository'
 import { createToggleSavedListingUseCase } from '../domain/listings/toggle-saved-listing'
-import { createCreateReportUseCase } from '../domain/reports/create-report'
+import { createCreateReportUseCase } from '../../features/reports/create-report'
 import { createUploadMediaUseCase, type UploadMediaResponse } from '../domain/media/upload-media'
 import type { ValidateMediaUploadInput } from '../domain/media/media-upload-policy'
-import { getClinics } from '../http/clinics/get-clinics'
-import { postInquiry } from '../http/inquiries/post-inquiry'
-import { getListingDetail } from '../http/listings/get-listing-detail'
-import { getListings } from '../http/listings/get-listings'
-import { postListing } from '../http/listings/post-listing'
-import { postSaveListing } from '../http/listings/post-save-listing'
-import { postListingAction } from '../http/moderation/post-listing-action'
-import { postReport } from '../http/reports/post-report'
 import { SEED_LISTINGS } from '../../data/seed'
 
 const SEEDED_AT = '2026-07-02T08:00:00.000Z'
@@ -82,20 +82,20 @@ export interface PrototypeBackendDeps {
 
 export interface PrototypeBackend {
   hydrateAppShell(input: { viewerId: string }): HydratedAppShell
-  listClinics(): ReturnType<typeof getClinics>
+  listClinics(): ApiResult<ListClinicsResponse>
   listSavedListings(input: { viewerId: string }): ApiResult<ListSavedListingsResponse>
   getYouReadModel(input: { viewerId: string }): ApiResult<GetYouReadModelResponse>
-  browseListings(input: { query: BrowseListingsQuery }): ReturnType<typeof getListings>
-  getListingDetail(input: { slugOrId: string }): ReturnType<typeof getListingDetail>
-  toggleSavedListing(input: { listingId: string; viewerId: string }): ReturnType<typeof postSaveListing>
-  createInquiry(input: { request: CreateInquiryRequest; viewerId: string }): ReturnType<typeof postInquiry>
-  createListing(input: { request: CreateListingRequest; actorUserId: string | null }): ReturnType<typeof postListing>
+  browseListings(input: { query: BrowseListingsQuery }): ApiResult<BrowseListingsResponse>
+  getListingDetail(input: { slugOrId: string }): ApiResult<GetListingDetailResponse>
+  toggleSavedListing(input: { listingId: string; viewerId: string }): ApiResult<ToggleSavedListingResponse>
+  createInquiry(input: { request: CreateInquiryRequest; viewerId: string }): ApiResult<CreateInquiryResponse>
+  createListing(input: { request: CreateListingRequest; actorUserId: string | null }): ApiResult<CreateListingResponse>
   moderateListing(input: {
     listingId: string
     actorUserId: string
     request: UpdateListingModerationRequest
-  }): ReturnType<typeof postListingAction>
-  createReport(input: { request: CreateLostFoundReportRequest }): ReturnType<typeof postReport>
+  }): ApiResult<UpdateListingModerationResponse>
+  createReport(input: { request: CreateLostFoundReportRequest }): ApiResult<CreateLostFoundReportResponse>
   uploadMedia(input: ValidateMediaUploadInput): Promise<ApiResult<UploadMediaResponse>>
   getMediaObject(objectKey: string): { bytes: Uint8Array; contentType: string | null } | null
   getOrganizationName(id: string): string | null
@@ -263,7 +263,7 @@ export function createPrototypeBackend(deps: PrototypeBackendDeps = {}): Prototy
   }
 
   function hydrateAppShell(input: { viewerId: string }): HydratedAppShell {
-    const clinicsResult = getClinics({ clinicService })
+    const clinicsResult = clinicService.listClinics()
     return {
       listings: listingRepository.listAll(input.viewerId).map((aggregate) => toListingDetail(aggregate)),
       clinics: clinicsResult.ok ? clinicsResult.data.items : [],
@@ -273,7 +273,7 @@ export function createPrototypeBackend(deps: PrototypeBackendDeps = {}): Prototy
   return {
     hydrateAppShell,
     listClinics() {
-      return getClinics({ clinicService })
+      return clinicService.listClinics()
     },
     listSavedListings(input) {
       return apiResultOk({
@@ -303,20 +303,24 @@ export function createPrototypeBackend(deps: PrototypeBackendDeps = {}): Prototy
       })
     },
     browseListings(input) {
-      return getListings({ query: input.query, listingService })
+      return listingService.browseListings(input.query)
     },
     getListingDetail(input) {
-      return getListingDetail({ params: input, listingService })
+      return listingService.getListingDetail({ slugOrId: input.slugOrId })
     },
     toggleSavedListing(input) {
-      return postSaveListing({ params: { listingId: input.listingId }, viewerId: input.viewerId, toggleSavedListing })
+      return toggleSavedListing.execute({ listingId: input.listingId, viewerId: input.viewerId })
     },
     createInquiry(input) {
-      return postInquiry({ request: input.request, viewerId: input.viewerId, createInquiry })
+      return createInquiry.execute({
+        listingId: input.request.listingId,
+        message: input.request.message,
+        senderUserId: input.viewerId,
+      })
     },
     createListing(input) {
       const organization = input.request.organizationId ? organizations.get(input.request.organizationId) ?? null : null
-      return postListing({
+      return createListing.execute({
         request: input.request,
         actorUserId: input.actorUserId,
         organization: organization
@@ -332,19 +336,17 @@ export function createPrototypeBackend(deps: PrototypeBackendDeps = {}): Prototy
         tags: input.request.tagIds
           .map((tagId) => tags.get(tagId))
           .filter((tag): tag is TagRecord => Boolean(tag)),
-        createListing,
       })
     },
     moderateListing(input) {
-      return postListingAction({
+      return moderateListing.execute({
         listingId: input.listingId,
         actorUserId: input.actorUserId,
         request: input.request,
-        moderateListing,
       })
     },
     createReport(input) {
-      return postReport({ request: input.request, createReport })
+      return createReport.execute(input.request)
     },
     uploadMedia(input) {
       return uploadMedia.execute(input)

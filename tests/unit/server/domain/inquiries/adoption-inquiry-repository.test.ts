@@ -5,7 +5,7 @@ import type { ListingAggregate } from '../../../../../src/server/domain/listings
 import {
   createInMemoryAsyncAdoptionInquiryRepository,
   type AsyncAdoptionInquiryRepository,
-} from '../../../../../src/server/domain/inquiries/adoption-inquiry-repository'
+} from '../../../../../src/features/inquiries/adoption-inquiry-repository'
 import * as schema from '../../../../../src/server/infra/db/schema'
 import { createDrizzleAdoptionInquiryRepository } from '../../../../../src/server/infra/repositories/drizzle-adoption-inquiry-repository'
 import { createDrizzleListingRepository } from '../../../../../src/server/infra/repositories/drizzle-listing-repository'

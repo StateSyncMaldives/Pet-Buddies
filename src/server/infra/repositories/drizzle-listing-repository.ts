@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import type { drizzle } from 'drizzle-orm/d1'
 
 import type {
@@ -23,63 +23,84 @@ export function createDrizzleListingRepository(input: { db: PetBuddiesDb }): Asy
     slug?: string
     species?: BrowseListingsQuery['species']
     viewerId?: string
+    /** Browse-only: restrict to live listings. */
+    onlyLive?: boolean
+    /** Browse-only: keep only listings carrying every one of these tag slugs (AND). */
+    tagSlugs?: string[]
   }): Promise<ListingAggregate[]> {
-    const listingRows = await db.select().from(schema.listings).all()
-    const filteredListings = listingRows.filter((listing) => {
-      if (input?.listingId && listing.id !== input.listingId) {
-        return false
-      }
+    // Push the primary access-pattern predicates (id / slug / species / status)
+    // and tag-set membership into SQL so key lookups and browse use the indexes
+    // instead of scanning every listing. See ADR 0008.
+    const conditions = []
+    if (input?.listingId) conditions.push(eq(schema.listings.id, input.listingId))
+    if (input?.slug) conditions.push(eq(schema.listings.slug, input.slug))
+    if (input?.species) conditions.push(eq(schema.listings.species, input.species))
+    if (input?.onlyLive) conditions.push(eq(schema.listings.status, 'live'))
 
-      if (input?.slug && listing.slug !== input.slug) {
-        return false
-      }
-
-      if (input?.species && listing.species !== input.species) {
-        return false
-      }
-
-      return true
-    })
-
-    const aggregates: ListingAggregate[] = []
-    const savedListingIds = input?.viewerId ? await getSavedListingIds(input.viewerId) : new Set<string>()
-
-    for (const listing of filteredListings) {
-      const [imageRows, tagRows, organizationRows, userRows] = await Promise.all([
-        db
-          .select()
-          .from(schema.listingImages)
-          .where(eq(schema.listingImages.listingId, listing.id))
-          .all(),
-        db
-          .select({
-            id: schema.tags.id,
-            slug: schema.tags.slug,
-            label: schema.tags.label,
-            speciesScope: schema.tags.speciesScope,
-            createdAt: schema.tags.createdAt,
-          })
-          .from(schema.listingTagAssignments)
-          .innerJoin(schema.tags, eq(schema.listingTagAssignments.tagId, schema.tags.id))
-          .where(eq(schema.listingTagAssignments.listingId, listing.id))
-          .all(),
-        listing.organizationId
-          ? db.select().from(schema.organizations).where(eq(schema.organizations.id, listing.organizationId)).all()
-          : Promise.resolve([]),
-        listing.listedByUserId ? db.select().from(schema.users).where(eq(schema.users.id, listing.listedByUserId)).all() : Promise.resolve([]),
-      ])
-
-      aggregates.push({
-        listing: toListingRecord(listing),
-        images: imageRows.map(toListingImageRecord).sort((left, right) => left.sortOrder - right.sortOrder),
-        tags: tagRows.map(toTagRecord),
-        organization: organizationRows[0] ? toOrganizationRecord(organizationRows[0]) : null,
-        listedByUser: userRows[0] ? toUserRecord(userRows[0]) : null,
-        savedByViewer: savedListingIds.has(listing.id),
-      })
+    const tagSlugs = input?.tagSlugs?.length ? [...new Set(input.tagSlugs)] : []
+    if (tagSlugs.length) {
+      // Relational division: a listing qualifies only when it is assigned all of
+      // the requested tag slugs. Counting distinct matched slugs === the request
+      // size enforces AND-membership in a single indexed subquery.
+      const listingsWithAllTags = db
+        .select({ listingId: schema.listingTagAssignments.listingId })
+        .from(schema.listingTagAssignments)
+        .innerJoin(schema.tags, eq(schema.listingTagAssignments.tagId, schema.tags.id))
+        .where(inArray(schema.tags.slug, tagSlugs))
+        .groupBy(schema.listingTagAssignments.listingId)
+        .having(sql`count(distinct ${schema.tags.slug}) = ${tagSlugs.length}`)
+      conditions.push(inArray(schema.listings.id, listingsWithAllTags))
     }
 
-    return aggregates
+    const filteredListings = conditions.length
+      ? await db.select().from(schema.listings).where(and(...conditions)).all()
+      : await db.select().from(schema.listings).all()
+
+    if (filteredListings.length === 0) return []
+
+    // Batch-load every related row for the whole result set in a fixed number of
+    // queries (instead of four per listing) and assemble in memory. See #9.
+    const listingIds = filteredListings.map((listing) => listing.id)
+    const organizationIds = [...new Set(filteredListings.map((l) => l.organizationId).filter((id): id is string => !!id))]
+    const userIds = [...new Set(filteredListings.map((l) => l.listedByUserId).filter((id): id is string => !!id))]
+
+    const [imageRows, tagRows, organizationRows, userRows, savedListingIds] = await Promise.all([
+      db.select().from(schema.listingImages).where(inArray(schema.listingImages.listingId, listingIds)).all(),
+      db
+        .select({
+          listingId: schema.listingTagAssignments.listingId,
+          id: schema.tags.id,
+          slug: schema.tags.slug,
+          label: schema.tags.label,
+          speciesScope: schema.tags.speciesScope,
+          createdAt: schema.tags.createdAt,
+        })
+        .from(schema.listingTagAssignments)
+        .innerJoin(schema.tags, eq(schema.listingTagAssignments.tagId, schema.tags.id))
+        .where(inArray(schema.listingTagAssignments.listingId, listingIds))
+        .all(),
+      organizationIds.length
+        ? db.select().from(schema.organizations).where(inArray(schema.organizations.id, organizationIds)).all()
+        : Promise.resolve([]),
+      userIds.length ? db.select().from(schema.users).where(inArray(schema.users.id, userIds)).all() : Promise.resolve([]),
+      input?.viewerId ? getSavedListingIds(input.viewerId) : Promise.resolve(new Set<string>()),
+    ])
+
+    const imagesByListing = groupBy(imageRows, (row) => row.listingId)
+    const tagsByListing = groupBy(tagRows, (row) => row.listingId)
+    const organizationById = new Map(organizationRows.map((row) => [row.id, row]))
+    const userById = new Map(userRows.map((row) => [row.id, row]))
+
+    return filteredListings.map((listing) => ({
+      listing: toListingRecord(listing),
+      images: (imagesByListing.get(listing.id) ?? [])
+        .map(toListingImageRecord)
+        .sort((left, right) => left.sortOrder - right.sortOrder),
+      tags: (tagsByListing.get(listing.id) ?? []).map(toTagRecord),
+      organization: listing.organizationId ? toOrganizationRecordOrNull(organizationById.get(listing.organizationId)) : null,
+      listedByUser: listing.listedByUserId ? toUserRecordOrNull(userById.get(listing.listedByUserId)) : null,
+      savedByViewer: savedListingIds.has(listing.id),
+    }))
   }
 
   async function getSavedListingIds(viewerId: string): Promise<Set<string>> {
@@ -89,13 +110,14 @@ export function createDrizzleListingRepository(input: { db: PetBuddiesDb }): Asy
 
   async function upsertAggregateDependencies(aggregate: ListingAggregate): Promise<void> {
     if (aggregate.listedByUser) {
+      // A listing write must never overwrite an existing user's profile — the
+      // create use-case fabricates a synthetic owner record from the actor id,
+      // so upsert-overwriting would clobber the durably-seeded viewer. Insert
+      // only when the user is new.
       await db
         .insert(schema.users)
         .values(toUserInsert(aggregate.listedByUser))
-        .onConflictDoUpdate({
-          target: schema.users.id,
-          set: toUserInsert(aggregate.listedByUser),
-        })
+        .onConflictDoNothing({ target: schema.users.id })
         .run()
     }
 
@@ -154,13 +176,21 @@ export function createDrizzleListingRepository(input: { db: PetBuddiesDb }): Asy
         .run()
     }
 
+    // Read back the persisted aggregate so the return reflects true D1 state,
+    // not the input: a create fabricates a synthetic owner record, but the user
+    // upsert is onConflictDoNothing, so the row that survives is the existing
+    // (seeded) profile. Returning the input here would report the wrong owner.
     const saved = await loadAggregates({ listingId: aggregate.listing.id })
     return saved[0] ?? aggregate
   }
 
   return {
     browse(query) {
-      return loadAggregates({ species: query.species })
+      // Species, live-status, and tag-set membership are resolved in SQL; the
+      // listing-service still applies the free-text search over this narrowed
+      // set (its joined-haystack semantics, incl. tag labels, have no strict
+      // SQL equivalent, so keeping it in-service preserves exact parity). See #10.
+      return loadAggregates({ species: query.species, onlyLive: true, tagSlugs: query.tagSlugs })
     },
     listAll(viewerId) {
       return loadAggregates({ viewerId })
@@ -206,6 +236,67 @@ export function createDrizzleListingRepository(input: { db: PetBuddiesDb }): Asy
       return true
     },
   }
+}
+
+/**
+ * Bulk-inserts seed aggregates in a single D1 batch, skipping rows that already
+ * exist (idempotent) and never reading anything back — much cheaper than
+ * calling create() per aggregate, which re-scans on every write. Insert order
+ * satisfies the foreign keys: owners/organizations and tags precede listings,
+ * and listings precede their images and tag assignments.
+ */
+export async function seedListingAggregates(db: PetBuddiesDb, aggregates: ListingAggregate[]): Promise<void> {
+  const users = new Map<string, ReturnType<typeof toUserInsert>>()
+  const organizations = new Map<string, ReturnType<typeof toOrganizationInsert>>()
+  const tags = new Map<string, ReturnType<typeof toTagInsert>>()
+
+  for (const aggregate of aggregates) {
+    if (aggregate.listedByUser) users.set(aggregate.listedByUser.id, toUserInsert(aggregate.listedByUser))
+    if (aggregate.organization) organizations.set(aggregate.organization.id, toOrganizationInsert(aggregate.organization))
+    for (const tag of aggregate.tags) tags.set(tag.id, toTagInsert(tag))
+  }
+
+  const statements = [
+    ...Array.from(users.values()).map((user) => db.insert(schema.users).values(user).onConflictDoNothing()),
+    ...Array.from(organizations.values()).map((org) => db.insert(schema.organizations).values(org).onConflictDoNothing()),
+    ...Array.from(tags.values()).map((tag) => db.insert(schema.tags).values(tag).onConflictDoNothing()),
+    ...aggregates.map((aggregate) => db.insert(schema.listings).values(toListingInsert(aggregate.listing)).onConflictDoNothing()),
+    ...aggregates.flatMap((aggregate) =>
+      aggregate.images.map((image) => db.insert(schema.listingImages).values(toListingImageInsert(image)).onConflictDoNothing()),
+    ),
+    ...aggregates.flatMap((aggregate) =>
+      aggregate.tags.map((tag) =>
+        db
+          .insert(schema.listingTagAssignments)
+          .values({ listingId: aggregate.listing.id, tagId: tag.id, createdAt: tag.createdAt })
+          .onConflictDoNothing(),
+      ),
+    ),
+  ]
+
+  if (statements.length === 0) return
+  await db.batch(statements as unknown as Parameters<typeof db.batch>[0])
+}
+
+function groupBy<T, K>(items: T[], key: (item: T) => K): Map<K, T[]> {
+  const map = new Map<K, T[]>()
+  for (const item of items) {
+    const k = key(item)
+    const bucket = map.get(k)
+    if (bucket) bucket.push(item)
+    else map.set(k, [item])
+  }
+  return map
+}
+
+function toOrganizationRecordOrNull(
+  row: typeof schema.organizations.$inferSelect | undefined,
+): OrganizationRecord | null {
+  return row ? toOrganizationRecord(row) : null
+}
+
+function toUserRecordOrNull(row: typeof schema.users.$inferSelect | undefined): UserRecord | null {
+  return row ? toUserRecord(row) : null
 }
 
 function toListingRecord(row: typeof schema.listings.$inferSelect): ListingRecord {

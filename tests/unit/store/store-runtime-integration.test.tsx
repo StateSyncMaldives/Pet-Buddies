@@ -1,11 +1,12 @@
-import { act, cleanup, renderHook } from '@testing-library/react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { apiResultOk } from '../../../src/server/contracts/api'
 import { MAX_LISTING_IMAGES } from '../../../src/server/domain/listings/create-listing'
-import type { AppMutationAdapter } from '../../../src/server/mutations/mutation-adapter'
-import { createPrototypeBackend } from '../../../src/server/runtime/prototype-backend'
+import { createRuntimeMutationAdapter, type AppMutationAdapter } from '../../../src/server/mutations/mutation-adapter'
+import { createInMemoryAsyncBackend } from '../../../src/server/runtime/app-backend'
+import { createPrototypeBackend, type PrototypeBackend } from '../../../src/server/runtime/prototype-backend'
 import { StoreProvider, useStore, type StoreProviderProps } from '../../../src/store/store'
 import type { User } from '../../../src/types'
 import { jpegFile } from '../../helpers/media-fixtures'
@@ -27,15 +28,23 @@ function createMutationAdapter(overrides: Partial<AppMutationAdapter> = {}): App
   }
 }
 
-function createWrapper(props: Partial<StoreProviderProps> = {}) {
+function createWrapper(props: Partial<StoreProviderProps> & { backend?: PrototypeBackend } = {}) {
   const backend = props.backend ?? createPrototypeBackend()
   const viewerId = props.viewerId ?? 'viewer-test'
   const mockUser = props.mockUser ?? TEST_USER
   const moderatorId = props.moderatorId ?? 'moderator-test'
+  const mutations =
+    props.mutations ?? createRuntimeMutationAdapter({ backend: createInMemoryAsyncBackend(backend), viewerId, moderatorId })
 
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <StoreProvider backend={backend} viewerId={viewerId} mockUser={mockUser} moderatorId={moderatorId} mutations={props.mutations}>
+      <StoreProvider
+        viewerId={viewerId}
+        mockUser={mockUser}
+        moderatorId={moderatorId}
+        mutations={mutations}
+        hydrate={props.hydrate}
+      >
         {children}
       </StoreProvider>
     )
@@ -48,8 +57,8 @@ afterEach(() => {
 })
 
 describe('StoreProvider runtime integration', () => {
-  it('uses the injected mutation adapter for Saved listing changes', () => {
-    const toggleSavedListing = vi.fn<AppMutationAdapter['toggleSavedListing']>().mockReturnValue(apiResultOk({ listingId: 'mishka', saved: true }))
+  it('uses the injected mutation adapter for Saved listing changes', async () => {
+    const toggleSavedListing = vi.fn<AppMutationAdapter['toggleSavedListing']>().mockResolvedValue(apiResultOk({ listingId: 'mishka', saved: true }))
     const mutations: AppMutationAdapter = {
       toggleSavedListing,
       createInquiry: vi.fn<AppMutationAdapter['createInquiry']>(),
@@ -68,7 +77,21 @@ describe('StoreProvider runtime integration', () => {
     expect(result.current.state.saved).toContain('mishka')
   })
 
-  it('keeps save state isolated per injected backend session', () => {
+  it('reconciles seed-hydrated listings and saved against the durable app-shell read', async () => {
+    const seedShell = createPrototypeBackend().hydrateAppShell({ viewerId: 'viewer-test' })
+    const durableListing = { ...seedShell.listings[0], name: 'Durable Mishka', savedByViewer: true }
+    const hydrate = vi.fn().mockResolvedValue({ listings: [durableListing], clinics: [] })
+
+    const { result } = renderHook(() => useStore(), { wrapper: createWrapper({ hydrate }) })
+
+    await waitFor(() => {
+      expect(result.current.listings.some((listing) => listing.name === 'Durable Mishka')).toBe(true)
+    })
+    expect(hydrate).toHaveBeenCalledWith('viewer-test')
+    expect(result.current.state.saved).toContain(durableListing.id)
+  })
+
+  it('keeps save state isolated per injected backend session', async () => {
     const firstWrapper = createWrapper({ backend: createPrototypeBackend(), viewerId: 'viewer-a' })
     const secondWrapper = createWrapper({ backend: createPrototypeBackend(), viewerId: 'viewer-b' })
 
@@ -83,7 +106,7 @@ describe('StoreProvider runtime integration', () => {
     expect(secondStore.result.current.state.saved).not.toContain('mishka')
   })
 
-  it('creates a pending listing through the injected backend facade', () => {
+  it('creates a pending listing through the injected backend facade', async () => {
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
 
     act(() => {
@@ -102,8 +125,8 @@ describe('StoreProvider runtime integration', () => {
       })
     })
 
-    act(() => {
-      result.current.submitListing()
+    await act(async () => {
+      await result.current.submitListing()
     })
 
     expect(result.current.state.addDone).toBe(true)
@@ -116,7 +139,7 @@ describe('StoreProvider runtime integration', () => {
     })
   })
 
-  it('creates inquiries through the injected backend facade after sign-in', () => {
+  it('creates inquiries through the injected backend facade after sign-in', async () => {
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
 
     act(() => {
@@ -131,8 +154,8 @@ describe('StoreProvider runtime integration', () => {
       result.current.setInquiryMessage('Could we arrange a visit this weekend?')
     })
 
-    act(() => {
-      result.current.sendInquiry()
+    await act(async () => {
+      await result.current.sendInquiry()
     })
 
     expect(result.current.state.applied).toContain('mishka')
@@ -145,7 +168,7 @@ describe('StoreProvider runtime integration', () => {
     })
   })
 
-  it('returns backend-generated report receipts through the store flow', () => {
+  it('returns backend-generated report receipts through the store flow', async () => {
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
 
     act(() => {
@@ -158,8 +181,8 @@ describe('StoreProvider runtime integration', () => {
       })
     })
 
-    act(() => {
-      result.current.submitReport()
+    await act(async () => {
+      await result.current.submitReport()
     })
 
     expect(result.current.state.reportDone).toBe(true)
@@ -167,12 +190,12 @@ describe('StoreProvider runtime integration', () => {
     expect(result.current.state.reportReceipt?.referenceCode).toMatch(/^MV\d+$/)
   })
 
-  it('requires report location and description instead of submitting prototype defaults', () => {
+  it('requires report location and description instead of submitting prototype defaults', async () => {
     const createReport = vi.fn<AppMutationAdapter['createReport']>()
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper({ mutations: createMutationAdapter({ createReport }) }) })
 
-    act(() => {
-      result.current.submitReport()
+    await act(async () => {
+      await result.current.submitReport()
     })
 
     expect(createReport).not.toHaveBeenCalled()
@@ -182,15 +205,15 @@ describe('StoreProvider runtime integration', () => {
     act(() => {
       result.current.patchRep({ area: 'Maafannu, Male' })
     })
-    act(() => {
-      result.current.submitReport()
+    await act(async () => {
+      await result.current.submitReport()
     })
 
     expect(createReport).not.toHaveBeenCalled()
     expect(result.current.state.toast).toBe('Add identifying details')
   })
 
-  it('requires an explicit bird species for bird reports', () => {
+  it('requires an explicit bird species for bird reports', async () => {
     const createReport = vi.fn<AppMutationAdapter['createReport']>()
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper({ mutations: createMutationAdapter({ createReport }) }) })
 
@@ -202,21 +225,21 @@ describe('StoreProvider runtime integration', () => {
         desc: 'Found a tame bird near the harbour.',
       })
     })
-    act(() => {
-      result.current.submitReport()
+    await act(async () => {
+      await result.current.submitReport()
     })
 
     expect(createReport).not.toHaveBeenCalled()
     expect(result.current.state.toast).toBe('Choose the bird species')
   })
 
-  it('submits the selected bird species with bird reports', () => {
-    const createReport = vi.fn<AppMutationAdapter['createReport']>().mockReturnValue(
+  it('submits the selected bird species with bird reports', async () => {
+    const createReport = vi.fn<AppMutationAdapter['createReport']>().mockResolvedValue(
       apiResultOk({
         report: {
           id: 'report-test',
           referenceCode: 'MV1001',
-          routedToOrganizationId: 'zoophilist-society-maldives',
+          routedToOrganizationId: 'org-bird-rescue',
           status: 'submitted',
           createdAt: '2026-07-06T00:00:00.000Z',
         },
@@ -233,8 +256,8 @@ describe('StoreProvider runtime integration', () => {
         desc: 'Found a tame cockatiel near the harbour.',
       })
     })
-    act(() => {
-      result.current.submitReport()
+    await act(async () => {
+      await result.current.submitReport()
     })
 
     expect(createReport).toHaveBeenCalledWith({
@@ -248,15 +271,15 @@ describe('StoreProvider runtime integration', () => {
     expect(result.current.state.reportDone).toBe(true)
   })
 
-  it('requires listing age and location instead of submitting prototype defaults', () => {
+  it('requires listing age and location instead of submitting prototype defaults', async () => {
     const createListing = vi.fn<AppMutationAdapter['createListing']>()
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper({ mutations: createMutationAdapter({ createListing }) }) })
 
     act(() => {
       result.current.patchAdd({ name: 'Sunny' })
     })
-    act(() => {
-      result.current.submitListing()
+    await act(async () => {
+      await result.current.submitListing()
     })
 
     expect(createListing).not.toHaveBeenCalled()
@@ -265,15 +288,15 @@ describe('StoreProvider runtime integration', () => {
     act(() => {
       result.current.patchAdd({ age: '10 months' })
     })
-    act(() => {
-      result.current.submitListing()
+    await act(async () => {
+      await result.current.submitListing()
     })
 
     expect(createListing).not.toHaveBeenCalled()
     expect(result.current.state.toast).toBe('Add a location')
   })
 
-  it('persists add-listing and report drafts across store remounts without media drafts', () => {
+  it('persists add-listing and report drafts across store remounts without media drafts', async () => {
     const first = renderHook(() => useStore(), { wrapper: createWrapper() })
 
     act(() => {
@@ -338,8 +361,8 @@ describe('StoreProvider runtime integration', () => {
       result.current.patchAdd({ name: 'Sunny', age: '10 months', area: 'Maafannu, Male' })
     })
 
-    act(() => {
-      result.current.submitListing()
+    await act(async () => {
+      await result.current.submitListing()
     })
 
     expect(result.current.state.addDone).toBe(true)
@@ -378,8 +401,8 @@ describe('StoreProvider runtime integration', () => {
       void result.current.addListingImages([jpegFile()])
     })
 
-    act(() => {
-      result.current.submitListing()
+    await act(async () => {
+      await result.current.submitListing()
     })
 
     expect(createListing).not.toHaveBeenCalled()
@@ -406,8 +429,8 @@ describe('StoreProvider runtime integration', () => {
       })
     })
 
-    act(() => {
-      result.current.submitReport()
+    await act(async () => {
+      await result.current.submitReport()
     })
 
     expect(result.current.state.reportDone).toBe(true)
@@ -458,31 +481,31 @@ describe('StoreProvider runtime integration', () => {
     expect(result.current.state.add.images).toEqual([])
   })
 
-  it('approves then marks a pending listing adopted through the real backend', () => {
+  it('approves then marks a pending listing adopted through the real backend', async () => {
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
 
     expect(result.current.listings.find((listing) => listing.id === 'pending-simba')?.status).toBe('pending')
 
-    act(() => {
-      result.current.approveListing('pending-simba')
+    await act(async () => {
+      await result.current.approveListing('pending-simba')
     })
 
     expect(result.current.listings.find((listing) => listing.id === 'pending-simba')?.status).toBe('live')
     expect(result.current.state.toast).toBe('Simba is now live')
 
-    act(() => {
-      result.current.markAdopted('pending-simba')
+    await act(async () => {
+      await result.current.markAdopted('pending-simba')
     })
 
     expect(result.current.listings.find((listing) => listing.id === 'pending-simba')?.status).toBe('adopted')
     expect(result.current.state.toast).toBe('Simba marked as adopted')
   })
 
-  it('rejects a pending listing through the real backend', () => {
+  it('rejects a pending listing through the real backend', async () => {
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
 
-    act(() => {
-      result.current.rejectListing('pending-simba')
+    await act(async () => {
+      await result.current.rejectListing('pending-simba')
     })
 
     expect(result.current.state.toast).toBe('Simba rejected')
@@ -494,8 +517,8 @@ describe('StoreProvider runtime integration', () => {
 
     // The backend really did transition: a rejected listing can no longer be
     // approved, so the moderation error surfaces as the toast.
-    act(() => {
-      result.current.approveListing('pending-simba')
+    await act(async () => {
+      await result.current.approveListing('pending-simba')
     })
 
     expect(result.current.state.toast).toBe('Only pending listings can be approved or rejected.')

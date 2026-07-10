@@ -3,18 +3,22 @@
   "name": "pet-buddies-mv",
   "compatibility_date": "2026-07-03",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
+  "main": "src/worker.ts",
   "routes": [
     {
       "pattern": "pet-buddies.dev.statesync.mv",
       "custom_domain": true
     }
   ],
+  "triggers": {
+    "crons": ["0 3 * * *"]
+  },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "pet-buddies-mv-db",
-      "database_id": "5a134b5b-1631-4f98-aec2-0774217b9d53"
+      "database_id": "5a134b5b-1631-4f98-aec2-0774217b9d53",
+      "migrations_dir": "drizzle"
     }
   ],
   "r2_buckets": [
