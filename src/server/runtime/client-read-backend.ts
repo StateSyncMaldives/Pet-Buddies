@@ -1,5 +1,4 @@
 import {
-  apiResultErr,
   apiResultOk,
   type BrowseListingsResponse,
   type GetListingDetailResponse,
@@ -60,7 +59,10 @@ export function createServerFnReadBackend(reads: ServerFnReads): AsyncAppBackend
       try {
         return apiResultOk(await reads.fetchListingDetail({ data: input.slugOrId }))
       } catch {
-        return apiResultErr('NOT_FOUND', 'Listing not found.')
+        // Unreachable server function → fall back to the in-memory backend like
+        // the other reads, so a network blip degrades gracefully instead of
+        // surfacing a spurious 404.
+        return fallback.getListingDetail(input)
       }
     },
     async listSavedListings(input) {

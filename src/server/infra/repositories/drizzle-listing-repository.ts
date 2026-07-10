@@ -176,6 +176,10 @@ export function createDrizzleListingRepository(input: { db: PetBuddiesDb }): Asy
         .run()
     }
 
+    // Read back the persisted aggregate so the return reflects true D1 state,
+    // not the input: a create fabricates a synthetic owner record, but the user
+    // upsert is onConflictDoNothing, so the row that survives is the existing
+    // (seeded) profile. Returning the input here would report the wrong owner.
     const saved = await loadAggregates({ listingId: aggregate.listing.id })
     return saved[0] ?? aggregate
   }

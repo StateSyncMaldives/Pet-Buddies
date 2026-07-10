@@ -28,3 +28,13 @@ Mutations (saved listings, adoption inquiries, published listings, moderation ev
 - Reads and writes share one async backend abstraction; the client never touches D1 directly.
 - Primary read access patterns (key lookups, browse by status + species) push into SQL using existing indexes; tag-set and free-text search filtering stay in application code for now, with a noted follow-up.
 - Constraint integrity: the raw `backend/sql` schema is the canonical source of truth (migrations are not generated from the Drizzle schema); `updated_at` is domain-owned via the injected clock; R2 blobs are garbage-collected when their listing/report rows are deleted; owner `ON DELETE` semantics are a documented known limitation (no owner-deletion path exists in the demo).
+
+## Update (2026-07-10)
+
+Follow-up work changed several of the decisions above; recorded here rather than rewriting the original text:
+
+- **Schema source of truth flipped to Drizzle.** `src/server/infra/db/schema.ts` (with `check()` constraint parity) is now canonical; migrations are generated from it via drizzle-kit into `drizzle/` and applied with `wrangler d1 migrations apply`. This supersedes the "raw `backend/sql` is canonical" clause in Consequences.
+- **Tag-set filtering pushed into SQL** (relational-division subquery), alongside status and species; free-text search still runs in the listing-service because its joined-haystack semantics have no strict SQL equivalent (preserves exact parity). Repository `browse` now means "live listings of the species carrying every requested tag."
+- **R2 GC is a scheduled orphan sweep**, not only reclamation on row deletion: a daily cron (`triggers.crons`) runs `runMediaGarbageCollection`, which deletes managed blobs no durable row references and older than a grace window.
+- **The async backend is an explicit `AsyncAppBackend` port** (the reads/writes actually consumed), no longer derived from the full in-memory `PrototypeBackend` surface.
+- **Actor identity is server-owned.** The mutation adapter substitutes the server-resolved viewer id for the actor on create; the client-supplied display name is never persisted as an identity (reinforces decision 5).

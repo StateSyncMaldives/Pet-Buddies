@@ -32,11 +32,11 @@ const generateReferenceCode = () => `MV${Math.floor(1000 + Math.random() * 9000)
 
 /**
  * The durable (D1-backed) application backend. Reads run against D1; writes
- * reuse the (synchronous) domain use-cases against a scratch in-memory
- * repository seeded with the current listing, capture the resulting records via
- * the use-cases' save callbacks, and persist them to D1 through the async
- * repositories. Media (getMediaObject/uploadMedia) and lookups delegate to the
- * in-memory `fallback`. See ADR 0008.
+ * reuse the (synchronous) domain use-cases against a lightweight capture
+ * repository (reads resolve the single row already fetched from D1, writes are
+ * captured by reference — no scratch store, no read-back), then persist the
+ * captured records to D1 through the async repositories. uploadMedia and other
+ * unused methods delegate to the in-memory `fallback`. See ADR 0008 / #6.
  */
 export function createDurableBackend(input: { database: PetBuddiesDb; fallback: AsyncAppBackend }): AsyncAppBackend {
   const listingRepository = createDrizzleListingRepository({ db: input.database })
