@@ -68,7 +68,14 @@ export function createRuntimeMutationAdapter({ backend, viewerId }: RuntimeMutat
       })
     },
     createListing(input) {
-      return backend.createListing(input)
+      return backend.createListing({
+        request: input.request,
+        // The actor is the server-resolved viewer, never the client-supplied
+        // value (which is a display name). Preserve only the authenticated vs.
+        // anonymous signal. Prevents display-name-as-identity — see CONTEXT.md
+        // Viewer and ADR 0008 §5.
+        actorUserId: input.actorUserId === null ? null : viewerId,
+      })
     },
     createReport(input) {
       return backend.createReport(input)

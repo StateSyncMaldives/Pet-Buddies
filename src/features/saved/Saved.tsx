@@ -51,10 +51,12 @@ export function Saved({ savedListings }: { savedListings?: ListingDetail[] }) {
 
       <CardGrid>
       {savedFeed.map((l) => {
-        const onRemove = (e: MouseEvent) => {
+        const onRemove = async (e: MouseEvent) => {
           e.stopPropagation()
-          toggleSave(l.id)
-          void router.invalidate()
+          // Await the durable write before invalidating, else the loader
+          // re-reads before the toggle lands and shows stale saved state.
+          await toggleSave(l.id)
+          await router.invalidate()
         }
         return (
           <div

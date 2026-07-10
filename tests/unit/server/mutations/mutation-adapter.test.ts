@@ -1,4 +1,4 @@
-import { describe, expect, expectTypeOf, it } from 'vitest'
+import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 
 import type {
   ApiResult,
@@ -92,6 +92,50 @@ describe('app mutation adapter', () => {
       })
     }
     expectTypeOf(result).toEqualTypeOf<ApiResult<CreateListingResponse>>()
+  })
+
+  it('owns created listings by the server viewer, ignoring the client-supplied display name', async () => {
+    const backend = createInMemoryAsyncBackend(createPrototypeBackend())
+    const spy = vi.spyOn(backend, 'createListing')
+    const mutations = createRuntimeMutationAdapter({ backend, viewerId: 'user-demo-viewer', moderatorId: 'moderator-test' })
+
+    await mutations.createListing({
+      actorUserId: 'Aishath Ali', // a display name — must never become the actor id
+      request: {
+        species: 'cat',
+        name: 'Nala',
+        ageText: '2 years',
+        sex: 'unknown',
+        areaLabel: 'Maafannu, Malé',
+        story: 'Gentle indoor cat.',
+        tagIds: [],
+        imageObjectKeys: [],
+      },
+    })
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: 'user-demo-viewer' }))
+  })
+
+  it('preserves the anonymous signal (null actor stays null)', async () => {
+    const backend = createInMemoryAsyncBackend(createPrototypeBackend())
+    const spy = vi.spyOn(backend, 'createListing')
+    const mutations = createRuntimeMutationAdapter({ backend, viewerId: 'user-demo-viewer', moderatorId: 'moderator-test' })
+
+    await mutations.createListing({
+      actorUserId: null,
+      request: {
+        species: 'cat',
+        name: 'Nomad',
+        ageText: '1 year',
+        sex: 'unknown',
+        areaLabel: 'Malé',
+        story: 'Found stray.',
+        tagIds: [],
+        imageObjectKeys: [],
+      },
+    })
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: null }))
   })
 
   it('submits a Lost/found report through the injected runtime adapter', async () => {

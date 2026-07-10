@@ -117,9 +117,11 @@ export function Inbox({ view, youReadModel }: { view?: InboxView; youReadModel?:
                 </div>
                 {status === 'live' && (
                   <button
-                    onClick={() => {
-                      markAdopted(l.id)
-                      void router.invalidate()
+                    onClick={async () => {
+                      // Await the durable transition before invalidating so the
+                      // loader re-reads the new status, not the stale one.
+                      await markAdopted(l.id)
+                      await router.invalidate()
                     }}
                     style={{
                       width: '100%',

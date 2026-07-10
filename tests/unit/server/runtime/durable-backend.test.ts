@@ -70,6 +70,11 @@ describe('createDurableBackend', () => {
 
     const you = await createBackend(db).getYouReadModel({ viewerId: DEMO_VIEWER_USER.id })
     expect(you.ok && you.data.ownedListings.map((listing) => listing.name)).toContain('Nala')
+
+    // The create fabricates a synthetic owner record from the actor id; persisting
+    // it must NOT overwrite the seeded viewer's real profile.
+    const nala = you.ok ? you.data.ownedListings.find((listing) => listing.name === 'Nala') : undefined
+    expect(nala?.listedBy.displayName).toBe(DEMO_VIEWER_USER.displayName)
   }, 15_000)
 
   it('persists a moderation transition so a fresh backend reads the new status', async () => {

@@ -194,7 +194,7 @@ export interface Store {
   setQuery: (query: string) => void
   toggleTag: (tag: string) => void
   clearFilters: () => void
-  toggleSave: (id: string) => void
+  toggleSave: (id: string) => Promise<void>
   openDetail: (id: string) => void
   closeDetail: () => void
   openAuth: (intent: AuthIntent, applyId?: string) => void
@@ -217,7 +217,7 @@ export interface Store {
   closeMod: () => void
   approveListing: (id: string) => void
   rejectListing: (id: string) => void
-  markAdopted: (id: string) => void
+  markAdopted: (id: string) => Promise<void>
   patchRep: (p: Partial<ReportForm>) => void
   useMyLocation: () => void
   setReportPhoto: (file: File) => Promise<void>

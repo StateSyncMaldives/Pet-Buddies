@@ -110,13 +110,14 @@ export function createDrizzleListingRepository(input: { db: PetBuddiesDb }): Asy
 
   async function upsertAggregateDependencies(aggregate: ListingAggregate): Promise<void> {
     if (aggregate.listedByUser) {
+      // A listing write must never overwrite an existing user's profile — the
+      // create use-case fabricates a synthetic owner record from the actor id,
+      // so upsert-overwriting would clobber the durably-seeded viewer. Insert
+      // only when the user is new.
       await db
         .insert(schema.users)
         .values(toUserInsert(aggregate.listedByUser))
-        .onConflictDoUpdate({
-          target: schema.users.id,
-          set: toUserInsert(aggregate.listedByUser),
-        })
+        .onConflictDoNothing({ target: schema.users.id })
         .run()
     }
 
