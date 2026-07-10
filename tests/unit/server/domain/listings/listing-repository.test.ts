@@ -130,10 +130,12 @@ describe('listing repository seam', () => {
       },
     })
 
-    expect(repository.browse({ species: 'cat' })).toHaveLength(1)
+    // Browse is live-only, so the freshly created pending cat is excluded until approved.
+    expect(repository.browse({ species: 'cat' })).toHaveLength(0)
 
     repository.updateStatus('listing-2', 'live')
     expect(repository.getById('listing-2')?.listing.status).toBe('live')
+    expect(repository.browse({ species: 'cat' })).toHaveLength(1)
 
     expect(repository.toggleSavedListing({ listingId: 'listing-1', viewerId: 'viewer-1' })).toBe(true)
     expect(repository.toggleSavedListing({ listingId: 'listing-1', viewerId: 'viewer-1' })).toBe(false)
@@ -174,10 +176,12 @@ describe.each([
     })
     expect(created.images).toHaveLength(1)
     expect(created.tags.map((tag) => tag.slug)).toEqual(['kitten'])
-    expect(await repository.browse({ species: 'cat' })).toHaveLength(1)
+    // Browse is live-only, so the freshly created pending cat is excluded until approved.
+    expect(await repository.browse({ species: 'cat' })).toHaveLength(0)
 
     await repository.updateStatus('listing-2', 'live')
     expect((await repository.getById('listing-2'))?.listing.status).toBe('live')
+    expect(await repository.browse({ species: 'cat' })).toHaveLength(1)
 
     expect(await repository.toggleSavedListing({ listingId: 'listing-1', viewerId: 'user-1' })).toBe(true)
     expect((await repository.listAll('user-1')).find((aggregate) => aggregate.listing.id === 'listing-1')?.savedByViewer).toBe(
