@@ -3,13 +3,16 @@
   "name": "pet-buddies-mv",
   "compatibility_date": "2026-07-03",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
+  "main": "src/worker.ts",
   "routes": [
     {
       "pattern": "pet-buddies.dev.statesync.mv",
       "custom_domain": true
     }
   ],
+  "triggers": {
+    "crons": ["0 3 * * *"]
+  },
   "d1_databases": [
     {
       "binding": "DB",
