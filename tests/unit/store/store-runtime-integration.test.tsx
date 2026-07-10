@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook } from '@testing-library/react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -38,7 +38,13 @@ function createWrapper(props: Partial<StoreProviderProps> & { backend?: Prototyp
 
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <StoreProvider viewerId={viewerId} mockUser={mockUser} moderatorId={moderatorId} mutations={mutations}>
+      <StoreProvider
+        viewerId={viewerId}
+        mockUser={mockUser}
+        moderatorId={moderatorId}
+        mutations={mutations}
+        hydrate={props.hydrate}
+      >
         {children}
       </StoreProvider>
     )
@@ -69,6 +75,20 @@ describe('StoreProvider runtime integration', () => {
 
     expect(toggleSavedListing).toHaveBeenCalledWith({ listingId: 'mishka' })
     expect(result.current.state.saved).toContain('mishka')
+  })
+
+  it('reconciles seed-hydrated listings and saved against the durable app-shell read', async () => {
+    const seedShell = createPrototypeBackend().hydrateAppShell({ viewerId: 'viewer-test' })
+    const durableListing = { ...seedShell.listings[0], name: 'Durable Mishka', savedByViewer: true }
+    const hydrate = vi.fn().mockResolvedValue({ listings: [durableListing], clinics: [] })
+
+    const { result } = renderHook(() => useStore(), { wrapper: createWrapper({ hydrate }) })
+
+    await waitFor(() => {
+      expect(result.current.listings.some((listing) => listing.name === 'Durable Mishka')).toBe(true)
+    })
+    expect(hydrate).toHaveBeenCalledWith('viewer-test')
+    expect(result.current.state.saved).toContain(durableListing.id)
   })
 
   it('keeps save state isolated per injected backend session', async () => {

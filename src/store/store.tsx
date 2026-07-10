@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { createPrototypeBackend } from '../server/runtime/prototype-backend'
+import { createPrototypeBackend, type HydratedAppShell } from '../server/runtime/prototype-backend'
 import { DEMO_MODERATOR_ID } from '../server/runtime/app-session'
 import { MAX_LISTING_IMAGES } from '../server/domain/listings/create-listing'
 import type { MediaUploadKind } from '../server/domain/media/media-upload-policy'
@@ -241,6 +241,13 @@ export interface StoreProviderProps {
   moderatorId?: string
   /** Write seam (durable server functions on the client; in-memory in tests). */
   mutations: AppMutationAdapter
+  /**
+   * Durable read seam. When provided, the store reconciles its seed-hydrated
+   * listings/clinics/saved against this durable app-shell read once, after
+   * mount — so the store cannot drift from the data the loaders read. Omitted in
+   * tests that only exercise the seed + optimistic writes. See ADR 0008 / #8.
+   */
+  hydrate?: (viewerId: string) => Promise<HydratedAppShell>
 }
 
 /**
@@ -266,11 +273,44 @@ export function StoreProvider({
   mockUser,
   moderatorId = DEFAULT_MODERATOR_ID,
   mutations,
+  hydrate,
 }: StoreProviderProps) {
   const hydration = useMemo(() => createInitialHydration(viewerId), [viewerId])
   const [state, setState] = useState<AppState>(() => initialState(hydration.saved))
   const [listings, setListings] = useState<Listing[]>(() => hydration.listings.map((listing) => ({ ...listing, tags: [...listing.tags] })))
-  const [clinics] = useState<Clinic[]>(() => hydration.clinics.map((clinic) => ({ ...clinic, services: [...clinic.services] })))
+  const [clinics, setClinics] = useState<Clinic[]>(() => hydration.clinics.map((clinic) => ({ ...clinic, services: [...clinic.services] })))
+
+  // Reconcile the seed-hydrated shell against the durable app-shell read once
+  // after mount: durable listings/clinics are the source of truth, so screens
+  // that read the store (Saved, You, Moderation) match the loader-read data
+  // instead of the static seed. Client-only and post-hydration, so the first
+  // paint stays deterministic and there is no hydration mismatch. See #8.
+  useEffect(() => {
+    if (!hydrate) return
+    let cancelled = false
+
+    void hydrate(viewerId)
+      .then((shell) => {
+        if (cancelled) return
+        const durable = shell.listings.map(mapListingDetailToListing)
+        setListings((current) => {
+          const durableIds = new Set(durable.map((listing) => listing.id))
+          // Durable rows win; keep any store-only rows (e.g. an optimistic
+          // create that raced the reconcile) so nothing is dropped.
+          const localOnly = current.filter((listing) => !durableIds.has(listing.id))
+          return [...durable.map((listing) => ({ ...listing, tags: [...listing.tags] })), ...localOnly]
+        })
+        setClinics(shell.clinics.map(mapClinicSummaryToClinic).map((clinic) => ({ ...clinic, services: [...clinic.services] })))
+        setState((s) => ({ ...s, saved: shell.listings.filter((listing) => listing.savedByViewer).map((listing) => listing.id) }))
+      })
+      .catch(() => {
+        /* keep the seed hydration if the durable read fails */
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [hydrate, viewerId])
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const patch = useCallback((p: Partial<AppState>) => setState((s) => ({ ...s, ...p })), [])

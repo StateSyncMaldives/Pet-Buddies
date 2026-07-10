@@ -18,6 +18,7 @@ import { createInquiry } from './features/inquiries/inquiries.functions'
 import { createReport } from './features/reports/reports.functions'
 import { updateListingLifecycle } from './features/moderation/moderation.functions'
 import { fetchClinics } from './features/clinics/clinics.functions'
+import { fetchAppShell } from './features/app-shell/app-shell.functions'
 
 const runtime = createAppRuntime()
 
@@ -29,6 +30,7 @@ const backend = createServerFnReadBackend({
   fetchSavedListings,
   fetchYouReadModel,
   fetchClinics,
+  fetchAppShell,
 })
 
 // Client writes route through Start server functions so they land on the

@@ -9,15 +9,16 @@ import {
   type Species,
 } from '../contracts/api'
 import { createInMemoryAsyncBackend, type AsyncAppBackend } from './app-backend'
-import { createPrototypeBackend } from './prototype-backend'
+import { createPrototypeBackend, type HydratedAppShell } from './prototype-backend'
 
-/** The read server functions (from listings/read.functions.ts) the proxy calls. */
+/** The read server functions (from the feature .functions.ts files) the proxy calls. */
 export interface ServerFnReads {
   getBrowseListings: (options: { data: { species: Species; query: string; tags: string[] } }) => Promise<BrowseListingsResponse>
   fetchListingDetail: (options: { data: string }) => Promise<GetListingDetailResponse>
   fetchSavedListings: () => Promise<ListSavedListingsResponse>
   fetchYouReadModel: () => Promise<GetYouReadModelResponse>
   fetchClinics: () => Promise<ListClinicsResponse>
+  fetchAppShell: () => Promise<HydratedAppShell>
 }
 
 /**
@@ -33,6 +34,13 @@ export function createServerFnReadBackend(reads: ServerFnReads): AsyncAppBackend
 
   return {
     ...fallback,
+    async hydrateAppShell(input) {
+      try {
+        return await reads.fetchAppShell()
+      } catch {
+        return fallback.hydrateAppShell(input)
+      }
+    },
     async browseListings(input) {
       try {
         return apiResultOk(

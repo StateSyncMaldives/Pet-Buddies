@@ -19,7 +19,7 @@ function DefaultNotFound() {
 }
 
 function RootRouteComponent() {
-  const { mutations, viewerId, mockUser, moderatorId } = Route.useRouteContext()
+  const { backend, mutations, viewerId, mockUser, moderatorId } = Route.useRouteContext()
 
   useEffect(() => {
     if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return
@@ -29,7 +29,13 @@ function RootRouteComponent() {
 
   return (
     <RootDocument>
-      <StoreProvider viewerId={viewerId} mockUser={mockUser} moderatorId={moderatorId} mutations={mutations}>
+      <StoreProvider
+        viewerId={viewerId}
+        mockUser={mockUser}
+        moderatorId={moderatorId}
+        mutations={mutations}
+        hydrate={(id) => backend.hydrateAppShell({ viewerId: id })}
+      >
         <App />
       </StoreProvider>
     </RootDocument>

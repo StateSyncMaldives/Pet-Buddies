@@ -9,6 +9,7 @@ function makeReads(overrides: Partial<ServerFnReads> = {}): ServerFnReads {
     fetchSavedListings: vi.fn().mockResolvedValue({ items: [] }),
     fetchYouReadModel: vi.fn().mockResolvedValue({ sentAdoptionInquiries: [], ownedListings: [] }),
     fetchClinics: vi.fn().mockResolvedValue({ items: [] }),
+    fetchAppShell: vi.fn().mockResolvedValue({ listings: [], clinics: [] }),
     ...overrides,
   }
 }
@@ -22,6 +23,16 @@ describe('createServerFnReadBackend', () => {
 
     expect(fetchSavedListings).toHaveBeenCalledTimes(1)
     expect(result).toEqual({ ok: true, data: { items: [] } })
+  })
+
+  it('proxies the app-shell hydration through the durable fetchAppShell read', async () => {
+    const fetchAppShell = vi.fn().mockResolvedValue({ listings: [], clinics: [{ id: 'clinic-durable' }] })
+    const backend = createServerFnReadBackend(makeReads({ fetchAppShell }))
+
+    const shell = await backend.hydrateAppShell({ viewerId: 'user-demo-viewer' })
+
+    expect(fetchAppShell).toHaveBeenCalledTimes(1)
+    expect(shell.clinics).toEqual([{ id: 'clinic-durable' }])
   })
 
   it('falls back to the in-memory backend when a read server function is unreachable', async () => {
