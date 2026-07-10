@@ -13,6 +13,7 @@ import { createCreateListingUseCase } from '../domain/listings/create-listing'
 import { createModerateListingUseCase } from '../domain/listings/moderate-listing'
 import { createListingService } from '../domain/listings/listing-service'
 import { createInMemoryListingRepository } from '../domain/listings/listing-repository'
+import { createCaptureListingRepository } from './capture-listing-repository'
 import { toListingDetail } from '../domain/listings/listing-mapper'
 import { createCreateReportUseCase } from '../../features/reports/create-report'
 import { createDrizzleAdoptionInquiryRepository } from '../infra/repositories/drizzle-adoption-inquiry-repository'
@@ -103,9 +104,9 @@ export function createDurableBackend(input: { database: PetBuddiesDb; fallback: 
       return apiResultOk({ listingId, saved })
     },
     async createListing(request) {
-      const scratch = createInMemoryListingRepository({ listings: [] })
+      const capture = createCaptureListingRepository()
       const useCase = createCreateListingUseCase({
-        repository: scratch,
+        repository: capture.repository,
         now,
         generateId: () => `listing-${crypto.randomUUID()}`,
         generateSlug: slugify,
@@ -120,16 +121,16 @@ export function createDurableBackend(input: { database: PetBuddiesDb; fallback: 
       }))
       const result = useCase.execute({ request: request.request, actorUserId: request.actorUserId, organization: null, tags })
       if (!result.ok) return result
-      const created = scratch.getById(result.data.listing.id)
+      const created = capture.getCaptured()
       if (created) await listingRepository.create(created)
       return result
     },
     async moderateListing(request) {
       const current = await listingRepository.getById(request.listingId)
-      const scratch = createInMemoryListingRepository({ listings: current ? [current] : [] })
+      const capture = createCaptureListingRepository(current)
       let event: ModerationEventRecord | null = null
       const useCase = createModerateListingUseCase({
-        repository: scratch,
+        repository: capture.repository,
         now,
         generateEventId: () => `mod-event-${crypto.randomUUID()}`,
         saveModerationEvent: (saved) => {
@@ -138,17 +139,16 @@ export function createDurableBackend(input: { database: PetBuddiesDb; fallback: 
       })
       const result = useCase.execute(request)
       if (!result.ok) return result
-      const updated = scratch.getById(request.listingId)
+      const updated = capture.getCaptured()
       if (updated) await listingRepository.save(updated)
       if (event) await moderationEventRepository.save(event)
       return result
     },
     async createInquiry(request) {
       const current = await listingRepository.getById(request.request.listingId)
-      const scratch = createInMemoryListingRepository({ listings: current ? [current] : [] })
       let inquiry: AdoptionInquiryRecord | null = null
       const useCase = createCreateInquiryUseCase({
-        repository: scratch,
+        repository: createCaptureListingRepository(current).repository,
         now,
         generateId: () => `inquiry-${crypto.randomUUID()}`,
         saveInquiry: (saved) => {
