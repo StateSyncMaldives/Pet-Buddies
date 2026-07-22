@@ -5,6 +5,7 @@ import { getBrowseListings, fetchListingDetail } from '../features/listings/list
 import { fetchReviewQueue } from '../features/moderation/moderation.functions'
 import { fetchYouReadModel } from '../features/profile/profile.functions'
 import { fetchSavedListings } from '../features/saved/saved.functions'
+import { toTagSlug } from '../router/browse-search'
 import type { ApiResult, Species } from '../server/contracts/api'
 import type { AsyncAppBackend } from '../server/runtime/app-backend'
 
@@ -46,17 +47,39 @@ export const reviewQueueQuery = (backend?: AsyncAppBackend) =>
     queryFn: () => (backend ? unwrap(backend.listReviewQueue()) : fetchReviewQueue()),
   })
 
-export const browseQuery = (input: BrowseQueryInput) =>
-  queryOptions({ queryKey: queryKeys.browse(input), queryFn: () => getBrowseListings({ data: input }) })
+export const browseQuery = (backend: AsyncAppBackend | undefined, input: BrowseQueryInput) =>
+  queryOptions({
+    queryKey: queryKeys.browse(input),
+    queryFn: () =>
+      backend
+        ? unwrap(
+            backend.browseListings({
+              query: { species: input.species, search: input.query || undefined, tagSlugs: input.tags.map(toTagSlug) },
+            }),
+          )
+        : getBrowseListings({ data: input }),
+  })
 
-export const savedListingsQuery = () =>
-  queryOptions({ queryKey: queryKeys.saved, queryFn: () => fetchSavedListings() })
+export const savedListingsQuery = (backend?: AsyncAppBackend, viewerId?: string) =>
+  queryOptions({
+    queryKey: queryKeys.saved,
+    queryFn: () => (backend && viewerId ? unwrap(backend.listSavedListings({ viewerId })) : fetchSavedListings()),
+  })
 
-export const youReadModelQuery = () =>
-  queryOptions({ queryKey: queryKeys.you, queryFn: () => fetchYouReadModel() })
+export const youReadModelQuery = (backend?: AsyncAppBackend, viewerId?: string) =>
+  queryOptions({
+    queryKey: queryKeys.you,
+    queryFn: () => (backend && viewerId ? unwrap(backend.getYouReadModel({ viewerId })) : fetchYouReadModel()),
+  })
 
-export const clinicsQuery = () =>
-  queryOptions({ queryKey: queryKeys.clinics, queryFn: () => fetchClinics() })
+export const clinicsQuery = (backend?: AsyncAppBackend) =>
+  queryOptions({
+    queryKey: queryKeys.clinics,
+    queryFn: () => (backend ? unwrap(backend.listClinics()) : fetchClinics()),
+  })
 
-export const listingDetailQuery = (slugOrId: string) =>
-  queryOptions({ queryKey: queryKeys.listingDetail(slugOrId), queryFn: () => fetchListingDetail({ data: slugOrId }) })
+export const listingDetailQuery = (backend: AsyncAppBackend | undefined, slugOrId: string) =>
+  queryOptions({
+    queryKey: queryKeys.listingDetail(slugOrId),
+    queryFn: () => (backend ? unwrap(backend.getListingDetail({ slugOrId })) : fetchListingDetail({ data: slugOrId })),
+  })
