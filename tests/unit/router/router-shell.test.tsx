@@ -4,6 +4,7 @@ import { RouterProvider } from '@tanstack/react-router'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { createAppRouter } from '../../../src/router'
+import { createQueryClient } from '../../../src/query/client'
 import { createAppRuntime } from '../../../src/server/runtime/app-session'
 
 function renderAt(
@@ -22,6 +23,7 @@ function renderAt(
   const { backend, mutations, session } = runtime
   const router = createAppRouter({
     context: {
+      queryClient: createQueryClient(),
       backend,
       mutations,
       viewerId: session.viewerId,

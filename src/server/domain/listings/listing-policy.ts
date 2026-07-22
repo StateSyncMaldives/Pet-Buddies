@@ -1,4 +1,4 @@
-import { isBirdSpecies, type ApiErrorCode, type BirdSpecies, type ListingStatus, type Species } from '../../contracts/api'
+import { apiResultErr, isBirdSpecies, type ApiErrorCode, type BirdSpecies, type ListingStatus, type Species } from '../../contracts/api'
 
 export interface ListingPolicyOwner {
   id: string
@@ -32,46 +32,22 @@ export type ListingPolicyFailure = {
 
 export type ListingPolicyResult = ListingPolicySuccess | ListingPolicyFailure
 
-const OWNER_ERROR: ListingPolicyFailure = {
-  ok: false,
-  error: {
-    code: 'VALIDATION_ERROR',
-    message: 'A listing owner must be exactly one of a user or a verified organization.',
-  },
-}
-
-const BIRD_SPECIES_ERROR: ListingPolicyFailure = {
-  ok: false,
-  error: {
-    code: 'VALIDATION_ERROR',
-    message: 'Bird listings require an allowlisted bird species.',
-  },
-}
-
-const CAT_BIRD_SPECIES_ERROR: ListingPolicyFailure = {
-  ok: false,
-  error: {
-    code: 'VALIDATION_ERROR',
-    message: 'Cats cannot include bird species.',
-  },
-}
-
 export function validateListingDraft(input: ListingDraftInput): ListingPolicyResult {
   const hasUserOwner = Boolean(input.listedByUserId)
   const hasVerifiedOrganization = Boolean(input.organization?.id && input.organization.isVerified)
 
   if (Number(hasUserOwner) + Number(hasVerifiedOrganization) !== 1) {
-    return OWNER_ERROR
+    return apiResultErr('VALIDATION_ERROR', 'A listing owner must be exactly one of a user or a verified organization.')
   }
 
   if (input.species === 'cat' && input.birdSpecies) {
-    return CAT_BIRD_SPECIES_ERROR
+    return apiResultErr('VALIDATION_ERROR', 'Cats cannot include bird species.')
   }
 
   let birdSpecies: BirdSpecies | undefined
   if (input.species === 'bird') {
     if (!isBirdSpecies(input.birdSpecies)) {
-      return BIRD_SPECIES_ERROR
+      return apiResultErr('VALIDATION_ERROR', 'Bird listings require an allowlisted bird species.')
     }
     birdSpecies = input.birdSpecies
   }

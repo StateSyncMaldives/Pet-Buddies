@@ -21,6 +21,7 @@ import type {
   GetYouReadModelResponse,
   ListClinicsResponse,
   ListingDetail,
+  ListReviewQueueResponse,
   ListSavedListingsResponse,
   ToggleSavedListingResponse,
   UpdateListingModerationRequest,
@@ -86,6 +87,7 @@ export interface PrototypeBackend {
   listSavedListings(input: { viewerId: string }): ApiResult<ListSavedListingsResponse>
   getYouReadModel(input: { viewerId: string }): ApiResult<GetYouReadModelResponse>
   browseListings(input: { query: BrowseListingsQuery }): ApiResult<BrowseListingsResponse>
+  listReviewQueue(): ApiResult<ListReviewQueueResponse>
   getListingDetail(input: { slugOrId: string }): ApiResult<GetListingDetailResponse>
   toggleSavedListing(input: { listingId: string; viewerId: string }): ApiResult<ToggleSavedListingResponse>
   createInquiry(input: { request: CreateInquiryRequest; viewerId: string }): ApiResult<CreateInquiryResponse>
@@ -304,6 +306,14 @@ export function createPrototypeBackend(deps: PrototypeBackendDeps = {}): Prototy
     },
     browseListings(input) {
       return listingService.browseListings(input.query)
+    },
+    listReviewQueue() {
+      return apiResultOk({
+        items: listingRepository
+          .listAll()
+          .filter((aggregate) => aggregate.listing.status === 'pending')
+          .map((aggregate) => toListingDetail(aggregate)),
+      })
     },
     getListingDetail(input) {
       return listingService.getListingDetail({ slugOrId: input.slugOrId })

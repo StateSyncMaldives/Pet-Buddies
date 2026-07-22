@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 
 import type { GetYouReadModelResponse } from '../../server/contracts/api'
-import { createDemoSession } from '../../server/runtime/app-session'
+import { createDemoSession } from '../../server/runtime/demo-session'
 import { createServerBackend } from '../../server/runtime/server-backend'
 
 /**
@@ -10,7 +10,7 @@ import { createServerBackend } from '../../server/runtime/server-backend'
  * durable backend server-side. See ADR 0008.
  */
 
-export const fetchYouReadModel = createServerFn({ method: 'GET' }).handler(
+export const fetchYouReadModel = createServerFn({ method: 'POST' }).handler(
   async (): Promise<GetYouReadModelResponse> => {
     const backend = await createServerBackend()
     const result = await backend.getYouReadModel({ viewerId: createDemoSession().viewerId })

@@ -13,8 +13,12 @@ Listings for which the current viewer is the listing owner in the current identi
 _Avoid_: My posts, authored cards
 
 **Viewer**:
-The current session actor viewing or interacting with listings before real authentication is wired. In the demo model the Viewer resolves to a stable, durably-stored User identity (not the display name), so the actions the Viewer owns — saved listings, adoption inquiries, and the moderator's moderation events — persist and reference a real user record.
-_Avoid_: Anonymous visitor, browser session, display-name-as-identity
+The current session actor, who is either a signed-in user or anonymous. Reads may be viewer-scoped; anything that must persist against an identity requires the viewer to be a signed-in user.
+_Avoid_: Browser session, display-name-as-identity
+
+**Signed-in user**:
+A viewer with an authenticated session backed by a durable user record. The only actor that can own saved listings, adoption inquiries, listings, and moderation events.
+_Avoid_: Member, account, logged-in visitor
 
 **Verified organization**:
 A rescue, NGO, partner, or community group that can publish listings under its own identity and receive routed reports.
@@ -29,16 +33,16 @@ An adoption inquiry submitted by the current viewer and shown back to that viewe
 _Avoid_: Inbox message, reply thread, conversation
 
 **Lost/found report**:
-A report about a missing or found animal routed to an organization based on species.
-_Avoid_: Listing, inquiry
+A report about a missing or found animal routed to an organization based on species. Every report carries a reachable reporter: a signed-in user, or — for anonymous viewers — a required contact email.
+_Avoid_: Listing, inquiry, contactless report
 
 **Clinic**:
 A directory entry for a veterinary or pet-care provider.
 _Avoid_: Organization, rescue
 
 **Saved listing**:
-A user- or viewer-scoped bookmark of a listing for later review.
-_Avoid_: Favorite pet profile, anonymous local save
+A user-scoped bookmark of a listing for later review. Anonymous viewers cannot save; the attempt opens the sign-in flow.
+_Avoid_: Favorite pet profile, anonymous local save, viewer-scoped save
 
 **Moderation event**:
 An immutable record of a listing lifecycle action such as submission, approval, rejection, adoption, or restoration.
@@ -71,3 +75,19 @@ _Avoid_: Dogs, all pets, every animal
 **Review queue**:
 The moderator-facing list of listings awaiting a moderation decision.
 _Avoid_: Mod panel, admin screen, pending list
+
+**Global role**:
+The platform-wide authorization level of a signed-in user — user, moderator, or administrator. Distinct from organization membership roles.
+_Avoid_: Permission flag, org role, access level
+
+**Moderator**:
+A signed-in user whose global role grants review-queue decisions. Moderators do not use the admin screen.
+_Avoid_: Admin, reviewer account
+
+**Administrator**:
+A signed-in user whose global role grants platform control: role assignment, bans, and organization verification, in addition to everything a moderator can do.
+_Avoid_: Superuser, moderator
+
+**Listing manager**:
+An organization membership role (alongside member and org admin) permitted to publish listings under the organization's identity.
+_Avoid_: Global role, org owner

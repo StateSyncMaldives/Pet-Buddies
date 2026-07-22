@@ -5,12 +5,17 @@ import { useStore } from '../store/store'
 import { useViewportMode } from '../layout/viewport-mode'
 import { mapListingDetailToListing } from '../store/view-model-mappers'
 import { ListingDetailSurface } from '../features/listings/ListingDetailSurface'
+import { fetchListingDetail } from '../features/listings/listings.functions'
 import { validateBrowseSearch } from '../router/browse-search'
 
 export const Route = createFileRoute('/browse/listings/$listingId')({
   validateSearch: validateBrowseSearch,
   loader: async ({ context, params }) => {
-    const result = await context.backend.getListingDetail({ slugOrId: params.listingId })
+    const result = context.backend
+      ? await context.backend.getListingDetail({ slugOrId: params.listingId })
+      : await fetchListingDetail({ data: params.listingId })
+          .then((data) => ({ ok: true as const, data }))
+          .catch(() => ({ ok: false as const }))
     if (!result.ok) throw notFound()
     return result.data.item
   },

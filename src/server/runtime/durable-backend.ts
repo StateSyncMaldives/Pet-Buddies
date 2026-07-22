@@ -6,8 +6,6 @@ import type {
   ModerationEventRecord,
 } from '../../../backend/contracts'
 import { apiResultErr, apiResultOk } from '../contracts/api'
-import { createClinicService } from '../../features/clinics/clinic-service'
-import { createSeedClinicRepository } from '../../features/clinics/clinic-repository'
 import { createCreateInquiryUseCase } from '../../features/inquiries/create-inquiry'
 import { createCreateListingUseCase } from '../domain/listings/create-listing'
 import { createModerateListingUseCase } from '../domain/listings/moderate-listing'
@@ -17,6 +15,7 @@ import { createCaptureListingRepository } from './capture-listing-repository'
 import { toListingDetail } from '../domain/listings/listing-mapper'
 import { createCreateReportUseCase } from '../../features/reports/create-report'
 import { createDrizzleAdoptionInquiryRepository } from '../infra/repositories/drizzle-adoption-inquiry-repository'
+import { createDrizzleClinicRepository } from '../infra/repositories/drizzle-clinic-repository'
 import { createDrizzleListingRepository } from '../infra/repositories/drizzle-listing-repository'
 import { createDrizzleLostFoundReportRepository } from '../infra/repositories/drizzle-lost-found-report-repository'
 import { createDrizzleModerationEventRepository } from '../infra/repositories/drizzle-moderation-event-repository'
@@ -35,25 +34,27 @@ const generateReferenceCode = () => `MV${Math.floor(1000 + Math.random() * 9000)
  * reuse the (synchronous) domain use-cases against a lightweight capture
  * repository (reads resolve the single row already fetched from D1, writes are
  * captured by reference — no scratch store, no read-back), then persist the
- * captured records to D1 through the async repositories. uploadMedia and other
- * unused methods delegate to the in-memory `fallback`. See ADR 0008 / #6.
+ * captured records to D1 through the async repositories. See ADR 0008 / #6.
  */
-export function createDurableBackend(input: { database: PetBuddiesDb; fallback: AsyncAppBackend }): AsyncAppBackend {
+export function createDurableBackend(input: { database: PetBuddiesDb }): AsyncAppBackend {
   const listingRepository = createDrizzleListingRepository({ db: input.database })
   const savedListingRepository = createDrizzleSavedListingRepository({ db: input.database, listingRepository })
   const moderationEventRepository = createDrizzleModerationEventRepository({ db: input.database })
   const inquiryRepository = createDrizzleAdoptionInquiryRepository({ db: input.database })
   const reportRepository = createDrizzleLostFoundReportRepository({ db: input.database })
-  const clinicService = createClinicService({ repository: createSeedClinicRepository() })
+  const clinicRepository = createDrizzleClinicRepository({ db: input.database })
 
   return {
-    ...input.fallback,
-
     // ---- reads ----
     async browseListings({ query }) {
       const aggregates = await listingRepository.browse(query)
       const service = createListingService({ repository: createInMemoryListingRepository({ listings: aggregates }) })
       return service.browseListings(query)
+    },
+    async listReviewQueue() {
+      const aggregates = await listingRepository.listAll()
+      const pending = aggregates.filter((aggregate) => aggregate.listing.status === 'pending')
+      return apiResultOk({ items: pending.map(toListingDetail) })
     },
     async getListingDetail({ slugOrId }) {
       const aggregate = (await listingRepository.getBySlug(slugOrId)) ?? (await listingRepository.getById(slugOrId))
@@ -67,7 +68,19 @@ export function createDurableBackend(input: { database: PetBuddiesDb; fallback: 
       return apiResultOk({ items: aggregates.map(toListingDetail) })
     },
     async listClinics() {
-      return clinicService.listClinics()
+      const clinics = await clinicRepository.list()
+      return apiResultOk({
+        items: clinics.map((clinic) => ({
+          id: clinic.id,
+          slug: clinic.slug,
+          name: clinic.name,
+          areaLabel: clinic.areaLabel,
+          phone: clinic.phone,
+          note: clinic.note,
+          mapsUrl: clinic.mapsUrl,
+          services: [...clinic.services],
+        })),
+      })
     },
     async getYouReadModel({ viewerId }) {
       const [inquiries, owned] = await Promise.all([
@@ -91,10 +104,19 @@ export function createDurableBackend(input: { database: PetBuddiesDb; fallback: 
     },
     async hydrateAppShell({ viewerId }) {
       const aggregates = await listingRepository.listAll(viewerId)
-      const clinics = clinicService.listClinics()
+      const clinics = await clinicRepository.list()
       return {
         listings: aggregates.map(toListingDetail),
-        clinics: clinics.ok ? clinics.data.items : [],
+        clinics: clinics.map((clinic) => ({
+          id: clinic.id,
+          slug: clinic.slug,
+          name: clinic.name,
+          areaLabel: clinic.areaLabel,
+          phone: clinic.phone,
+          note: clinic.note,
+          mapsUrl: clinic.mapsUrl,
+          services: [...clinic.services],
+        })),
       }
     },
 
@@ -178,6 +200,9 @@ export function createDurableBackend(input: { database: PetBuddiesDb; fallback: 
       if (!result.ok) return result
       if (report) await reportRepository.save(report)
       return result
+    },
+    async uploadMedia() {
+      return apiResultErr('INTERNAL_ERROR', 'Media upload storage is unavailable.')
     },
   }
 }

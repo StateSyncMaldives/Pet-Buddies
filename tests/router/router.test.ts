@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest'
 
 import { validateBrowseSearch } from '../../src/router/browse-search'
 import { createAppRouter } from '../../src/router'
+import { createQueryClient } from '../../src/query/client'
 import { createAppRuntime } from '../../src/server/runtime/app-session'
 
 function testContext() {
   const { backend, mutations, session } = createAppRuntime()
   return {
+    queryClient: createQueryClient(),
     backend,
     mutations,
     viewerId: session.viewerId,

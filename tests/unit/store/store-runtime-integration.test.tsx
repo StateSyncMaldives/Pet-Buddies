@@ -33,8 +33,10 @@ function createWrapper(props: Partial<StoreProviderProps> & { backend?: Prototyp
   const viewerId = props.viewerId ?? 'viewer-test'
   const mockUser = props.mockUser ?? TEST_USER
   const moderatorId = props.moderatorId ?? 'moderator-test'
+  const asyncBackend = createInMemoryAsyncBackend(backend)
   const mutations =
-    props.mutations ?? createRuntimeMutationAdapter({ backend: createInMemoryAsyncBackend(backend), viewerId, moderatorId })
+    props.mutations ?? createRuntimeMutationAdapter({ backend: asyncBackend, viewerId, moderatorId })
+  const hydrate = props.hydrate ?? ((id: string) => asyncBackend.hydrateAppShell({ viewerId: id }))
 
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -43,7 +45,7 @@ function createWrapper(props: Partial<StoreProviderProps> & { backend?: Prototyp
         mockUser={mockUser}
         moderatorId={moderatorId}
         mutations={mutations}
-        hydrate={props.hydrate}
+        hydrate={hydrate}
       >
         {children}
       </StoreProvider>
@@ -77,7 +79,7 @@ describe('StoreProvider runtime integration', () => {
     expect(result.current.state.saved).toContain('mishka')
   })
 
-  it('reconciles seed-hydrated listings and saved against the durable app-shell read', async () => {
+  it('reconciles listings and saved against the durable app-shell read', async () => {
     const seedShell = createPrototypeBackend().hydrateAppShell({ viewerId: 'viewer-test' })
     const durableListing = { ...seedShell.listings[0], name: 'Durable Mishka', savedByViewer: true }
     const hydrate = vi.fn().mockResolvedValue({ listings: [durableListing], clinics: [] })
@@ -141,6 +143,10 @@ describe('StoreProvider runtime integration', () => {
 
   it('creates inquiries through the injected backend facade after sign-in', async () => {
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(result.current.listings.some((listing) => listing.id === 'mishka')).toBe(true)
+    })
 
     act(() => {
       result.current.googleSignIn()
@@ -484,7 +490,9 @@ describe('StoreProvider runtime integration', () => {
   it('approves then marks a pending listing adopted through the real backend', async () => {
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
 
-    expect(result.current.listings.find((listing) => listing.id === 'pending-simba')?.status).toBe('pending')
+    await waitFor(() => {
+      expect(result.current.listings.find((listing) => listing.id === 'pending-simba')?.status).toBe('pending')
+    })
 
     await act(async () => {
       await result.current.approveListing('pending-simba')
@@ -503,6 +511,10 @@ describe('StoreProvider runtime integration', () => {
 
   it('rejects a pending listing through the real backend', async () => {
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(result.current.listings.find((listing) => listing.id === 'pending-simba')?.status).toBe('pending')
+    })
 
     await act(async () => {
       await result.current.rejectListing('pending-simba')

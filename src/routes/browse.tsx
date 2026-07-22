@@ -1,6 +1,7 @@
 import { Outlet, createFileRoute, useRouterState } from '@tanstack/react-router'
 
 import { Browse } from '../features/listings/Browse'
+import { getBrowseListings } from '../features/listings/listings.functions'
 import { useViewportMode } from '../layout/viewport-mode'
 import { isDetailPath } from '../router/paths'
 import { toTagSlug, validateBrowseSearch } from '../router/browse-search'
@@ -9,13 +10,23 @@ export const Route = createFileRoute('/browse')({
   validateSearch: validateBrowseSearch,
   loaderDeps: ({ search }) => search,
   loader: async ({ context, deps }) => {
-    const result = await context.backend.browseListings({
-      query: {
-        species: deps.species,
-        search: deps.query || undefined,
-        tagSlugs: deps.tags.map(toTagSlug),
-      },
-    })
+    const query = {
+      species: deps.species,
+      search: deps.query || undefined,
+      tagSlugs: deps.tags.map(toTagSlug),
+    }
+    const result = context.backend
+      ? await context.backend.browseListings({ query })
+      : {
+          ok: true as const,
+          data: await getBrowseListings({
+            data: {
+              species: deps.species,
+              query: deps.query,
+              tags: deps.tags,
+            },
+          }),
+        }
 
     if (!result.ok) {
       throw new Error(result.error.message)

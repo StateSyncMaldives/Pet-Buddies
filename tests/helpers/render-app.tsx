@@ -2,6 +2,7 @@ import { render } from '@testing-library/react'
 import { RouterProvider } from '@tanstack/react-router'
 
 import { createAppRouter } from '../../src/router'
+import { createQueryClient } from '../../src/query/client'
 import { createAppRuntime } from '../../src/server/runtime/app-session'
 
 /** Renders the full app at a path with a fresh demo runtime: the shared
@@ -22,6 +23,7 @@ export function renderAppAt(
   const { backend, mutations, session } = runtime
   const router = createAppRouter({
     context: {
+      queryClient: createQueryClient(),
       backend,
       mutations,
       viewerId: session.viewerId,

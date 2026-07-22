@@ -9,23 +9,14 @@ export function routeLostFoundReport(input: {
   reportKind: ReportKind
   birdSpecies?: BirdSpecies | string
 }): ReportRoutingResult {
-  if (input.species === 'bird') {
-    if (!isBirdSpecies(input.birdSpecies)) {
-      return apiResultErr('VALIDATION_ERROR', 'Bird reports require an allowlisted bird species.')
-    }
-
-    return {
-      ok: true,
-      value: {
-        routedToOrganizationId: 'org-bird-rescue',
-      },
-    }
+  if (input.species === 'bird' && !isBirdSpecies(input.birdSpecies)) {
+    return apiResultErr('VALIDATION_ERROR', 'Bird reports require an allowlisted bird species.')
   }
 
   return {
     ok: true,
     value: {
-      routedToOrganizationId: 'org-cat-rescue',
+      routedToOrganizationId: input.species === 'bird' ? 'org-bird-rescue' : 'org-cat-rescue',
     },
   }
 }
