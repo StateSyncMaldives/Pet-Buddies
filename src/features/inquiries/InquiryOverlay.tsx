@@ -1,13 +1,23 @@
+import { useRouteContext } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { colors, shadow, z } from '../../theme'
 import { listMeta, orgLine, useStore } from '../../store/store'
+import { listingDetailQuery } from '../../query/queries'
+import { mapListingDetailToListing } from '../../store/view-model-mappers'
 import { OverlayHeader, PetThumb, InfoNote, FieldLabel } from '../../components/primitives'
 import { OverlaySurface } from '../../components/OverlaySurface'
 
 export function InquiryOverlay() {
-  const { state, listings, cancelInquiry, setInquiryMessage, sendInquiry } = useStore()
+  const { backend } = useRouteContext({ from: '__root__' })
+  const { state, cancelInquiry, setInquiryMessage, sendInquiry } = useStore()
+  // Read durable truth for the inquiry's listing from the query cache (ADR 0009).
+  const { data } = useQuery({
+    ...listingDetailQuery(backend, state.inquiry.listingId ?? ''),
+    enabled: state.overlay === 'inquiry' && !!state.inquiry.listingId,
+  })
   if (state.overlay !== 'inquiry' || !state.inquiry.listingId) return null
 
-  const listing = listings.find((l) => l.id === state.inquiry.listingId)
+  const listing = data ? mapListingDetailToListing(data.item) : undefined
   if (!listing) return null
   const to = orgLine(listing)
 

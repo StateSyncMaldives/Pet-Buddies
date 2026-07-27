@@ -6,6 +6,7 @@ import { useViewportMode } from '../layout/viewport-mode'
 import { listMeta } from '../store/store'
 import { getDetailPath } from '../router/paths'
 import type { BrowseSearchUrl } from '../router/browse-search'
+import type { Listing } from '../types'
 
 const HERO_H = 188
 const INTERVAL = 4500
@@ -43,12 +44,13 @@ const PROMOS: Promo[] = [
  * Auto-rotating hero carousel for the Browse page. Mixes featured pets (tap →
  * detail) with promo / sponsor slides. Swipeable; pauses while the user touches.
  */
-export function Hero() {
+export function Hero({ listings }: { listings: Listing[] }) {
   const navigate = useNavigate()
-  const { listings, showToast } = useStore()
+  const { showToast } = useStore()
   const desktop = useViewportMode() === 'desktop'
 
-  // Featured = first few live listings that have a real photo.
+  // Featured = first few live listings that have a real photo. The feed comes
+  // from the browse query (ADR 0009) — Hero no longer reads the store mirror.
   const featured = listings
     .filter((l) => (l.status ?? 'live') === 'live' && l.photo)
     .slice(0, 3)
