@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useRouteContext } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { colors } from '../theme'
 import { useStore } from '../store/store'
 import { useViewportMode } from '../layout/viewport-mode'
 import { listMeta } from '../store/store'
+import { browseQuery } from '../query/queries'
+import { mapListingSummaryToListing } from '../store/view-model-mappers'
 import { getDetailPath } from '../router/paths'
 import type { BrowseSearchUrl } from '../router/browse-search'
-import type { Listing } from '../types'
 
 const HERO_H = 188
 const INTERVAL = 4500
@@ -44,14 +46,19 @@ const PROMOS: Promo[] = [
  * Auto-rotating hero carousel for the Browse page. Mixes featured pets (tap →
  * detail) with promo / sponsor slides. Swipeable; pauses while the user touches.
  */
-export function Hero({ listings }: { listings: Listing[] }) {
+export function Hero() {
   const navigate = useNavigate()
+  const { backend } = useRouteContext({ from: '__root__' })
   const { showToast } = useStore()
   const desktop = useViewportMode() === 'desktop'
 
-  // Featured = first few live listings that have a real photo. The feed comes
-  // from the browse query (ADR 0009) — Hero no longer reads the store mirror.
-  const featured = listings
+  // Featured = first few live listings (cross-species, unfiltered) that have a
+  // real photo — a showcase independent of the current search. Reads durable
+  // truth from the query cache (ADR 0009), not the store mirror.
+  const catFeed = useQuery(browseQuery(backend, { species: 'cat', query: '', tags: [] }))
+  const birdFeed = useQuery(browseQuery(backend, { species: 'bird', query: '', tags: [] }))
+  const featured = [...(catFeed.data?.items ?? []), ...(birdFeed.data?.items ?? [])]
+    .map(mapListingSummaryToListing)
     .filter((l) => (l.status ?? 'live') === 'live' && l.photo)
     .slice(0, 3)
 

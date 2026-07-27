@@ -243,7 +243,7 @@ export function Browse({ search }: { search: BrowseSearch }) {
         </p>
 
         {/* Rotating hero: featured pets + promo / sponsor slides */}
-        <Hero listings={feed} />
+        <Hero />
 
         {/* Sticky listing menu: species row first, then search, then trait chips. */}
         <div className="pb-filterbar">
@@ -344,7 +344,7 @@ export function Browse({ search }: { search: BrowseSearch }) {
       </div>
 
       {/* Rotating hero: featured pets + promo / sponsor slides */}
-      <Hero listings={feed} />
+      <Hero />
 
       <h1 style={{ fontSize: 25, fontWeight: 700, color: colors.ink, letterSpacing: '-0.02em', margin: '0 0 4px' }}>
         Find a buddy
