@@ -91,7 +91,13 @@ const createMiniflareD1 = useMiniflareD1('pet-buddies-adoption-inquiry-repositor
 
 async function createMiniflareRepository() {
   const { db } = await createMiniflareD1()
-  await db.insert(schema.users).values(sender).run()
+  // users.createdAt/updatedAt are Better-Auth-managed integer/timestamp
+  // columns (native Date), while this fixture keeps ISO strings for parity
+  // with UserRecord — convert at the insert boundary.
+  await db
+    .insert(schema.users)
+    .values({ ...sender, createdAt: new Date(sender.createdAt), updatedAt: new Date(sender.updatedAt) })
+    .run()
   await createDrizzleListingRepository({ db }).create(listing)
 
   return createDrizzleAdoptionInquiryRepository({ db })

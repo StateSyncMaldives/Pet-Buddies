@@ -6,6 +6,22 @@ const timestamps = {
   updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 }
 
+// Better Auth's drizzle adapter always passes native JS `Date` objects for
+// every `type:"date"` field (createdAt, updatedAt, expiresAt, token
+// expiries, banExpires) and never sets `supportsDates:false` for the sqlite
+// provider — so these four tables (owned/written by Better Auth) use
+// integer/timestamp columns, not the shared `text` `timestamps` helper.
+// Every OTHER table in this file keeps text CURRENT_TIMESTAMP columns; the
+// app (not Better Auth) owns those and reads/writes them as ISO strings.
+const betterAuthTimestamps = {
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+}
+
 export const users = sqliteTable(
   'users',
   {
@@ -18,8 +34,8 @@ export const users = sqliteTable(
     role: text('role', { enum: ['user', 'moderator', 'admin'] }).notNull().default('user'),
     banned: integer('banned', { mode: 'boolean' }).notNull().default(false),
     banReason: text('ban_reason'),
-    banExpires: text('ban_expires'),
-    ...timestamps,
+    banExpires: integer('ban_expires', { mode: 'timestamp' }),
+    ...betterAuthTimestamps,
   },
   (table) => [
     uniqueIndex('users_email_unique').on(table.email),
@@ -35,11 +51,11 @@ export const session = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     token: text('token').notNull(),
-    expiresAt: text('expires_at').notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
     ipAddress: text('ip_address'),
     userAgent: text('user_agent'),
     impersonatedBy: text('impersonated_by'),
-    ...timestamps,
+    ...betterAuthTimestamps,
   },
   (table) => [uniqueIndex('session_token_unique').on(table.token)],
 )
@@ -54,19 +70,19 @@ export const account = sqliteTable('account', {
   accessToken: text('access_token'),
   refreshToken: text('refresh_token'),
   idToken: text('id_token'),
-  accessTokenExpiresAt: text('access_token_expires_at'),
-  refreshTokenExpiresAt: text('refresh_token_expires_at'),
+  accessTokenExpiresAt: integer('access_token_expires_at', { mode: 'timestamp' }),
+  refreshTokenExpiresAt: integer('refresh_token_expires_at', { mode: 'timestamp' }),
   scope: text('scope'),
   password: text('password'),
-  ...timestamps,
+  ...betterAuthTimestamps,
 })
 
 export const verification = sqliteTable('verification', {
   id: text('id').primaryKey(),
   identifier: text('identifier').notNull(),
   value: text('value').notNull(),
-  expiresAt: text('expires_at').notNull(),
-  ...timestamps,
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  ...betterAuthTimestamps,
 })
 
 export const organizations = sqliteTable(

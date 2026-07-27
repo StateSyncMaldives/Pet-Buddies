@@ -435,8 +435,11 @@ function toUserRecord(row: typeof schema.users.$inferSelect): UserRecord {
     avatarUrl: row.avatarUrl,
     role: row.role,
     banned: row.banned,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
+    // users.createdAt/updatedAt are Better-Auth-managed integer/timestamp
+    // columns — drizzle returns native Date, while UserRecord keeps ISO
+    // strings at the app boundary.
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   }
 }
 
@@ -450,7 +453,7 @@ function toUserInsert(record: UserRecord): typeof schema.users.$inferInsert {
     avatarUrl: record.avatarUrl,
     role: record.role,
     banned: record.banned,
-    createdAt: record.createdAt,
-    updatedAt: record.updatedAt,
+    createdAt: new Date(record.createdAt),
+    updatedAt: new Date(record.updatedAt),
   }
 }

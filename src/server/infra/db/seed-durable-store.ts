@@ -19,8 +19,11 @@ function toUserInsert(user: UserRecord): typeof schema.users.$inferInsert {
     avatarUrl: user.avatarUrl,
     role: user.role,
     banned: user.banned,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
+    // users.createdAt/updatedAt are Better-Auth-managed integer/timestamp
+    // columns — drizzle expects native Date, while UserRecord keeps ISO
+    // strings at the app boundary.
+    createdAt: new Date(user.createdAt),
+    updatedAt: new Date(user.updatedAt),
   }
 }
 

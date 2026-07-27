@@ -35,7 +35,12 @@ export function createAuth(deps: { database: PetBuddiesDrizzleDatabase; secrets:
     secret: secrets.BETTER_AUTH_SECRET,
     database: drizzleAdapter(database, {
       provider: 'sqlite',
-      schema: { user: schema.users, session: schema.session, account: schema.account, verification: schema.verification },
+      // Better Auth rewrites the canonical model id `user` to the configured
+      // `modelName` ('users') BEFORE the adapter does a literal
+      // `config.schema[model]` lookup, so this map must be keyed by the
+      // *renamed* model id, not the canonical one. session/account/
+      // verification keep their canonical (unrenamed) ids.
+      schema: { users: schema.users, session: schema.session, account: schema.account, verification: schema.verification },
     }),
     user: {
       modelName: 'users',
