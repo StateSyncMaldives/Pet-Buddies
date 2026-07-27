@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { validateBrowseSearch } from '../../src/router/browse-search'
 import { createAppRouter } from '../../src/router'
+import { queryKeys } from '../../src/query/queries'
 import { createQueryClient } from '../../src/query/client'
 import { createAppRuntime } from '../../src/server/runtime/app-session'
 
@@ -80,13 +81,15 @@ describe('createAppRouter', () => {
     expect(detailMatch?.loaderData).toMatchObject({ id: 'luna' })
   })
 
-  it('loads browse results through the route loader from search params', async () => {
-    const router = createAppRouter({ context: testContext(), initialEntries: ['/browse?species=bird&q=kiwi&tags=Hand-tame'] })
+  it('prefetches browse results into the query cache from the route loader', async () => {
+    const context = testContext()
+    const router = createAppRouter({ context, initialEntries: ['/browse?species=bird&q=kiwi&tags=Hand-tame'] })
 
     await router.load()
 
-    const browseMatch = router.state.matches.find((match) => match.routeId === '/browse')
-    expect(browseMatch?.loaderData).toMatchObject({
+    // The loader prefetches the browse read into the query cache (ADR 0009).
+    const cached = context.queryClient.getQueryData(queryKeys.browse({ species: 'bird', query: 'kiwi', tags: ['Hand-tame'] }))
+    expect(cached).toMatchObject({
       items: [
         {
           slug: 'kiwi',
