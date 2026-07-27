@@ -15,9 +15,11 @@ const moderator = {
   id: 'moderator-1',
   googleSub: 'sub-moderator-1',
   email: 'moderator@example.com',
+  emailVerified: true,
   displayName: 'Moderator',
   avatarUrl: null,
-  globalRole: 'moderator',
+  role: 'moderator',
+  banned: false,
   createdAt: '2026-06-01T08:00:00.000Z',
   updatedAt: '2026-06-01T08:00:00.000Z',
 } as const

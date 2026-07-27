@@ -54,11 +54,13 @@ export type {
 
 export interface UserRecord {
   id: string
-  googleSub: string
+  googleSub: string | null
   email: string
+  emailVerified: boolean
   displayName: string
   avatarUrl?: string | null
-  globalRole: GlobalRole
+  role: GlobalRole
+  banned: boolean
   createdAt: string
   updatedAt: string
 }

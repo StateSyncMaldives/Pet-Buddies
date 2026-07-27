@@ -14,9 +14,11 @@ const owner = {
   id: 'user-1',
   googleSub: 'sub-1',
   email: 'owner@example.com',
+  emailVerified: true,
   displayName: 'Aishath Ali',
   avatarUrl: null,
-  globalRole: 'user',
+  role: 'user',
+  banned: false,
   createdAt: '2026-06-01T08:00:00.000Z',
   updatedAt: '2026-06-01T08:00:00.000Z',
 } as const

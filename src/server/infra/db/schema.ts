@@ -10,19 +10,64 @@ export const users = sqliteTable(
   'users',
   {
     id: text('id').primaryKey(),
-    googleSub: text('google_sub').notNull(),
+    googleSub: text('google_sub'), // legacy, nullable — provider identity now in `account`
     email: text('email').notNull(),
+    emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
     displayName: text('display_name').notNull(),
     avatarUrl: text('avatar_url'),
-    globalRole: text('global_role', { enum: ['user', 'moderator', 'admin'] }).notNull().default('user'),
+    role: text('role', { enum: ['user', 'moderator', 'admin'] }).notNull().default('user'),
+    banned: integer('banned', { mode: 'boolean' }).notNull().default(false),
+    banReason: text('ban_reason'),
+    banExpires: text('ban_expires'),
     ...timestamps,
   },
   (table) => [
-    uniqueIndex('users_google_sub_unique').on(table.googleSub),
     uniqueIndex('users_email_unique').on(table.email),
-    check('users_global_role_check', sql`${table.globalRole} in ('user', 'moderator', 'admin')`),
+    check('users_role_check', sql`${table.role} in ('user', 'moderator', 'admin')`),
   ],
 )
+
+export const session = sqliteTable(
+  'session',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    token: text('token').notNull(),
+    expiresAt: text('expires_at').notNull(),
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    impersonatedBy: text('impersonated_by'),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex('session_token_unique').on(table.token)],
+)
+
+export const account = sqliteTable('account', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  idToken: text('id_token'),
+  accessTokenExpiresAt: text('access_token_expires_at'),
+  refreshTokenExpiresAt: text('refresh_token_expires_at'),
+  scope: text('scope'),
+  password: text('password'),
+  ...timestamps,
+})
+
+export const verification = sqliteTable('verification', {
+  id: text('id').primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: text('expires_at').notNull(),
+  ...timestamps,
+})
 
 export const organizations = sqliteTable(
   'organizations',

@@ -7,6 +7,7 @@ import * as schema from '../../../../../src/server/infra/db/schema'
 import { useMiniflareD1 } from '../../../../helpers/miniflare-d1'
 
 const expectedTableNames = [
+  'account',
   'adoption_inquiries',
   'clinic_services',
   'clinics',
@@ -18,8 +19,10 @@ const expectedTableNames = [
   'organization_members',
   'organizations',
   'saved_listings',
+  'session',
   'tags',
   'users',
+  'verification',
 ]
 
 // These tests exercise migration application themselves, so the helper must

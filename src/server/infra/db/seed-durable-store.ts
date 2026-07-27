@@ -14,9 +14,11 @@ function toUserInsert(user: UserRecord): typeof schema.users.$inferInsert {
     id: user.id,
     googleSub: user.googleSub,
     email: user.email,
+    emailVerified: user.emailVerified,
     displayName: user.displayName,
     avatarUrl: user.avatarUrl,
-    globalRole: user.globalRole,
+    role: user.role,
+    banned: user.banned,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   }

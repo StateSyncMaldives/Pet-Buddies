@@ -239,9 +239,11 @@ export function createPrototypeBackend(deps: PrototypeBackendDeps = {}): Prototy
       id: `user-${slug}`,
       googleSub: `sub-${slug}`,
       email: `${slug}@example.com`,
+      emailVerified: false,
       displayName,
       avatarUrl: null,
-      globalRole: 'user',
+      role: 'user',
+      banned: false,
       createdAt: SEEDED_AT,
       updatedAt: SEEDED_AT,
     }
