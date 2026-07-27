@@ -1,14 +1,17 @@
+import { useQuery } from '@tanstack/react-query'
+import { useRouteContext } from '@tanstack/react-router'
+
 import { colors, shadow } from '../../theme'
-import type { ClinicSummary } from '../../server/contracts/api'
 import { mapClinicSummaryToClinic } from '../../store/view-model-mappers'
+import { clinicsQuery } from '../../query/queries'
 import { CardGrid, Screen } from '../../layout/primitives'
 import { useStore } from '../../store/store'
 
-export function Vets({ clinics: serverClinics }: { clinics?: ClinicSummary[] }) {
-  const { clinics: storeClinics, callClinic, directionsClinic } = useStore()
-  const clinics = serverClinics
-    ? serverClinics.map((clinic, index) => mapClinicSummaryToClinic(clinic, index))
-    : storeClinics
+export function Vets() {
+  const { backend } = useRouteContext({ from: '__root__' })
+  const { callClinic, directionsClinic } = useStore()
+  const { data } = useQuery(clinicsQuery(backend))
+  const clinics = (data?.items ?? []).map((clinic, index) => mapClinicSummaryToClinic(clinic, index))
 
   return (
     <Screen title="Vet clinics" subtitle={<>For cats &amp; birds in Greater Malé.</>}>

@@ -106,8 +106,7 @@ describe('createAppRouter', () => {
 
     await router.load()
 
-    const vetsMatch = router.state.matches.find((match) => match.routeId === '/vets')
-    expect(vetsMatch?.loaderData).toMatchObject({
+    expect(context.queryClient.getQueryData(queryKeys.clinics)).toMatchObject({
       items: expect.arrayContaining([
         expect.objectContaining({
           name: 'Oases Vet Hospital',
@@ -123,8 +122,7 @@ describe('createAppRouter', () => {
 
     await router.load()
 
-    const savedMatch = router.state.matches.find((match) => match.routeId === '/saved')
-    expect(savedMatch?.loaderData).toMatchObject({
+    expect(context.queryClient.getQueryData(queryKeys.saved)).toMatchObject({
       items: [
         expect.objectContaining({
           slug: 'mishka',
@@ -162,8 +160,7 @@ describe('createAppRouter', () => {
 
     await router.load()
 
-    const youMatch = router.state.matches.find((match) => match.routeId === '/you')
-    expect(youMatch?.loaderData).toMatchObject({
+    expect(context.queryClient.getQueryData(queryKeys.you)).toMatchObject({
       sentAdoptionInquiries: [
         expect.objectContaining({
           listingId: 'mishka',
@@ -195,8 +192,7 @@ describe('createAppRouter', () => {
 
     await router.load()
 
-    const youMatch = router.state.matches.find((match) => match.routeId === '/you')
-    expect(youMatch?.loaderData).toMatchObject({
+    expect(context.queryClient.getQueryData(queryKeys.you)).toMatchObject({
       ownedListings: [
         expect.objectContaining({
           name: 'Nala',
@@ -253,10 +249,11 @@ describe('createAppRouter', () => {
       actorUserId: moderatorId,
       request: { action: 'adopted' },
     })
-    await router.invalidate()
+    // A write invalidates the affected query; the refetch reflects durable truth
+    // (ADR 0009). refetchType 'all' covers the observer-less test query.
+    await context.queryClient.invalidateQueries({ queryKey: queryKeys.you, refetchType: 'all' })
 
-    const youMatch = router.state.matches.find((match) => match.routeId === '/you')
-    expect(youMatch?.loaderData).toMatchObject({
+    expect(context.queryClient.getQueryData(queryKeys.you)).toMatchObject({
       ownedListings: [
         expect.objectContaining({
           name: 'Nala',

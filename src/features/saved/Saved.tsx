@@ -1,23 +1,24 @@
-import { Link, useNavigate, useRouter } from '@tanstack/react-router'
+import { Link, useNavigate, useRouteContext } from '@tanstack/react-router'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { colors, shadow } from '../../theme'
 import { CardGrid, Screen } from '../../layout/primitives'
 import { ROUTE_PATHS, getDetailPath } from '../../router/paths'
-import type { ListingDetail } from '../../server/contracts/api'
 import { mapListingDetailToListing } from '../../store/view-model-mappers'
+import { queryKeys, savedListingsQuery } from '../../query/queries'
 import { listMeta, orgLine, useStore } from '../../store/store'
 import { PetPhoto, VerifiedBadge } from '../../components/Brand'
 import { HeartIcon } from '../../components/icons'
 
-export function Saved({ savedListings }: { savedListings?: ListingDetail[] }) {
+export function Saved() {
   const navigate = useNavigate()
-  const router = useRouter()
-  const { state, listings, toggleSave } = useStore()
-  const savedFeed = savedListings
-    ? savedListings.map(mapListingDetailToListing)
-    : state.saved
-        .map((id) => listings.find((l) => l.id === id))
-        .filter((l): l is NonNullable<typeof l> => Boolean(l))
+  const { backend, viewerId } = useRouteContext({ from: '__root__' })
+  const queryClient = useQueryClient()
+  const { toggleSave } = useStore()
+  // Saved listings read durable truth from the query cache (ADR 0009),
+  // prefetched by the route loader.
+  const { data } = useQuery(savedListingsQuery(backend, viewerId))
+  const savedFeed = (data?.items ?? []).map(mapListingDetailToListing)
 
   const empty = savedFeed.length === 0
   const sub = empty
@@ -53,10 +54,10 @@ export function Saved({ savedListings }: { savedListings?: ListingDetail[] }) {
       {savedFeed.map((l) => {
         const onRemove = async (e: MouseEvent) => {
           e.stopPropagation()
-          // Await the durable write before invalidating, else the loader
-          // re-reads before the toggle lands and shows stale saved state.
+          // Await the durable write, then invalidate the saved read so it
+          // refetches durable truth (ADR 0009).
           await toggleSave(l.id)
-          await router.invalidate()
+          await queryClient.invalidateQueries({ queryKey: queryKeys.saved })
         }
         return (
           <div
