@@ -17,6 +17,7 @@ import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MediaSplatRouteImport } from './routes/media.$'
 import { Route as BrowseListingsListingIdRouteImport } from './routes/browse.listings.$listingId'
+import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 
 const YouRoute = YouRouteImport.update({
   id: '/you',
@@ -58,6 +59,11 @@ const BrowseListingsListingIdRoute = BrowseListingsListingIdRouteImport.update({
   path: '/listings/$listingId',
   getParentRoute: () => BrowseRoute,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/vets': typeof VetsRoute
   '/you': typeof YouRoute
   '/media/$': typeof MediaSplatRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/browse/listings/$listingId': typeof BrowseListingsListingIdRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/vets': typeof VetsRoute
   '/you': typeof YouRoute
   '/media/$': typeof MediaSplatRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/browse/listings/$listingId': typeof BrowseListingsListingIdRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/vets': typeof VetsRoute
   '/you': typeof YouRoute
   '/media/$': typeof MediaSplatRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/browse/listings/$listingId': typeof BrowseListingsListingIdRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/vets'
     | '/you'
     | '/media/$'
+    | '/api/auth/$'
     | '/browse/listings/$listingId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/vets'
     | '/you'
     | '/media/$'
+    | '/api/auth/$'
     | '/browse/listings/$listingId'
   id:
     | '__root__'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/vets'
     | '/you'
     | '/media/$'
+    | '/api/auth/$'
     | '/browse/listings/$listingId'
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   VetsRoute: typeof VetsRoute
   YouRoute: typeof YouRoute
   MediaSplatRoute: typeof MediaSplatRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -191,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BrowseListingsListingIdRouteImport
       parentRoute: typeof BrowseRoute
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -213,6 +233,7 @@ const rootRouteChildren: RootRouteChildren = {
   VetsRoute: VetsRoute,
   YouRoute: YouRoute,
   MediaSplatRoute: MediaSplatRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
