@@ -7,6 +7,8 @@ SDD task lands (record the commit range).
 
 Status legend: ☐ not started · ▶ in progress · ✅ done (commit range) · 🔎 in review
 
+**Published to StateSyncMaldives/Pet-Buddies:** A4 #28 · A5 #29 · A7 #30 · A6 #31 · A8 #32 · A9 #33 · B1 #34 · B2 #35 · B3 #36 · C1 #37 · C2 #38 · C3 #39 · C4 #40 · D1 #41 · D2 #42 · D3 #43. Close each with its commit range as the SDD task lands.
+
 Slice A tasks A1–A3 are already complete (0d346bb..fcf1658). Acceptance criteria below
 are the behavioral tests each task must pass (from the plan); implementation detail
 lives in `docs/superpowers/plans/2026-07-27-user-management-rbac-better-auth.md`.
