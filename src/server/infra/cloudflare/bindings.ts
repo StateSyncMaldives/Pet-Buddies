@@ -4,6 +4,10 @@ import { createR2MediaObjectStore, type MediaObjectStore } from '../media/r2-med
 export interface PetBuddiesCloudflareBindings {
   DB: D1Database
   MEDIA_BUCKET: R2Bucket
+  BETTER_AUTH_SECRET: string
+  BETTER_AUTH_URL: string
+  GOOGLE_CLIENT_ID: string
+  GOOGLE_CLIENT_SECRET: string
 }
 
 export interface PetBuddiesCloudflareInfrastructure {

@@ -7,6 +7,7 @@ dist-ssr
 .vite
 .vercel
 .wrangler
+.dev.vars
 .superpowers/
 .impeccable/
 .claude/

@@ -27,6 +27,11 @@
       "bucket_name": "pet-buddies-mv-media"
     }
   ],
+  // BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID, and GOOGLE_CLIENT_SECRET are secrets,
+  // not vars — provision them per environment via `wrangler secret put <NAME>`.
+  "vars": {
+    "BETTER_AUTH_URL": "http://localhost:5173"
+  },
   "observability": {
     "enabled": true
   }
