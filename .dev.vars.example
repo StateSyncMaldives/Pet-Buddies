@@ -3,6 +3,17 @@ BETTER_AUTH_URL="http://localhost:5173"
 GOOGLE_CLIENT_ID=""
 GOOGLE_CLIENT_SECRET=""
 
+# Cold-start bootstrap administrator. Only used when the database is seeded from
+# empty. Leave unset and NO administrator is created — that is deliberate: the
+# fallback accounts in seed-auth.ts have passwords committed to this repo, so
+# seeding them into a deployed environment would publish an admin login.
+# Set these as secrets (wrangler secret put) for a fresh environment, sign in
+# once, promote a real account from /admin/users, then remove them.
+BOOTSTRAP_ADMIN_EMAIL=""
+BOOTSTRAP_ADMIN_PASSWORD=""
+# BOOTSTRAP_MODERATOR_EMAIL=""
+# BOOTSTRAP_MODERATOR_PASSWORD=""
+
 # Client-visible (Vite inlines any VITE_-prefixed var into the browser bundle).
 # Leave unset when the API is served from the same origin as the app, which is
 # the normal setup — the auth client then uses relative /api/auth/* URLs.

@@ -2,7 +2,7 @@ import type { drizzle } from 'drizzle-orm/d1'
 
 import type { UserRecord } from '../../../../backend/contracts'
 import type { createAuth } from '../../auth/auth'
-import { seedAuth } from '../../auth/seed-auth'
+import { seedAuth, type BootstrapAccountSpec } from '../../auth/seed-auth'
 import { buildSeedListingAggregates } from '../../runtime/seed-listing-aggregates'
 import { seedClinicRecords } from '../repositories/drizzle-clinic-repository'
 import { seedListingAggregates } from '../repositories/drizzle-listing-repository'
@@ -42,9 +42,20 @@ function toUserInsert(user: UserRecord): typeof schema.users.$inferInsert {
 export async function seedDurableStore(input: {
   db: PetBuddiesDb
   auth?: ReturnType<typeof createAuth>
+  /**
+   * Bootstrap accounts to create. Omit to use the built-in test accounts;
+   * deployed callers pass the result of `resolveBootstrapAccounts`, which is
+   * `null` when the environment has no bootstrap secrets — in that case no
+   * account is created at all. Never fall back to the committed defaults here.
+   */
+  bootstrapAccounts?: BootstrapAccountSpec[] | null
 }): Promise<void> {
-  if (input.auth) {
-    await seedAuth({ auth: input.auth, database: input.db })
+  if (input.auth && input.bootstrapAccounts !== null) {
+    await seedAuth({
+      auth: input.auth,
+      database: input.db,
+      accounts: input.bootstrapAccounts ?? undefined,
+    })
   }
 
   await seedListingAggregates(input.db, buildSeedListingAggregates())

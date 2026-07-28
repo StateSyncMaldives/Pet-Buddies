@@ -15,10 +15,13 @@ export interface BootstrapAccountSpec {
 }
 
 /**
- * The bootstrap accounts every environment starts with. Passwords are
- * placeholders meant to be rotated immediately after the first deploy — they
- * exist so the very first administrator can sign in without a chicken-and-egg
- * problem (nobody can grant the admin role until an admin exists).
+ * Fixed bootstrap accounts for tests and local harnesses ONLY.
+ *
+ * These passwords are committed to the repository, so seeding them into a
+ * deployed environment would publish an administrator login. Production reads
+ * its credentials from secrets instead — see `resolveBootstrapAccounts`, which
+ * returns nothing when they are unset so that no known-password administrator
+ * can ever be created by accident.
  */
 export const BOOTSTRAP_ACCOUNTS = {
   admin: {
@@ -83,16 +86,78 @@ async function ensureUser(
   return created.id
 }
 
+/** The secrets a deployed environment supplies to bootstrap its first admin. */
+export interface BootstrapAccountEnv {
+  BOOTSTRAP_ADMIN_EMAIL?: string
+  BOOTSTRAP_ADMIN_PASSWORD?: string
+  BOOTSTRAP_MODERATOR_EMAIL?: string
+  BOOTSTRAP_MODERATOR_PASSWORD?: string
+}
+
 /**
- * Idempotently seeds the bootstrap administrator and moderator. Safe to run on
- * every deploy: existing rows are matched by email and only their role is
- * re-asserted, so repeated runs neither duplicate accounts nor reset passwords.
+ * The bootstrap accounts a deployed environment should create, or `null` when
+ * it has not been configured to create any.
+ *
+ * Returning `null` rather than falling back to `BOOTSTRAP_ACCOUNTS` is the
+ * point: those passwords are in the repository, so an unconfigured environment
+ * must end up with NO administrator rather than one anybody could sign in as.
+ * The operator sets BOOTSTRAP_ADMIN_EMAIL/PASSWORD as secrets, deploys, signs
+ * in once, and promotes a real account from /admin/users.
+ */
+export function resolveBootstrapAccounts(
+  env: BootstrapAccountEnv | null | undefined,
+): BootstrapAccountSpec[] | null {
+  const adminEmail = env?.BOOTSTRAP_ADMIN_EMAIL?.trim()
+  const adminPassword = env?.BOOTSTRAP_ADMIN_PASSWORD
+  if (!adminEmail || !adminPassword) return null
+
+  const accounts: BootstrapAccountSpec[] = [
+    { email: adminEmail, password: adminPassword, name: 'Pet Buddies Admin', role: 'admin' },
+  ]
+
+  // The moderator is optional — an administrator can appoint one from the UI.
+  const moderatorEmail = env?.BOOTSTRAP_MODERATOR_EMAIL?.trim()
+  const moderatorPassword = env?.BOOTSTRAP_MODERATOR_PASSWORD
+  if (moderatorEmail && moderatorPassword) {
+    accounts.push({
+      email: moderatorEmail,
+      password: moderatorPassword,
+      name: 'Pet Buddies Moderator',
+      role: 'moderator',
+    })
+  }
+
+  return accounts
+}
+
+/**
+ * Idempotently seeds bootstrap accounts. Safe to run on every deploy: existing
+ * rows are matched by email and only their role is re-asserted, so repeated
+ * runs neither duplicate accounts nor reset passwords.
+ *
+ * Defaults to the test accounts; deployed callers pass `accounts` from
+ * `resolveBootstrapAccounts`.
  */
 export async function seedAuth(deps: {
   auth: Auth
   database: PetBuddiesDrizzleDatabase
-}): Promise<{ adminUserId: string; moderatorUserId: string }> {
+  accounts?: readonly BootstrapAccountSpec[]
+}): Promise<{ adminUserId: string; moderatorUserId?: string; userIds: string[] }> {
+  if (deps.accounts) {
+    const userIds: string[] = []
+    for (const spec of deps.accounts) {
+      userIds.push(await ensureUser(deps, spec))
+    }
+    const adminIndex = deps.accounts.findIndex((account) => account.role === 'admin')
+    const moderatorIndex = deps.accounts.findIndex((account) => account.role === 'moderator')
+    return {
+      adminUserId: userIds[adminIndex] ?? userIds[0]!,
+      moderatorUserId: moderatorIndex === -1 ? undefined : userIds[moderatorIndex],
+      userIds,
+    }
+  }
+
   const adminUserId = await ensureUser(deps, BOOTSTRAP_ACCOUNTS.admin)
   const moderatorUserId = await ensureUser(deps, BOOTSTRAP_ACCOUNTS.moderator)
-  return { adminUserId, moderatorUserId }
+  return { adminUserId, moderatorUserId, userIds: [adminUserId, moderatorUserId] }
 }

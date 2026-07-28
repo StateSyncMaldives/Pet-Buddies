@@ -23,6 +23,8 @@
   ],
   // BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID, and GOOGLE_CLIENT_SECRET are secrets,
   // not vars — provision them per environment via `wrangler secret put <NAME>`.
+  // BOOTSTRAP_ADMIN_EMAIL/PASSWORD are optional secrets read only during a
+  // cold-start seed; unset means no administrator is created.
   //
   // The top level is the LOCAL shape: BETTER_AUTH_URL points at the dev server
   // and no route is claimed, so a build that forgets CLOUDFLARE_ENV cannot take
