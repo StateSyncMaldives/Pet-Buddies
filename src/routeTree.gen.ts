@@ -17,6 +17,7 @@ import { Route as ReportRouteImport } from './routes/report'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MediaSplatRouteImport } from './routes/media.$'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as BrowseListingsListingIdRouteImport } from './routes/browse.listings.$listingId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 
@@ -60,6 +61,11 @@ const MediaSplatRoute = MediaSplatRouteImport.update({
   path: '/media/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BrowseListingsListingIdRoute = BrowseListingsListingIdRouteImport.update({
   id: '/listings/$listingId',
   path: '/listings/$listingId',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/vets': typeof VetsRoute
   '/you': typeof YouRoute
+  '/admin/users': typeof AdminUsersRoute
   '/media/$': typeof MediaSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/browse/listings/$listingId': typeof BrowseListingsListingIdRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/vets': typeof VetsRoute
   '/you': typeof YouRoute
+  '/admin/users': typeof AdminUsersRoute
   '/media/$': typeof MediaSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/browse/listings/$listingId': typeof BrowseListingsListingIdRoute
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/vets': typeof VetsRoute
   '/you': typeof YouRoute
+  '/admin/users': typeof AdminUsersRoute
   '/media/$': typeof MediaSplatRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/browse/listings/$listingId': typeof BrowseListingsListingIdRoute
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/vets'
     | '/you'
+    | '/admin/users'
     | '/media/$'
     | '/api/auth/$'
     | '/browse/listings/$listingId'
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/vets'
     | '/you'
+    | '/admin/users'
     | '/media/$'
     | '/api/auth/$'
     | '/browse/listings/$listingId'
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/vets'
     | '/you'
+    | '/admin/users'
     | '/media/$'
     | '/api/auth/$'
     | '/browse/listings/$listingId'
@@ -155,6 +167,7 @@ export interface RootRouteChildren {
   SignInRoute: typeof SignInRoute
   VetsRoute: typeof VetsRoute
   YouRoute: typeof YouRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   MediaSplatRoute: typeof MediaSplatRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -217,6 +230,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MediaSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/browse/listings/$listingId': {
       id: '/browse/listings/$listingId'
       path: '/listings/$listingId'
@@ -253,6 +273,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignInRoute: SignInRoute,
   VetsRoute: VetsRoute,
   YouRoute: YouRoute,
+  AdminUsersRoute: AdminUsersRoute,
   MediaSplatRoute: MediaSplatRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }

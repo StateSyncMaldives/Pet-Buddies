@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query'
 
+import { listOrganizations, listUsers } from '../features/auth/admin.functions'
 import { fetchClinics } from '../features/clinics/clinics.functions'
 import { getBrowseListings, fetchListingDetail } from '../features/listings/listings.functions'
 import { fetchReviewQueue } from '../features/moderation/moderation.functions'
@@ -39,7 +40,18 @@ export const queryKeys = {
   you: ['you-read-model'] as const,
   clinics: ['clinics'] as const,
   listingDetail: (slugOrId: string) => ['listing-detail', slugOrId] as const,
+  adminUsers: ['admin-users'] as const,
+  adminOrganizations: ['admin-organizations'] as const,
 }
+
+// The admin reads have no injected-backend seam: they query the database
+// directly rather than going through AsyncAppBackend, and they are guarded
+// server-side. Tests stub the server-function module instead.
+export const adminUsersQuery = () =>
+  queryOptions({ queryKey: queryKeys.adminUsers, queryFn: () => listUsers() })
+
+export const adminOrganizationsQuery = () =>
+  queryOptions({ queryKey: queryKeys.adminOrganizations, queryFn: () => listOrganizations() })
 
 export const reviewQueueQuery = (backend?: AsyncAppBackend) =>
   queryOptions({
