@@ -5,10 +5,10 @@ Backend data model for the Pet Buddies fullstack migration. Originally drafted a
 
 ## Stack
 - **frontend/fullstack framework:** TanStack Start (wired)
-- **deployment:** Cloudflare Workers (deployed; live at https://pet-buddies.dev.statesync.mv)
+- **deployment:** Cloudflare Workers (deployed; live at https://pet-buddies.statesync.dev)
 - **database:** relational SQL, **D1-compatible** (Drizzle schema + Miniflare-tested D1 repositories; durable runtime composition still pending)
 - **file storage:** R2 for listing/report images (implemented; see ADR 0005–0007)
-- **auth:** Google sign-in (not yet wired; the app still runs on the demo Viewer identity)
+- **auth:** Better Auth over D1 — Google OAuth + email/password, with role-based access control (wired; the demo Viewer identity is gone). See [ADR 0010](../adr/0010-better-auth-over-d1-adapt-existing-users.md)
 
 If we later switch to external Postgres, the domain model still holds; only the SQL dialect and migration tooling need to change.
 

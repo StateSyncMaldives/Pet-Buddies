@@ -14,7 +14,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply pet-buddies-mv-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply pet-buddies-mv-db --remote",
-    "deploy": "pnpm build && wrangler deploy --config dist/server/wrangler.json",
+    "deploy": "CLOUDFLARE_ENV=production pnpm build && wrangler deploy --config dist/server/wrangler.json",
     "test": "vitest --run"
   },
   "dependencies": {

@@ -4,12 +4,6 @@
   "compatibility_date": "2026-07-03",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/worker.ts",
-  "routes": [
-    {
-      "pattern": "pet-buddies.dev.statesync.mv",
-      "custom_domain": true
-    }
-  ],
   "triggers": {
     "crons": ["0 3 * * *"]
   },
@@ -29,10 +23,58 @@
   ],
   // BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID, and GOOGLE_CLIENT_SECRET are secrets,
   // not vars — provision them per environment via `wrangler secret put <NAME>`.
+  //
+  // The top level is the LOCAL shape: BETTER_AUTH_URL points at the dev server
+  // and no route is claimed, so a build that forgets CLOUDFLARE_ENV cannot take
+  // over the production hostname. Deployed values live in `env.production`.
   "vars": {
     "BETTER_AUTH_URL": "http://localhost:5173"
   },
   "observability": {
     "enabled": true
+  },
+  "env": {
+    // Selected at BUILD time — `@cloudflare/vite-plugin` resolves the wrangler
+    // environment while generating dist/server/wrangler.json, so the switch is
+    // CLOUDFLARE_ENV=production (see the `deploy` script), not
+    // `wrangler deploy --env production`.
+    "production": {
+      // Pinned so the deployed Worker stays `pet-buddies-mv` rather than
+      // becoming `pet-buddies-mv-production` under wrangler's legacy env
+      // naming — that would be a different Worker, with different secrets.
+      "name": "pet-buddies-mv",
+      "routes": [
+        {
+          "pattern": "pet-buddies.statesync.dev",
+          "custom_domain": true
+        }
+      ],
+      // BETTER_AUTH_URL must be the canonical origin: Better Auth derives the
+      // Google callback (/api/auth/callback/google) from it, and Google rejects
+      // any redirect URI that doesn't match what's registered.
+      "vars": {
+        "BETTER_AUTH_URL": "https://pet-buddies.statesync.dev"
+      },
+      // vars, d1_databases and r2_buckets are NOT inherited by a named
+      // environment — repeated here deliberately. Dropping them would deploy a
+      // Worker with no database and no media bucket.
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "pet-buddies-mv-db",
+          "database_id": "5a134b5b-1631-4f98-aec2-0774217b9d53",
+          "migrations_dir": "drizzle"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "MEDIA_BUCKET",
+          "bucket_name": "pet-buddies-mv-media"
+        }
+      ],
+      "observability": {
+        "enabled": true
+      }
+    }
   }
 }
