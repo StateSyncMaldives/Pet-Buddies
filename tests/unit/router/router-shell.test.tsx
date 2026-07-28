@@ -235,29 +235,25 @@ describe('app router shell', () => {
     expect(screen.getByText('"Could we visit Mishka this week?"')).toBeTruthy()
   })
 
-  it('resumes add-listing after signed-out users complete sign-in', async () => {
+  // Signed-in viewers reach these flows directly; anonymous ones are routed to
+  // /sign-in instead (see tests/unit/features/auth/gated-actions.test.tsx).
+  it('opens add-listing for a signed-in viewer', async () => {
     const user = userEvent.setup()
     renderAt('/browse')
 
     await screen.findByText('Find a buddy')
     await user.click(screen.getByRole('button', { name: 'Add a listing' }))
-    expect(await screen.findByRole('heading', { name: 'Sign in to list a pet' })).toBeTruthy()
-
-    await user.click(screen.getByRole('button', { name: 'Continue with Google' }))
 
     expect(await screen.findByText('Posting as')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Submit for review' })).toBeTruthy()
   })
 
-  it('resumes adoption inquiry after signed-out users complete sign-in', async () => {
+  it('opens the adoption inquiry for a signed-in viewer', async () => {
     const user = userEvent.setup()
     renderAt('/browse/listings/mishka')
 
     await screen.findByRole('heading', { name: 'Mishka' })
     await user.click(screen.getByRole('button', { name: 'Apply to adopt' }))
-    expect(await screen.findByRole('heading', { name: 'Sign in to list a pet' })).toBeTruthy()
-
-    await user.click(screen.getByRole('button', { name: 'Continue with Google' }))
 
     expect(await screen.findByText('Your message')).toBeTruthy()
     expect(screen.getByDisplayValue(/interested in adopting Mishka/)).toBeTruthy()
@@ -284,7 +280,6 @@ describe('app router shell', () => {
 
     await screen.findByText('Find a buddy')
     await user.click(screen.getByRole('button', { name: 'Add a listing' }))
-    await user.click(await screen.findByRole('button', { name: 'Continue with Google' }))
     await user.type(await screen.findByPlaceholderText('e.g. Mishka'), 'Sunny')
     await user.type(screen.getByPlaceholderText('e.g. 8 months'), '10 months')
     await user.type(screen.getByPlaceholderText('e.g. Maafannu'), 'Maafannu, Malé')

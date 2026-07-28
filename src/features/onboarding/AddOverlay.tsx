@@ -18,7 +18,7 @@ import {
 import { OverlaySurface } from '../../components/OverlaySurface'
 
 export function AddOverlay() {
-  const { state, closeAdd, signOut, patchAdd, toggleAddTag, addListingImages, removeListingImage, submitListing } = useStore()
+  const { state, closeAdd, patchAdd, toggleAddTag, addListingImages, removeListingImage, submitListing } = useStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   if (state.overlay !== 'add') return null
 
@@ -67,12 +67,6 @@ export function AddOverlay() {
                   Posting as <strong style={{ color: '#1f6a9b' }}>{user?.name}</strong>
                 </span>
               </div>
-              <button
-                onClick={signOut}
-                style={{ background: 'none', border: 'none', color: colors.actionBlue, fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}
-              >
-                Sign out
-              </button>
             </div>
 
             <FieldLabel>Species</FieldLabel>

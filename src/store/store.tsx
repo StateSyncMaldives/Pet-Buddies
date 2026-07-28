@@ -17,7 +17,6 @@ import { toTagSlug } from '../router/browse-search'
 import { isBirdSpecies, type BirdSpecies } from '../server/contracts/api'
 import { createInquiryViewModel, mapClinicSummaryToClinic, mapListingDetailToListing } from './view-model-mappers'
 import type {
-  AuthIntent,
   Clinic,
   InboxView,
   Inquiry,
@@ -26,14 +25,6 @@ import type {
   Species,
   User,
 } from '../types'
-
-/**
- * Stand-in identity for the placeholder sign-in overlay, which still fakes a
- * Google sign-in client-side. Task C4 replaces that overlay with a real
- * navigation to `/sign-in`, and this constant goes with it. Nothing durable is
- * ever written under this identity — server writes use the session viewer.
- */
-const PLACEHOLDER_SIGN_IN_USER: User = { name: 'Aishath Ali', email: 'aishath.ali@gmail.com' }
 
 // Lost/found reports route to one of two fixed partner organisations (see
 // report-routing). Their display names for the receipt, resolved client-side
@@ -93,8 +84,6 @@ export interface AppState {
   overlay: Overlay
   detailId: string | null
   user: User | null
-  authIntent: AuthIntent
-  pendingApplyId: string | null
   inquiries: Inquiry[]
   inquiry: { listingId: string | null; message: string }
   inboxView: InboxView
@@ -172,8 +161,6 @@ function initialState(initialSaved: string[]): AppState {
     overlay: null,
     detailId: null,
     user: null,
-    authIntent: 'add',
-    pendingApplyId: null,
     inquiries: [],
     inquiry: { listingId: null, message: '' },
     inboxView: 'inquiries',
@@ -207,10 +194,6 @@ export interface Store {
   toggleSave: (id: string) => Promise<void>
   openDetail: (id: string) => void
   closeDetail: () => void
-  openAuth: (intent: AuthIntent, applyId?: string) => void
-  closeAuth: () => void
-  googleSignIn: () => void
-  signOut: () => void
   applyToAdopt: (id: string) => void
   setInquiryMessage: (msg: string) => void
   cancelInquiry: () => void
@@ -248,6 +231,11 @@ export interface StoreProviderProps {
   children: ReactNode
   /** Who is browsing, resolved from the real session by `__root` (ADR 0010). */
   viewer: Viewer
+  /**
+   * Called instead of firing a gated action when nobody is signed in. `__root`
+   * points this at `/sign-in`, carrying the current path as `redirect`.
+   */
+  onRequireSignIn?: () => void
   /** Write seam (durable server functions on the client; in-memory in tests). */
   mutations: AppMutationAdapter
   /**
@@ -261,7 +249,7 @@ export interface StoreProviderProps {
 
 const StoreContext = createContext<Store | null>(null)
 
-export function StoreProvider({ children, viewer, mutations, hydrate }: StoreProviderProps) {
+export function StoreProvider({ children, viewer, mutations, hydrate, onRequireSignIn }: StoreProviderProps) {
   const viewerId = isSignedIn(viewer) ? viewer.id : undefined
   // Moderation writes are attributed to the acting viewer; the server re-derives
   // the actor from the session and enforces the moderate permission (B2).
@@ -273,6 +261,13 @@ export function StoreProvider({ children, viewer, mutations, hydrate }: StorePro
   const [state, setState] = useState<AppState>(() => initialState([]))
   const [listings, setListings] = useState<Listing[]>([])
   const [clinics, setClinics] = useState<Clinic[]>([])
+
+  // The signed-in user is the session viewer, not something the UI sets. Kept
+  // out of the initial state so SSR and the first client render agree; the
+  // viewer arrives through router context, which is resolved server-side.
+  useEffect(() => {
+    setState((s) => (s.user === viewerUser ? s : { ...s, user: viewerUser }))
+  }, [viewerUser])
 
   // Load persisted flags + drafts from localStorage after mount (client-only).
   // Kept out of the initial render so SSR and the first client render match —
@@ -437,6 +432,12 @@ export function StoreProvider({ children, viewer, mutations, hydrate }: StorePro
         })),
       clearFilters: () => patch({ tags: [], query: '' }),
       toggleSave: async (id) => {
+        // Saving is viewer-owned, so an anonymous visitor goes to sign-in
+        // rather than firing a mutation the server would refuse.
+        if (!viewerUser) {
+          onRequireSignIn?.()
+          return
+        }
         // Optimistic toggle for instant feedback; reconcile / revert on the result.
         setState((s) => ({
           ...s,
@@ -458,39 +459,16 @@ export function StoreProvider({ children, viewer, mutations, hydrate }: StorePro
       },
       openDetail: (id) => patch({ overlay: 'detail', detailId: id }),
       closeDetail: () => patch({ overlay: null, detailId: null }),
-      openAuth: (intent, applyId) => patch({ overlay: 'auth', authIntent: intent, pendingApplyId: applyId ?? null }),
-      closeAuth: () => patch({ overlay: null }),
-      googleSignIn: () =>
-        setState((s) => {
-          if (s.authIntent === 'apply' && s.pendingApplyId) {
-            const listing = listings.find((item) => item.id === s.pendingApplyId)
-            return {
-              ...s,
-              user: viewerUser ?? PLACEHOLDER_SIGN_IN_USER,
-              overlay: 'inquiry',
-              inquiry: { listingId: s.pendingApplyId, message: inquiryDraft(listing?.name ?? '') },
-              pendingApplyId: null,
-              authIntent: 'add',
-            }
-          }
-          return {
-            ...s,
-            user: viewerUser ?? PLACEHOLDER_SIGN_IN_USER,
-            overlay: 'add',
-            addDone: false,
-            addedName: '',
-            add: { ...emptyAdd },
-          }
-        }),
-      signOut: () => patch({ user: null, overlay: null }),
-      applyToAdopt: (id) =>
+      applyToAdopt: (id) => {
+        if (!viewerUser) {
+          onRequireSignIn?.()
+          return
+        }
         setState((s) => {
           const listing = listings.find((item) => item.id === id)
-          if (s.user) {
-            return { ...s, overlay: 'inquiry', inquiry: { listingId: id, message: inquiryDraft(listing?.name ?? '') } }
-          }
-          return { ...s, overlay: 'auth', authIntent: 'apply', pendingApplyId: id }
-        }),
+          return { ...s, overlay: 'inquiry', inquiry: { listingId: id, message: inquiryDraft(listing?.name ?? '') } }
+        })
+      },
       setInquiryMessage: (msg) => setState((s) => ({ ...s, inquiry: { ...s.inquiry, message: msg } })),
       cancelInquiry: () => setState((s) => ({ ...s, overlay: s.detailId ? 'detail' : null })),
       sendInquiry: async () => {
@@ -527,12 +505,13 @@ export function StoreProvider({ children, viewer, mutations, hydrate }: StorePro
         showToast(`Inquiry sent to ${recipient}`)
       },
       reportListing: () => showToast('Listing reported — thank you'),
-      openAdd: () =>
-        setState((s) =>
-          s.user
-            ? { ...s, overlay: 'add', addDone: false, addedName: '', add: { ...emptyAdd } }
-            : { ...s, overlay: 'auth', authIntent: 'add' },
-        ),
+      openAdd: () => {
+        if (!viewerUser) {
+          onRequireSignIn?.()
+          return
+        }
+        setState((s) => ({ ...s, overlay: 'add', addDone: false, addedName: '', add: { ...emptyAdd } }))
+      },
       closeAdd: () => patch({ overlay: null, addDone: false }),
       patchAdd: setAdd,
       addListingImages: async (files) => {

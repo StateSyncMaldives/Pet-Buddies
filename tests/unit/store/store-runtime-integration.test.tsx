@@ -113,7 +113,7 @@ describe('StoreProvider runtime integration', () => {
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
 
     act(() => {
-      result.current.googleSignIn()
+      result.current.openAdd()
     })
 
     act(() => {
@@ -147,10 +147,6 @@ describe('StoreProvider runtime integration', () => {
 
     await waitFor(() => {
       expect(result.current.listings.some((listing) => listing.id === 'mishka')).toBe(true)
-    })
-
-    act(() => {
-      result.current.googleSignIn()
     })
 
     act(() => {
@@ -353,7 +349,7 @@ describe('StoreProvider runtime integration', () => {
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
 
     act(() => {
-      result.current.googleSignIn()
+      result.current.openAdd()
     })
 
     await act(async () => {

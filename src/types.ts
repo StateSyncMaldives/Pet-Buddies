@@ -56,6 +56,5 @@ export interface User {
 }
 
 export type Tab = 'browse' | 'report' | 'vets' | 'inbox' | 'saved'
-export type Overlay = 'detail' | 'add' | 'inquiry' | 'auth' | 'mod' | null
-export type AuthIntent = 'add' | 'apply'
+export type Overlay = 'detail' | 'add' | 'inquiry' | 'mod' | null
 export type InboxView = 'inquiries' | 'listings'
