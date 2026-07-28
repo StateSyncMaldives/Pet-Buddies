@@ -77,11 +77,17 @@ Needed for:
 
 Key fields:
 - `id`
-- `google_sub`
+- `google_sub` — legacy and nullable; provider identity lives in `account` (ADR 0010)
 - `email`
+- `email_verified`
 - `display_name`
 - `avatar_url`
-- `global_role`
+- `role` — the global role (renamed from `global_role` in ADR 0010)
+- `banned`, `ban_reason`, `ban_expires`
+
+Better Auth adds `session`, `account` and `verification` alongside this table; the
+`users` table itself is adapted rather than duplicated, so every existing foreign
+key still points at it. See [ADR 0010](../adr/0010-better-auth-over-d1-adapt-existing-users.md).
 
 ---
 
