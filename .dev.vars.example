@@ -2,3 +2,9 @@ BETTER_AUTH_SECRET="generate-with-openssl-rand-base64-32"
 BETTER_AUTH_URL="http://localhost:5173"
 GOOGLE_CLIENT_ID=""
 GOOGLE_CLIENT_SECRET=""
+
+# Client-visible (Vite inlines any VITE_-prefixed var into the browser bundle).
+# Leave unset when the API is served from the same origin as the app, which is
+# the normal setup — the auth client then uses relative /api/auth/* URLs.
+# Never put a secret behind a VITE_ prefix.
+# VITE_BETTER_AUTH_URL=""
