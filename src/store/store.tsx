@@ -8,8 +8,8 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { createPrototypeBackend, type HydratedAppShell } from '../server/runtime/prototype-backend'
-import { DEMO_MODERATOR_ID } from '../server/runtime/app-session'
+import { DEMO_MODERATOR_ID } from '../server/runtime/demo-session'
+import type { HydratedAppShell } from '../server/runtime/app-backend'
 import { MAX_LISTING_IMAGES } from '../server/domain/listings/create-listing'
 import type { MediaUploadKind } from '../server/domain/media/media-upload-policy'
 import type { AppMutationAdapter } from '../server/mutations/mutation-adapter'
@@ -150,9 +150,13 @@ function loadDrafts(): { add: AddForm; rep: ReportForm } {
   }
 }
 
+// SSR-safe initial state: it must NOT read localStorage, because the server
+// renders with defaults and the client's first (hydration) render must match
+// byte-for-byte. Persisted flags and drafts are loaded from localStorage after
+// mount (see the effect in StoreProvider) — reading them here caused a
+// hydration mismatch that made React discard the SSR tree and re-render the
+// whole root, which in turn dropped the precedence-managed stylesheet.
 function initialState(initialSaved: string[]): AppState {
-  const flags = loadFlags()
-  const drafts = loadDrafts()
   return {
     species: 'cat',
     query: '',
@@ -167,15 +171,15 @@ function initialState(initialSaved: string[]): AppState {
     inquiries: [],
     inquiry: { listingId: null, message: '' },
     inboxView: 'inquiries',
-    onboarded: flags.onboarded,
+    onboarded: false,
     obStep: 0,
-    installed: flags.installed,
-    installDismissed: flags.installDismissed,
+    installed: false,
+    installDismissed: false,
     toast: '',
-    rep: drafts.rep,
+    rep: { ...emptyRep },
     reportDone: false,
     reportReceipt: null,
-    add: drafts.add,
+    add: { ...emptyAdd },
     addDone: false,
     addedName: '',
   }
@@ -215,8 +219,8 @@ export interface Store {
   submitListing: () => void
   openMod: () => void
   closeMod: () => void
-  approveListing: (id: string) => void
-  rejectListing: (id: string) => void
+  approveListing: (id: string) => Promise<void>
+  rejectListing: (id: string) => Promise<void>
   markAdopted: (id: string) => Promise<void>
   patchRep: (p: Partial<ReportForm>) => void
   useMyLocation: () => void
@@ -242,27 +246,12 @@ export interface StoreProviderProps {
   /** Write seam (durable server functions on the client; in-memory in tests). */
   mutations: AppMutationAdapter
   /**
-   * Durable read seam. When provided, the store reconciles its seed-hydrated
-   * listings/clinics/saved against this durable app-shell read once, after
+   * Durable read seam. When provided, the store reconciles listings, clinics,
+   * and saved ids from this D1-backed app-shell read after
    * mount — so the store cannot drift from the data the loaders read. Omitted in
-   * tests that only exercise the seed + optimistic writes. See ADR 0008 / #8.
+   * tests that only exercise optimistic writes. See ADR 0008 / #8.
    */
   hydrate?: (viewerId: string) => Promise<HydratedAppShell>
-}
-
-/**
- * Seeds the store's optimistic client state from the static seed shell. This is
- * deterministic (identical on server and client, so no hydration mismatch); the
- * durable server data is delivered to screens through the route loaders. The
- * store no longer reads the request-scoped backend. See ADR 0008.
- */
-function createInitialHydration(viewerId: string) {
-  const shell = createPrototypeBackend().hydrateAppShell({ viewerId })
-  return {
-    listings: shell.listings.map(mapListingDetailToListing),
-    clinics: shell.clinics.map(mapClinicSummaryToClinic),
-    saved: shell.listings.filter((listing) => listing.savedByViewer).map((listing) => listing.id),
-  }
 }
 
 const StoreContext = createContext<Store | null>(null)
@@ -275,15 +264,30 @@ export function StoreProvider({
   mutations,
   hydrate,
 }: StoreProviderProps) {
-  const hydration = useMemo(() => createInitialHydration(viewerId), [viewerId])
-  const [state, setState] = useState<AppState>(() => initialState(hydration.saved))
-  const [listings, setListings] = useState<Listing[]>(() => hydration.listings.map((listing) => ({ ...listing, tags: [...listing.tags] })))
-  const [clinics, setClinics] = useState<Clinic[]>(() => hydration.clinics.map((clinic) => ({ ...clinic, services: [...clinic.services] })))
+  const [state, setState] = useState<AppState>(() => initialState([]))
+  const [listings, setListings] = useState<Listing[]>([])
+  const [clinics, setClinics] = useState<Clinic[]>([])
 
-  // Reconcile the seed-hydrated shell against the durable app-shell read once
+  // Load persisted flags + drafts from localStorage after mount (client-only).
+  // Kept out of the initial render so SSR and the first client render match —
+  // see initialState.
+  useEffect(() => {
+    const flags = loadFlags()
+    const drafts = loadDrafts()
+    setState((s) => ({
+      ...s,
+      onboarded: flags.onboarded,
+      installed: flags.installed,
+      installDismissed: flags.installDismissed,
+      rep: drafts.rep,
+      add: drafts.add,
+    }))
+  }, [])
+
+  // Reconcile against the durable app-shell read once
   // after mount: durable listings/clinics are the source of truth, so screens
   // that read the store (Saved, You, Moderation) match the loader-read data
-  // instead of the static seed. Client-only and post-hydration, so the first
+  // instead of static seed data. Client-only and post-hydration, so the first
   // paint stays deterministic and there is no hydration mismatch. See #8.
   useEffect(() => {
     if (!hydrate) return
@@ -303,8 +307,10 @@ export function StoreProvider({
         setClinics(shell.clinics.map(mapClinicSummaryToClinic).map((clinic) => ({ ...clinic, services: [...clinic.services] })))
         setState((s) => ({ ...s, saved: shell.listings.filter((listing) => listing.savedByViewer).map((listing) => listing.id) }))
       })
-      .catch(() => {
-        /* keep the seed hydration if the durable read fails */
+      .catch((error) => {
+        // Surface (don't swallow) durable-read failures: the store then stays on
+        // its optimistic data, which can silently drift from the server.
+        console.error('Durable app-shell read failed; store not reconciled.', error)
       })
 
     return () => {

@@ -127,6 +127,10 @@ export interface GetListingDetailResponse {
   item: ListingDetail
 }
 
+export interface ListReviewQueueResponse {
+  items: ListingDetail[]
+}
+
 export interface CreateListingRequest {
   species: Species
   birdSpecies?: BirdSpecies

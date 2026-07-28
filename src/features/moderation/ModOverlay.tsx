@@ -1,16 +1,46 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useRouteContext } from '@tanstack/react-router'
+
 import { colors, shadow, z } from '../../theme'
 import { useStore } from '../../store/store'
+import { mapListingDetailToListing } from '../../store/view-model-mappers'
+import { queryKeys, reviewQueueQuery } from '../../query/queries'
 import { useViewportMode } from '../../layout/viewport-mode'
 import { PetThumb, CheckMedallion, InfoCircle } from '../../components/primitives'
 import { OverlaySurface } from '../../components/OverlaySurface'
 import { ChevronLeftIcon } from '../../components/icons'
 
 export function ModOverlay() {
-  const { state, listings, closeMod, approveListing, rejectListing } = useStore()
+  const { state, closeMod, approveListing, rejectListing } = useStore()
+  const { backend } = useRouteContext({ from: '__root__' })
+  const queryClient = useQueryClient()
   const desktop = useViewportMode() === 'desktop'
+
+  // The Review queue reads the durably-pending listings straight from the query
+  // cache (ADR 0009), so it never derives "pending" from a store copy that can
+  // drift from durable truth. Enabled only while the overlay is open.
+  const { data } = useQuery({ ...reviewQueueQuery(backend), enabled: state.overlay === 'mod' })
+  const pending = (data?.items ?? []).map(mapListingDetailToListing)
+
   if (state.overlay !== 'mod') return null
 
-  const pending = listings.filter((l) => l.status === 'pending')
+  // A moderation transition changes durable status; invalidate the review-queue
+  // and browse reads so the actioned listing leaves the queue and (on approval)
+  // appears in Browse on the next read. See ADR 0009.
+  const invalidateAfterModeration = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.reviewQueue }),
+      queryClient.invalidateQueries({ queryKey: ['browse'] }),
+    ])
+  }
+  const approve = async (id: string) => {
+    await approveListing(id)
+    await invalidateAfterModeration()
+  }
+  const reject = async (id: string) => {
+    await rejectListing(id)
+    await invalidateAfterModeration()
+  }
 
   return (
     <OverlaySurface label="Review queue" zIndex={z.mod} onDismiss={closeMod} width={880} background="#F1EFEA">
@@ -83,14 +113,14 @@ export function ModOverlay() {
               </div>
               <div style={{ display: 'flex', gap: 9, padding: '0 15px 15px' }}>
                 <button
-                  onClick={() => rejectListing(p.id)}
+                  onClick={() => reject(p.id)}
                   aria-label={`Reject ${p.name}`}
                   style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid #ecc9d3', background: '#fff', color: colors.rejectText, fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}
                 >
                   Reject
                 </button>
                 <button
-                  onClick={() => approveListing(p.id)}
+                  onClick={() => approve(p.id)}
                   aria-label={`Approve and publish ${p.name}`}
                   style={{ flex: 1.4, padding: '12px 0', borderRadius: 12, border: 'none', background: colors.approveGreen, color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                 >

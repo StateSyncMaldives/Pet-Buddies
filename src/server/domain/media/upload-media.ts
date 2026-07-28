@@ -1,4 +1,4 @@
-import type { ApiResult } from '../../contracts/api'
+import { apiResultOk, type ApiResult } from '../../contracts/api'
 import type { MediaObjectStore } from '../../infra/media/r2-media-store'
 import { buildMediaObjectKey } from './media-object-keys'
 import { resolveMediaUrl } from './media-url'
@@ -36,13 +36,10 @@ export function createUploadMediaUseCase(dependencies: {
         contentType: validated.value.contentType,
       })
 
-      return {
-        ok: true,
-        data: {
-          objectKey: stored.objectKey,
-          url: stored.publicUrl ?? resolveMediaUrl({ objectKey: stored.objectKey }) ?? stored.objectKey,
-        },
-      }
+      return apiResultOk<UploadMediaResponse>({
+        objectKey: stored.objectKey,
+        url: stored.publicUrl ?? resolveMediaUrl({ objectKey: stored.objectKey }) ?? stored.objectKey,
+      })
     },
   }
 }

@@ -1,11 +1,32 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useMemo, type ReactNode } from 'react'
 import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
+import { QueryClientProvider } from '@tanstack/react-query'
 
 import { App } from '../App'
 import { StoreProvider } from '../store/store'
-import { createServerBackend } from '../server/runtime/server-backend'
 import type { AppRouterContext } from '../router/context'
-import '../index.css'
+import { createServerFnMutationAdapter } from '../server/mutations/server-fn-mutation-adapter'
+import { createServerFnUploadMedia } from '../server/mutations/server-fn-upload'
+import { createListing, uploadMedia } from '../features/listings/listings.functions'
+import { toggleSavedListing } from '../features/saved/saved.functions'
+import { createInquiry } from '../features/inquiries/inquiries.functions'
+import { createReport } from '../features/reports/reports.functions'
+import { updateListingLifecycle } from '../features/moderation/moderation.functions'
+import { fetchAppShell } from '../features/app-shell/app-shell.functions'
+// Global CSS as a stable head-link (?url) rather than a side-effect import.
+// A side-effect import becomes a React-19 precedence-managed <link>, which gets
+// dropped on refresh when hydration reconciles the head — leaving the app
+// unstyled. A declared head link is rendered identically on server and client.
+import appCss from '../index.css?url'
+
+const serverFunctionMutations = createServerFnMutationAdapter({
+  toggleSavedListing,
+  createInquiry,
+  createListing,
+  createReport,
+  updateListingLifecycle,
+  uploadMedia: createServerFnUploadMedia(uploadMedia),
+})
 
 function DefaultNotFound() {
   return (
@@ -19,7 +40,7 @@ function DefaultNotFound() {
 }
 
 function RootRouteComponent() {
-  const { backend, mutations, viewerId, mockUser, moderatorId } = Route.useRouteContext()
+  const { queryClient, backend, mutations, viewerId, mockUser, moderatorId } = Route.useRouteContext()
 
   useEffect(() => {
     if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return
@@ -27,17 +48,28 @@ function RootRouteComponent() {
     void navigator.serviceWorker.register('/sw.js')
   }, [])
 
+  const storeMutations = useMemo(() => mutations ?? serverFunctionMutations, [mutations])
+  // NOTE: the store's app-shell reconcile is being migrated to the TanStack Query
+  // cache (ADR 0009). It remains here until the remaining screens read durable
+  // data through Query; the moderator Review queue already reads Query.
+  const hydrate = useMemo(
+    () => (backend ? (id: string) => backend.hydrateAppShell({ viewerId: id }) : () => fetchAppShell()),
+    [backend],
+  )
+
   return (
     <RootDocument>
-      <StoreProvider
-        viewerId={viewerId}
-        mockUser={mockUser}
-        moderatorId={moderatorId}
-        mutations={mutations}
-        hydrate={(id) => backend.hydrateAppShell({ viewerId: id })}
-      >
-        <App />
-      </StoreProvider>
+      <QueryClientProvider client={queryClient}>
+        <StoreProvider
+          viewerId={viewerId}
+          mockUser={mockUser}
+          moderatorId={moderatorId}
+          mutations={storeMutations}
+          hydrate={hydrate}
+        >
+          <App />
+        </StoreProvider>
+      </QueryClientProvider>
     </RootDocument>
   )
 }
@@ -57,12 +89,6 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 }
 
 export const Route = createRootRouteWithContext<AppRouterContext>()({
-  beforeLoad: async ({ context }) => {
-    // On the server, resolve the durable (D1) backend per request so loaders
-    // read persisted data. On the client, keep the context's in-memory backend.
-    if (typeof window !== 'undefined') return { backend: context.backend }
-    return { backend: await createServerBackend() }
-  },
   head: () => ({
     meta: [
       { title: 'Pet Buddies MV' },
@@ -75,6 +101,7 @@ export const Route = createRootRouteWithContext<AppRouterContext>()({
       { name: 'apple-mobile-web-app-title', content: 'Pet Buddies' },
     ],
     links: [
+      { rel: 'stylesheet', href: appCss },
       { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
       { rel: 'manifest', href: '/manifest.webmanifest' },
       { rel: 'apple-touch-icon', href: '/icon.svg' },

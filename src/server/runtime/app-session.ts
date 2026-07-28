@@ -1,8 +1,9 @@
-import type { User } from '../../types'
 import { createPrototypeBackend } from './prototype-backend'
 import { createInMemoryAsyncBackend, type AsyncAppBackend } from './app-backend'
 import { createRuntimeMutationAdapter, type AppMutationAdapter } from '../mutations/mutation-adapter'
-import { DEMO_MODERATOR_USER, DEMO_VIEWER_USER } from './demo-identity'
+import { createDemoSession, type DemoSession } from './demo-session'
+
+export { createDemoSession, DEMO_MODERATOR_ID, type DemoSession } from './demo-session'
 
 /**
  * The single place demo viewer identity lives. `viewerId`/`moderatorId` are the
@@ -10,27 +11,10 @@ import { DEMO_MODERATOR_USER, DEMO_VIEWER_USER } from './demo-identity'
  * writes satisfy the foreign keys. Later tasks replace this with real
  * authenticated session resolution. See ADR 0008.
  */
-const DEMO_MOCK_USER: User = { name: DEMO_VIEWER_USER.displayName, email: 'aishath.ali@gmail.com' }
-export const DEMO_MODERATOR_ID = DEMO_MODERATOR_USER.id
-
-export interface DemoSession {
-  viewerId: string
-  mockUser: User
-  moderatorId?: string
-}
-
 export interface AppRuntime {
   backend: AsyncAppBackend
   mutations: AppMutationAdapter
   session: DemoSession
-}
-
-export function createDemoSession(): DemoSession {
-  return {
-    viewerId: DEMO_VIEWER_USER.id,
-    mockUser: DEMO_MOCK_USER,
-    moderatorId: DEMO_MODERATOR_ID,
-  }
 }
 
 /**

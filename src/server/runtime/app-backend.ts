@@ -2,6 +2,7 @@ import type {
   ApiResult,
   BrowseListingsQuery,
   BrowseListingsResponse,
+  ClinicSummary,
   CreateInquiryRequest,
   CreateInquiryResponse,
   CreateListingRequest,
@@ -10,6 +11,8 @@ import type {
   CreateLostFoundReportResponse,
   GetListingDetailResponse,
   GetYouReadModelResponse,
+  ListingDetail,
+  ListReviewQueueResponse,
   ListClinicsResponse,
   ListSavedListingsResponse,
   ToggleSavedListingResponse,
@@ -18,15 +21,21 @@ import type {
 } from '../contracts/api'
 import type { ValidateMediaUploadInput } from '../domain/media/media-upload-policy'
 import type { UploadMediaResponse } from '../domain/media/upload-media'
-import type { HydratedAppShell, PrototypeBackend } from './prototype-backend'
+import type { PrototypeBackend } from './prototype-backend'
+
+export interface HydratedAppShell {
+  listings: ListingDetail[]
+  clinics: ClinicSummary[]
+}
 
 /**
  * The async application backend the router context exposes, defined as an
  * explicit port of exactly the reads and writes the SPA loaders, server
  * functions, and mutation adapter use — no longer derived from the full
  * in-memory `PrototypeBackend` surface. On the server it is the durable
- * D1-backed implementation; the in-memory facade below is the fallback used
- * when no D1 binding is present (tests, local without Wrangler). See ADR 0008 / #7.
+ * D1-backed implementation. The in-memory facade below is retained for tests
+ * and local harnesses only; production server runtime refuses to serve without
+ * a D1 binding. See ADR 0008 / #7.
  */
 export interface AsyncAppBackend {
   // ---- reads ----
@@ -35,6 +44,7 @@ export interface AsyncAppBackend {
   listSavedListings(input: { viewerId: string }): Promise<ApiResult<ListSavedListingsResponse>>
   getYouReadModel(input: { viewerId: string }): Promise<ApiResult<GetYouReadModelResponse>>
   browseListings(input: { query: BrowseListingsQuery }): Promise<ApiResult<BrowseListingsResponse>>
+  listReviewQueue(): Promise<ApiResult<ListReviewQueueResponse>>
   getListingDetail(input: { slugOrId: string }): Promise<ApiResult<GetListingDetailResponse>>
   // ---- writes ----
   toggleSavedListing(input: { listingId: string; viewerId: string }): Promise<ApiResult<ToggleSavedListingResponse>>
@@ -69,6 +79,9 @@ export function createInMemoryAsyncBackend(backend: PrototypeBackend): AsyncAppB
     },
     async browseListings(input) {
       return backend.browseListings(input)
+    },
+    async listReviewQueue() {
+      return backend.listReviewQueue()
     },
     async getListingDetail(input) {
       return backend.getListingDetail(input)

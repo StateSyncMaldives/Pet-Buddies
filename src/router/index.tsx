@@ -6,16 +6,16 @@ import {
 } from '@tanstack/react-router'
 
 import { routeTree } from '../routeTree.gen'
-import { createAppRuntime } from '../server/runtime/app-session'
+import { createQueryClient } from '../query/client'
+import { createDemoSession } from '../server/runtime/demo-session'
 import type { AppRouterContext } from './context'
 
 export type { AppRouterContext } from './context'
 
 function createDefaultRouterContext(): AppRouterContext {
-  const { backend, mutations, session } = createAppRuntime()
+  const session = createDemoSession()
   return {
-    backend,
-    mutations,
+    queryClient: createQueryClient(),
     viewerId: session.viewerId,
     mockUser: session.mockUser,
     moderatorId: session.moderatorId,

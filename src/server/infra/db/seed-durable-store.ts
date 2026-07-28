@@ -3,6 +3,7 @@ import type { drizzle } from 'drizzle-orm/d1'
 import type { UserRecord } from '../../../../backend/contracts'
 import { DEMO_SEED_USERS } from '../../runtime/demo-identity'
 import { buildSeedListingAggregates } from '../../runtime/seed-listing-aggregates'
+import { seedClinicRecords } from '../repositories/drizzle-clinic-repository'
 import { seedListingAggregates } from '../repositories/drizzle-listing-repository'
 import * as schema from './schema'
 
@@ -29,8 +30,8 @@ function toUserInsert(user: UserRecord): typeof schema.users.$inferInsert {
  *
  * Safe to run on every deploy — user rows use insert-or-ignore and the listing
  * batch skips existing rows, so repeated runs neither duplicate nor drift.
- * Clinics are static directory data served from the seed repository, so they
- * are not persisted here. See ADR 0008.
+ * Clinics are persisted here too; app reads must come from D1, not the
+ * in-memory seed repository. See ADR 0008.
  */
 export async function seedDurableStore(input: { db: PetBuddiesDb }): Promise<void> {
   for (const user of DEMO_SEED_USERS) {
@@ -38,4 +39,5 @@ export async function seedDurableStore(input: { db: PetBuddiesDb }): Promise<voi
   }
 
   await seedListingAggregates(input.db, buildSeedListingAggregates())
+  await seedClinicRecords(input.db)
 }

@@ -1,7 +1,8 @@
-import { Link, useRouterState } from '@tanstack/react-router'
-import { useMemo } from 'react'
+import { Link, useRouteContext, useRouterState } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { colors } from '../theme'
 import { useStore } from '../store/store'
+import { reviewQueueQuery } from '../query/queries'
 import { ROUTE_PATHS, getTabFromPathname } from '../router/paths'
 import { LogoMark, Wordmark } from './Brand'
 import { NAV_DESTINATIONS, TabIcon } from './nav-model'
@@ -12,12 +13,13 @@ import { PlusIcon, ShieldIcon } from './icons'
 export function RailNav() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const activeTab = getTabFromPathname(pathname)
-  const { listings, openAdd, openMod } = useStore()
+  const { backend } = useRouteContext({ from: '__root__' })
+  const { openAdd, openMod } = useStore()
 
-  const pendingCount = useMemo(
-    () => listings.filter((l) => l.status === 'pending').length,
-    [listings],
-  )
+  // The review badge reads durable truth from the query cache (ADR 0009), not a
+  // store mirror — keeps the count in step with the moderation queue.
+  const { data: reviewData } = useQuery(reviewQueueQuery(backend))
+  const pendingCount = reviewData?.items.length ?? 0
 
   return (
     <nav className="pb-rail" aria-label="Primary">

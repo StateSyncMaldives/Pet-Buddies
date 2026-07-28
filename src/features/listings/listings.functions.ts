@@ -31,7 +31,7 @@ export function validateBrowseListingsInput(input: unknown): BrowseListingsInput
   }
 }
 
-export const getBrowseListings = createServerFn({ method: 'GET' })
+export const getBrowseListings = createServerFn({ method: 'POST' })
   .validator(validateBrowseListingsInput)
   .handler(async ({ data }): Promise<BrowseListingsResponse> => {
     const backend = await createServerBackend()
@@ -50,7 +50,7 @@ export const getBrowseListings = createServerFn({ method: 'GET' })
     return result.data
   })
 
-export const fetchListingDetail = createServerFn({ method: 'GET' })
+export const fetchListingDetail = createServerFn({ method: 'POST' })
   .validator((slugOrId: string) => slugOrId)
   .handler(async ({ data }): Promise<GetListingDetailResponse> => {
     const backend = await createServerBackend()

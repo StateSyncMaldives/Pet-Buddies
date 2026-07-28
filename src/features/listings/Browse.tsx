@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useRouteContext } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { colors, font } from '../../theme'
 import { useViewportMode } from '../../layout/viewport-mode'
 import { useStore } from '../../store/store'
+import { browseQuery, reviewQueueQuery } from '../../query/queries'
 import type { Listing, Species } from '../../types'
-import type { ListingSummary } from '../../server/contracts/api'
 import type { BrowseSearch } from '../../router/browse-search'
 import {
   clearFilters,
-  filterListings,
   normalizeBrowseSearchUrl,
   setQuery,
   switchSpecies,
@@ -106,13 +106,22 @@ function SpeciesRadioGroup({ value, onChange }: { value: Species; onChange: (spe
   )
 }
 
-export function Browse({ search, serverListings }: { search: BrowseSearch; serverListings?: ListingSummary[] }) {
+export function Browse({ search }: { search: BrowseSearch }) {
   const navigate = useNavigate()
-  const { listings, setBrowseFilters, openMod, openAdd } = useStore()
+  const { setBrowseFilters, openMod, openAdd } = useStore()
+  const { backend } = useRouteContext({ from: '__root__' })
   const isCat = search.species === 'cat'
-  const serverFeed = useMemo(() => serverListings?.map(mapListingSummaryToListing), [serverListings])
 
-  // Keep the store mirror fresh for other surfaces; the menu itself renders from `search`.
+  // The feed and the moderator badge count read durable truth from the query
+  // cache (ADR 0009), prefetched by the route loader — not a store mirror.
+  const { data: browseData } = useQuery(
+    browseQuery(backend, { species: search.species, query: search.query, tags: search.tags }),
+  )
+  const feed = useMemo(() => (browseData?.items ?? []).map(mapListingSummaryToListing), [browseData])
+  const { data: reviewData } = useQuery(reviewQueueQuery(backend))
+  const pendingCount = reviewData?.items.length ?? 0
+
+  // Keep the store's browse-filter UI state in sync for surfaces that read it.
   useEffect(() => {
     setBrowseFilters(search)
   }, [search, setBrowseFilters])
@@ -152,11 +161,6 @@ export function Browse({ search, serverListings }: { search: BrowseSearch; serve
     if (debounce.current) clearTimeout(debounce.current)
     debounce.current = setTimeout(() => updateSearch(setQuery(searchRef.current, value), true), 220)
   }
-
-  const pendingCount = useMemo(() => listings.filter((l) => l.status === 'pending').length, [listings])
-
-  const localFeed = useMemo(() => filterListings(listings, search), [listings, search])
-  const feed = serverFeed ?? localFeed
 
   const chips = useMemo(() => traitChipsFor(search), [search])
   const speciesPlural = isCat ? 'cats' : 'birds'

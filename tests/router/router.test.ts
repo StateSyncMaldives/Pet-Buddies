@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import { validateBrowseSearch } from '../../src/router/browse-search'
 import { createAppRouter } from '../../src/router'
+import { queryKeys } from '../../src/query/queries'
+import { createQueryClient } from '../../src/query/client'
 import { createAppRuntime } from '../../src/server/runtime/app-session'
 
 function testContext() {
   const { backend, mutations, session } = createAppRuntime()
   return {
+    queryClient: createQueryClient(),
     backend,
     mutations,
     viewerId: session.viewerId,
@@ -78,13 +81,15 @@ describe('createAppRouter', () => {
     expect(detailMatch?.loaderData).toMatchObject({ id: 'luna' })
   })
 
-  it('loads browse results through the route loader from search params', async () => {
-    const router = createAppRouter({ context: testContext(), initialEntries: ['/browse?species=bird&q=kiwi&tags=Hand-tame'] })
+  it('prefetches browse results into the query cache from the route loader', async () => {
+    const context = testContext()
+    const router = createAppRouter({ context, initialEntries: ['/browse?species=bird&q=kiwi&tags=Hand-tame'] })
 
     await router.load()
 
-    const browseMatch = router.state.matches.find((match) => match.routeId === '/browse')
-    expect(browseMatch?.loaderData).toMatchObject({
+    // The loader prefetches the browse read into the query cache (ADR 0009).
+    const cached = context.queryClient.getQueryData(queryKeys.browse({ species: 'bird', query: 'kiwi', tags: ['Hand-tame'] }))
+    expect(cached).toMatchObject({
       items: [
         {
           slug: 'kiwi',
@@ -101,8 +106,7 @@ describe('createAppRouter', () => {
 
     await router.load()
 
-    const vetsMatch = router.state.matches.find((match) => match.routeId === '/vets')
-    expect(vetsMatch?.loaderData).toMatchObject({
+    expect(context.queryClient.getQueryData(queryKeys.clinics)).toMatchObject({
       items: expect.arrayContaining([
         expect.objectContaining({
           name: 'Oases Vet Hospital',
@@ -118,8 +122,7 @@ describe('createAppRouter', () => {
 
     await router.load()
 
-    const savedMatch = router.state.matches.find((match) => match.routeId === '/saved')
-    expect(savedMatch?.loaderData).toMatchObject({
+    expect(context.queryClient.getQueryData(queryKeys.saved)).toMatchObject({
       items: [
         expect.objectContaining({
           slug: 'mishka',
@@ -157,8 +160,7 @@ describe('createAppRouter', () => {
 
     await router.load()
 
-    const youMatch = router.state.matches.find((match) => match.routeId === '/you')
-    expect(youMatch?.loaderData).toMatchObject({
+    expect(context.queryClient.getQueryData(queryKeys.you)).toMatchObject({
       sentAdoptionInquiries: [
         expect.objectContaining({
           listingId: 'mishka',
@@ -190,8 +192,7 @@ describe('createAppRouter', () => {
 
     await router.load()
 
-    const youMatch = router.state.matches.find((match) => match.routeId === '/you')
-    expect(youMatch?.loaderData).toMatchObject({
+    expect(context.queryClient.getQueryData(queryKeys.you)).toMatchObject({
       ownedListings: [
         expect.objectContaining({
           name: 'Nala',
@@ -248,10 +249,11 @@ describe('createAppRouter', () => {
       actorUserId: moderatorId,
       request: { action: 'adopted' },
     })
-    await router.invalidate()
+    // A write invalidates the affected query; the refetch reflects durable truth
+    // (ADR 0009). refetchType 'all' covers the observer-less test query.
+    await context.queryClient.invalidateQueries({ queryKey: queryKeys.you, refetchType: 'all' })
 
-    const youMatch = router.state.matches.find((match) => match.routeId === '/you')
-    expect(youMatch?.loaderData).toMatchObject({
+    expect(context.queryClient.getQueryData(queryKeys.you)).toMatchObject({
       ownedListings: [
         expect.objectContaining({
           name: 'Nala',

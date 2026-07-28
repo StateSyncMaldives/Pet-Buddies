@@ -1,6 +1,9 @@
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useRouteContext } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { colors, z } from '../../theme'
 import { detailMeta, useStore } from '../../store/store'
+import { listingDetailQuery } from '../../query/queries'
+import { mapListingDetailToListing } from '../../store/view-model-mappers'
 import { ChevronLeftIcon, HeartIcon, ShareIcon } from '../../components/icons'
 import { PetPhoto } from '../../components/Brand'
 import type { BrowseSearchUrl } from '../../router/browse-search'
@@ -15,10 +18,16 @@ import {
 
 export function DetailOverlay() {
   const navigate = useNavigate()
-  const { state, listings, toggleSave, applyToAdopt, reportListing, showToast } = useStore()
+  const { backend } = useRouteContext({ from: '__root__' })
+  const { state, toggleSave, applyToAdopt, reportListing, showToast } = useStore()
+  // Read durable truth for the open listing from the query cache (ADR 0009).
+  const { data } = useQuery({
+    ...listingDetailQuery(backend, state.detailId ?? ''),
+    enabled: state.overlay === 'detail' && !!state.detailId,
+  })
   if (state.overlay !== 'detail' || !state.detailId) return null
 
-  const listing = listings.find((l) => l.id === state.detailId)
+  const listing = data ? mapListingDetailToListing(data.item) : undefined
   if (!listing) return null
 
   const saved = state.saved.includes(listing.id)

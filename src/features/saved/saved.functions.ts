@@ -3,7 +3,7 @@ import { createServerFn } from '@tanstack/react-start'
 import type { ListSavedListingsResponse } from '../../server/contracts/api'
 import { toggleSavedListingInputSchema } from '../../server/mutations/mutation-schemas'
 import { createDurableServerMutationAdapter } from '../../server/mutations/durable-mutation-adapter'
-import { createDemoSession } from '../../server/runtime/app-session'
+import { createDemoSession } from '../../server/runtime/demo-session'
 import { createServerBackend } from '../../server/runtime/server-backend'
 
 /**
@@ -12,7 +12,7 @@ import { createServerBackend } from '../../server/runtime/server-backend'
  * lands on the durable backend. See ADR 0008.
  */
 
-export const fetchSavedListings = createServerFn({ method: 'GET' }).handler(
+export const fetchSavedListings = createServerFn({ method: 'POST' }).handler(
   async (): Promise<ListSavedListingsResponse> => {
     const backend = await createServerBackend()
     const result = await backend.listSavedListings({ viewerId: createDemoSession().viewerId })

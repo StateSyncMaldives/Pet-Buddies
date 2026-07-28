@@ -1,8 +1,9 @@
-import { useNavigate, useRouter } from '@tanstack/react-router'
+import { useNavigate, useRouteContext } from '@tanstack/react-router'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { colors, shadow } from '../../theme'
 import { getDetailPath } from '../../router/paths'
-import type { GetYouReadModelResponse } from '../../server/contracts/api'
 import { mapListingDetailToListing } from '../../store/view-model-mappers'
+import { queryKeys, youReadModelQuery } from '../../query/queries'
 import { useStore } from '../../store/store'
 import type { InboxView, Inquiry, Listing } from '../../types'
 import { Segmented } from '../../components/Segmented'
@@ -24,24 +25,25 @@ function statusChip(status: NonNullable<Listing['status']>) {
   }
 }
 
-export function Inbox({ view, youReadModel }: { view?: InboxView; youReadModel?: GetYouReadModelResponse }) {
+export function Inbox({ view }: { view?: InboxView }) {
   const navigate = useNavigate()
-  const router = useRouter()
-  const { state, listings, openAdd, markAdopted } = useStore()
+  const { backend, viewerId } = useRouteContext({ from: '__root__' })
+  const queryClient = useQueryClient()
+  const { state, openAdd, markAdopted } = useStore()
   const selectedView = view ?? state.inboxView
   const showMine = selectedView === 'listings'
+
+  // Owned listings and sent inquiries read durable truth from the query cache
+  // (ADR 0009), prefetched by the route loader.
+  const { data: youReadModel } = useQuery(youReadModelQuery(backend, viewerId))
 
   const openListingDetail = (listingId: string) => navigate({ to: getDetailPath(listingId) })
   const setView = (nextView: InboxView) => navigate({ to: '/you', search: { view: nextView } })
 
-  const myListings = state.user
-    ? youReadModel
-      ? youReadModel.ownedListings.map(mapListingDetailToListing)
-      : listings.filter((l) => l.lister === state.user!.name)
-    : []
+  const myListings = state.user && youReadModel ? youReadModel.ownedListings.map(mapListingDetailToListing) : []
   const inquiries = youReadModel ? youReadModel.sentAdoptionInquiries.map((inquiry): Inquiry => {
-    const listing = youReadModel.ownedListings.find((item) => item.id === inquiry.listingId) ?? listings.find((item) => item.id === inquiry.listingId)
-    const mappedListing = listing && 'ageText' in listing ? mapListingDetailToListing(listing) : listing
+    const listing = youReadModel.ownedListings.find((item) => item.id === inquiry.listingId)
+    const mappedListing = listing ? mapListingDetailToListing(listing) : undefined
     return {
       key: inquiry.id,
       listingId: inquiry.listingId,
@@ -54,7 +56,7 @@ export function Inbox({ view, youReadModel }: { view?: InboxView; youReadModel?:
       tint: mappedListing?.tint ?? '#FBE3EC',
       status: inquiry.status === 'awaiting_reply' ? 'Awaiting reply' : inquiry.status,
     }
-  }) : state.inquiries
+  }) : []
   const nInq = inquiries.length
 
   return (
@@ -118,10 +120,13 @@ export function Inbox({ view, youReadModel }: { view?: InboxView; youReadModel?:
                 {status === 'live' && (
                   <button
                     onClick={async () => {
-                      // Await the durable transition before invalidating so the
-                      // loader re-reads the new status, not the stale one.
+                      // Await the durable transition, then invalidate the You and
+                      // Browse reads so both reflect the new status (ADR 0009).
                       await markAdopted(l.id)
-                      await router.invalidate()
+                      await Promise.all([
+                        queryClient.invalidateQueries({ queryKey: queryKeys.you }),
+                        queryClient.invalidateQueries({ queryKey: ['browse'] }),
+                      ])
                     }}
                     style={{
                       width: '100%',

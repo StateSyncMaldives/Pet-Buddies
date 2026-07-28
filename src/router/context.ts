@@ -1,16 +1,20 @@
+import type { QueryClient } from '@tanstack/react-query'
+
 import type { User } from '../types'
 import type { AsyncAppBackend } from '../server/runtime/app-backend'
 import type { AppMutationAdapter } from '../server/mutations/mutation-adapter'
 
 export interface AppRouterContext {
-  /** Read backend for loaders. Durable (D1) on the server, in-memory on the client. */
-  backend: AsyncAppBackend
+  /** The single client cache for durable reads (ADR 0009). Loaders prefetch
+   * with ensureQueryData; components read with useQuery. */
+  queryClient: QueryClient
+  /** Test-only read backend injection. Runtime routes use server functions. */
+  backend?: AsyncAppBackend
   /**
-   * Write seam for the store. In the running client it calls Start server
-   * functions (durable); in tests it is an in-memory adapter over the shared
-   * backend. See ADR 0008.
+   * Test-only write seam injection. Runtime store writes use server functions.
+   * See ADR 0008.
    */
-  mutations: AppMutationAdapter
+  mutations?: AppMutationAdapter
   viewerId: string
   mockUser: User
   moderatorId?: string
