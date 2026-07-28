@@ -180,6 +180,86 @@ async function requireUserSummary(
   }
 }
 
+export const setOrganizationVerificationInputSchema = z.object({
+  organizationId: z.string().min(1),
+  verified: z.boolean(),
+  /** ISO timestamp for the verification; defaults to now. */
+  verifiedAt: z.string().datetime().optional(),
+})
+
+export interface AdminOrganizationSummary {
+  id: string
+  slug: string
+  name: string
+  isVerified: boolean
+  verifiedAt: string | null
+}
+
+export async function listOrganizationsForAdmin(
+  deps: AdminDeps,
+): Promise<{ items: AdminOrganizationSummary[] }> {
+  requireGlobalPermission(deps.viewer, 'org', 'verify')
+  const database = await databaseFor(deps)
+
+  const rows = await database
+    .select({
+      id: schema.organizations.id,
+      slug: schema.organizations.slug,
+      name: schema.organizations.name,
+      isVerified: schema.organizations.isVerified,
+      verifiedAt: schema.organizations.verifiedAt,
+    })
+    .from(schema.organizations)
+    .all()
+
+  return { items: rows }
+}
+
+/**
+ * Marks an organization verified (or withdraws it). Verification is a trust
+ * signal adopters see on listings, so it is admin-only — moderators can action
+ * listings but not vouch for an organization.
+ */
+export async function setOrganizationVerificationForAdmin(
+  deps: AdminDeps,
+  input: z.infer<typeof setOrganizationVerificationInputSchema>,
+): Promise<{ organization: AdminOrganizationSummary }> {
+  requireGlobalPermission(deps.viewer, 'org', 'verify')
+  const database = await databaseFor(deps)
+
+  const existing = await database
+    .select({ id: schema.organizations.id })
+    .from(schema.organizations)
+    .where(eq(schema.organizations.id, input.organizationId))
+    .get()
+  if (!existing) throw new AuthzError('CONFLICT', 'That organization no longer exists.')
+
+  await database
+    .update(schema.organizations)
+    .set({
+      isVerified: input.verified,
+      // Cleared on withdrawal so a stale timestamp can't imply current standing.
+      verifiedAt: input.verified ? (input.verifiedAt ?? new Date().toISOString()) : null,
+    })
+    .where(eq(schema.organizations.id, input.organizationId))
+    .run()
+
+  const row = await database
+    .select({
+      id: schema.organizations.id,
+      slug: schema.organizations.slug,
+      name: schema.organizations.name,
+      isVerified: schema.organizations.isVerified,
+      verifiedAt: schema.organizations.verifiedAt,
+    })
+    .from(schema.organizations)
+    .where(eq(schema.organizations.id, input.organizationId))
+    .get()
+  if (!row) throw new AuthzError('CONFLICT', 'That organization no longer exists.')
+
+  return { organization: row }
+}
+
 export const listUsers = createServerFn({ method: 'POST' }).handler(async () =>
   listUsersForAdmin({ viewer: await resolveRequestViewer() }),
 )
@@ -195,3 +275,25 @@ export const banUser = createServerFn({ method: 'POST' })
 export const unbanUser = createServerFn({ method: 'POST' })
   .validator(unbanUserInputSchema)
   .handler(async ({ data }) => unbanUserForAdmin({ viewer: await resolveRequestViewer() }, data))
+
+export const listOrganizations = createServerFn({ method: 'POST' }).handler(async () =>
+  listOrganizationsForAdmin({ viewer: await resolveRequestViewer() }),
+)
+
+export const verifyOrganization = createServerFn({ method: 'POST' })
+  .validator(z.object({ organizationId: z.string().min(1) }))
+  .handler(async ({ data }) =>
+    setOrganizationVerificationForAdmin(
+      { viewer: await resolveRequestViewer() },
+      { ...data, verified: true },
+    ),
+  )
+
+export const unverifyOrganization = createServerFn({ method: 'POST' })
+  .validator(z.object({ organizationId: z.string().min(1) }))
+  .handler(async ({ data }) =>
+    setOrganizationVerificationForAdmin(
+      { viewer: await resolveRequestViewer() },
+      { ...data, verified: false },
+    ),
+  )
