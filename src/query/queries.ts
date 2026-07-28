@@ -60,16 +60,27 @@ export const browseQuery = (backend: AsyncAppBackend | undefined, input: BrowseQ
         : getBrowseListings({ data: input }),
   })
 
+// When a backend is injected (tests, local harnesses) these mirror what the
+// server handlers do: an anonymous viewer reads empty rather than falling
+// through to the server function, which only runs inside the Start runtime.
 export const savedListingsQuery = (backend?: AsyncAppBackend, viewerId?: string) =>
   queryOptions({
     queryKey: queryKeys.saved,
-    queryFn: () => (backend && viewerId ? unwrap(backend.listSavedListings({ viewerId })) : fetchSavedListings()),
+    queryFn: () => {
+      if (!backend) return fetchSavedListings()
+      if (!viewerId) return Promise.resolve({ items: [] })
+      return unwrap(backend.listSavedListings({ viewerId }))
+    },
   })
 
 export const youReadModelQuery = (backend?: AsyncAppBackend, viewerId?: string) =>
   queryOptions({
     queryKey: queryKeys.you,
-    queryFn: () => (backend && viewerId ? unwrap(backend.getYouReadModel({ viewerId })) : fetchYouReadModel()),
+    queryFn: () => {
+      if (!backend) return fetchYouReadModel()
+      if (!viewerId) return Promise.resolve({ sentAdoptionInquiries: [], ownedListings: [] })
+      return unwrap(backend.getYouReadModel({ viewerId }))
+    },
   })
 
 export const clinicsQuery = (backend?: AsyncAppBackend) =>
