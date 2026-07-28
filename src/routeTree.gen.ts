@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as YouRouteImport } from './routes/you'
 import { Route as VetsRouteImport } from './routes/vets'
+import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as ReportRouteImport } from './routes/report'
 import { Route as BrowseRouteImport } from './routes/browse'
@@ -27,6 +28,11 @@ const YouRoute = YouRouteImport.update({
 const VetsRoute = VetsRouteImport.update({
   id: '/vets',
   path: '/vets',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SavedRoute = SavedRouteImport.update({
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/browse': typeof BrowseRouteWithChildren
   '/report': typeof ReportRoute
   '/saved': typeof SavedRoute
+  '/sign-in': typeof SignInRoute
   '/vets': typeof VetsRoute
   '/you': typeof YouRoute
   '/media/$': typeof MediaSplatRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/browse': typeof BrowseRouteWithChildren
   '/report': typeof ReportRoute
   '/saved': typeof SavedRoute
+  '/sign-in': typeof SignInRoute
   '/vets': typeof VetsRoute
   '/you': typeof YouRoute
   '/media/$': typeof MediaSplatRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/browse': typeof BrowseRouteWithChildren
   '/report': typeof ReportRoute
   '/saved': typeof SavedRoute
+  '/sign-in': typeof SignInRoute
   '/vets': typeof VetsRoute
   '/you': typeof YouRoute
   '/media/$': typeof MediaSplatRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/browse'
     | '/report'
     | '/saved'
+    | '/sign-in'
     | '/vets'
     | '/you'
     | '/media/$'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/browse'
     | '/report'
     | '/saved'
+    | '/sign-in'
     | '/vets'
     | '/you'
     | '/media/$'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/browse'
     | '/report'
     | '/saved'
+    | '/sign-in'
     | '/vets'
     | '/you'
     | '/media/$'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   BrowseRoute: typeof BrowseRouteWithChildren
   ReportRoute: typeof ReportRoute
   SavedRoute: typeof SavedRoute
+  SignInRoute: typeof SignInRoute
   VetsRoute: typeof VetsRoute
   YouRoute: typeof YouRoute
   MediaSplatRoute: typeof MediaSplatRoute
@@ -160,6 +173,13 @@ declare module '@tanstack/react-router' {
       path: '/vets'
       fullPath: '/vets'
       preLoaderRoute: typeof VetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/saved': {
@@ -230,6 +250,7 @@ const rootRouteChildren: RootRouteChildren = {
   BrowseRoute: BrowseRouteWithChildren,
   ReportRoute: ReportRoute,
   SavedRoute: SavedRoute,
+  SignInRoute: SignInRoute,
   VetsRoute: VetsRoute,
   YouRoute: YouRoute,
   MediaSplatRoute: MediaSplatRoute,
@@ -238,12 +259,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router/index.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
