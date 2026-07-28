@@ -1,10 +1,15 @@
 import { createServerFn } from '@tanstack/react-start'
 
+import { requireViewer } from '../../server/auth/guards'
 import { resolveRequestViewer } from '../../server/auth/request-viewer'
 import type { Viewer } from '../../server/auth/resolve-viewer'
 import type { ListSavedListingsResponse } from '../../server/contracts/api'
-import { toggleSavedListingInputSchema } from '../../server/mutations/mutation-schemas'
+import {
+  toggleSavedListingInputSchema,
+  type ToggleSavedListingMutationInput,
+} from '../../server/mutations/mutation-schemas'
 import { createDurableServerMutationAdapter } from '../../server/mutations/durable-mutation-adapter'
+import type { AppMutationAdapter } from '../../server/mutations/mutation-adapter'
 import type { AsyncAppBackend } from '../../server/runtime/app-backend'
 import { createServerBackend } from '../../server/runtime/server-backend'
 
@@ -38,8 +43,18 @@ export const fetchSavedListings = createServerFn({ method: 'POST' }).handler(
     listSavedListingsForViewer({ viewer: await resolveRequestViewer() }),
 )
 
+export async function toggleSavedListingForViewer(
+  deps: { viewer: Viewer; mutations?: AppMutationAdapter },
+  input: ToggleSavedListingMutationInput,
+) {
+  requireViewer(deps.viewer)
+
+  const mutations = deps.mutations ?? (await createDurableServerMutationAdapter(deps.viewer))
+  return mutations.toggleSavedListing(input)
+}
+
 export const toggleSavedListing = createServerFn({ method: 'POST' })
   .validator(toggleSavedListingInputSchema)
-  .handler(async ({ data }) => {
-    return (await createDurableServerMutationAdapter()).toggleSavedListing(data)
-  })
+  .handler(async ({ data }) =>
+    toggleSavedListingForViewer({ viewer: await resolveRequestViewer() }, data),
+  )
