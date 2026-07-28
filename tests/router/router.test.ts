@@ -5,16 +5,17 @@ import { createAppRouter } from '../../src/router'
 import { queryKeys } from '../../src/query/queries'
 import { createQueryClient } from '../../src/query/client'
 import { createAppRuntime } from '../../src/server/runtime/app-session'
+import { TEST_MODERATOR_VIEWER, TEST_VIEWER } from '../helpers/viewers'
 
 function testContext() {
-  const { backend, mutations, session } = createAppRuntime()
+  const { backend, mutations, viewer } = createAppRuntime(TEST_VIEWER)
   return {
     queryClient: createQueryClient(),
     backend,
     mutations,
-    viewerId: session.viewerId,
-    mockUser: session.mockUser,
-    moderatorId: session.moderatorId,
+    viewer,
+    viewerId: TEST_VIEWER.id,
+    moderatorId: TEST_MODERATOR_VIEWER.id,
   }
 }
 

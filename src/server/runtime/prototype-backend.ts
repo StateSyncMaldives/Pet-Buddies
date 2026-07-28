@@ -82,7 +82,7 @@ export interface PrototypeBackendDeps {
 }
 
 export interface PrototypeBackend {
-  hydrateAppShell(input: { viewerId: string }): HydratedAppShell
+  hydrateAppShell(input: { viewerId?: string }): HydratedAppShell
   listClinics(): ApiResult<ListClinicsResponse>
   listSavedListings(input: { viewerId: string }): ApiResult<ListSavedListingsResponse>
   getYouReadModel(input: { viewerId: string }): ApiResult<GetYouReadModelResponse>
@@ -266,7 +266,7 @@ export function createPrototypeBackend(deps: PrototypeBackendDeps = {}): Prototy
     return tag
   }
 
-  function hydrateAppShell(input: { viewerId: string }): HydratedAppShell {
+  function hydrateAppShell(input: { viewerId?: string }): HydratedAppShell {
     const clinicsResult = clinicService.listClinics()
     return {
       listings: listingRepository.listAll(input.viewerId).map((aggregate) => toListingDetail(aggregate)),

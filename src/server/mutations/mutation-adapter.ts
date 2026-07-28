@@ -48,33 +48,45 @@ export interface UpdateListingLifecycleInput {
 
 export interface RuntimeMutationAdapterDeps {
   backend: AsyncAppBackend
-  viewerId: string
+  /** The acting viewer. Absent means anonymous — viewer-owned writes refuse. */
+  viewerId?: string
   /** Accepted for call-site symmetry; the adapter itself never reads it. */
   moderatorId?: string
 }
 
 export function createRuntimeMutationAdapter({ backend, viewerId }: RuntimeMutationAdapterDeps): AppMutationAdapter {
+  const requireViewerId = (): string => {
+    if (!viewerId) throw new Error('A signed-in viewer is required for this write.')
+    return viewerId
+  }
+
   return {
-    toggleSavedListing(input) {
+    // `async` so a missing viewer surfaces as a rejected promise, not a
+    // synchronous throw from a Promise-returning method.
+    async toggleSavedListing(input) {
       return backend.toggleSavedListing({
         listingId: input.listingId,
-        viewerId,
+        viewerId: requireViewerId(),
       })
     },
-    createInquiry(input) {
+    // `async` so a missing viewer surfaces as a rejected promise, not a
+    // synchronous throw from a Promise-returning method.
+    async createInquiry(input) {
       return backend.createInquiry({
         request: input.request,
-        viewerId,
+        viewerId: requireViewerId(),
       })
     },
-    createListing(input) {
+    // `async` so a missing viewer surfaces as a rejected promise, not a
+    // synchronous throw from a Promise-returning method.
+    async createListing(input) {
       return backend.createListing({
         request: input.request,
         // The actor is the server-resolved viewer, never the client-supplied
         // value (which is a display name). Preserve only the authenticated vs.
         // anonymous signal. Prevents display-name-as-identity — see CONTEXT.md
         // Viewer and ADR 0008 §5.
-        actorUserId: input.actorUserId === null ? null : viewerId,
+        actorUserId: input.actorUserId === null ? null : requireViewerId(),
       })
     },
     createReport(input) {

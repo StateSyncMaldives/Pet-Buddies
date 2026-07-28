@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { seedDurableStore } from '../../../../src/server/infra/db/seed-durable-store'
-import { DEMO_VIEWER_USER } from '../../../../src/server/runtime/demo-identity'
+import { insertTestUsers, TEST_VIEWER_USER } from '../../../helpers/seed-users'
 import { createServerBackend } from '../../../../src/server/runtime/server-backend'
 import { useMiniflareD1 } from '../../../helpers/miniflare-d1'
 
@@ -22,12 +22,13 @@ describe('createServerBackend', () => {
   it('uses the durable D1 backend when a database is provided, persisting writes', async () => {
     const { db } = await createMiniflareD1()
     await seedDurableStore({ db })
+    await insertTestUsers(db)
 
     const backend = await createServerBackend({ database: db })
-    expect((await backend.toggleSavedListing({ listingId: 'mishka', viewerId: DEMO_VIEWER_USER.id })).ok).toBe(true)
+    expect((await backend.toggleSavedListing({ listingId: 'mishka', viewerId: TEST_VIEWER_USER.id })).ok).toBe(true)
 
     const fresh = await createServerBackend({ database: db })
-    const saved = await fresh.listSavedListings({ viewerId: DEMO_VIEWER_USER.id })
+    const saved = await fresh.listSavedListings({ viewerId: TEST_VIEWER_USER.id })
     expect(saved.ok && saved.data.items.map((item) => item.id)).toEqual(['mishka'])
   }, 15_000)
 })

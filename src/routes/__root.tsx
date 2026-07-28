@@ -40,7 +40,7 @@ function DefaultNotFound() {
 }
 
 function RootRouteComponent() {
-  const { queryClient, backend, mutations, viewerId, mockUser, moderatorId } = Route.useRouteContext()
+  const { queryClient, backend, mutations, viewer } = Route.useRouteContext()
 
   useEffect(() => {
     if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return
@@ -53,20 +53,14 @@ function RootRouteComponent() {
   // cache (ADR 0009). It remains here until the remaining screens read durable
   // data through Query; the moderator Review queue already reads Query.
   const hydrate = useMemo(
-    () => (backend ? (id: string) => backend.hydrateAppShell({ viewerId: id }) : () => fetchAppShell()),
+    () => (backend ? (id?: string) => backend.hydrateAppShell({ viewerId: id }) : () => fetchAppShell()),
     [backend],
   )
 
   return (
     <RootDocument>
       <QueryClientProvider client={queryClient}>
-        <StoreProvider
-          viewerId={viewerId}
-          mockUser={mockUser}
-          moderatorId={moderatorId}
-          mutations={storeMutations}
-          hydrate={hydrate}
-        >
+        <StoreProvider viewer={viewer} mutations={storeMutations} hydrate={hydrate}>
           <App />
         </StoreProvider>
       </QueryClientProvider>
@@ -89,6 +83,14 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 }
 
 export const Route = createRootRouteWithContext<AppRouterContext>()({
+  /**
+   * Resolves the real viewer once, at the top of every navigation, and puts it
+   * in context for route guards and the shell. Tests inject `viewer` directly
+   * and leave `loadViewer` unset. See ADR 0010.
+   */
+  beforeLoad: async ({ context }) => ({
+    viewer: context.loadViewer ? await context.loadViewer() : context.viewer,
+  }),
   head: () => ({
     meta: [
       { title: 'Pet Buddies MV' },

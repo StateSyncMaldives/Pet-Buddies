@@ -5,7 +5,7 @@ import { savedListingsQuery } from '../query/queries'
 
 export const Route = createFileRoute('/saved')({
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(savedListingsQuery(context.backend, context.viewerId))
+    await context.queryClient.ensureQueryData(savedListingsQuery(context.backend, context.viewer.kind === 'user' ? context.viewer.id : undefined))
   },
   component: SavedRoute,
 })

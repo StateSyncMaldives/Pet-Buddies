@@ -1,34 +1,32 @@
 import { createPrototypeBackend } from './prototype-backend'
 import { createInMemoryAsyncBackend, type AsyncAppBackend } from './app-backend'
 import { createRuntimeMutationAdapter, type AppMutationAdapter } from '../mutations/mutation-adapter'
-import { createDemoSession, type DemoSession } from './demo-session'
-
-export { createDemoSession, DEMO_MODERATOR_ID, type DemoSession } from './demo-session'
+import { ANONYMOUS, isSignedIn, type Viewer } from '../auth/resolve-viewer'
 
 /**
- * The single place demo viewer identity lives. `viewerId`/`moderatorId` are the
- * stable seeded users.id values (not the display name) so durable Viewer-owned
- * writes satisfy the foreign keys. Later tasks replace this with real
- * authenticated session resolution. See ADR 0008.
+ * An in-memory app runtime bound to a viewer. Used by tests and local harnesses;
+ * the production server runtime resolves the viewer per request from the session
+ * cookie (see `resolveRequestViewer`) and reads/writes through D1. See ADR
+ * 0008 / 0010.
  */
 export interface AppRuntime {
   backend: AsyncAppBackend
   mutations: AppMutationAdapter
-  session: DemoSession
+  viewer: Viewer
 }
 
 /**
- * Composes a fresh backend instance with a demo session. One runtime should
- * be created per app mount (or, later, per request) — never cached at module
- * scope.
+ * Composes a fresh backend instance with the given viewer (anonymous by
+ * default). One runtime should be created per app mount — never cached at
+ * module scope.
  */
-export function createAppRuntime(): AppRuntime {
-  const session = createDemoSession()
+export function createAppRuntime(viewer: Viewer = ANONYMOUS): AppRuntime {
   const backend = createInMemoryAsyncBackend(createPrototypeBackend())
+  const viewerId = isSignedIn(viewer) ? viewer.id : undefined
   const mutations = createRuntimeMutationAdapter({
     backend,
-    viewerId: session.viewerId,
-    moderatorId: session.moderatorId,
+    viewerId,
+    moderatorId: viewerId,
   })
-  return { backend, mutations, session }
+  return { backend, mutations, viewer }
 }

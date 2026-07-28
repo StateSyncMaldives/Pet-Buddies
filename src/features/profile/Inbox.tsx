@@ -27,7 +27,8 @@ function statusChip(status: NonNullable<Listing['status']>) {
 
 export function Inbox({ view }: { view?: InboxView }) {
   const navigate = useNavigate()
-  const { backend, viewerId } = useRouteContext({ from: '__root__' })
+  const { backend, viewer } = useRouteContext({ from: '__root__' })
+  const viewerId = viewer.kind === 'user' ? viewer.id : undefined
   const queryClient = useQueryClient()
   const { state, openAdd, markAdopted } = useStore()
   const selectedView = view ?? state.inboxView

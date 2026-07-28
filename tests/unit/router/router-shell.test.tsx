@@ -6,6 +6,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createAppRouter } from '../../../src/router'
 import { createQueryClient } from '../../../src/query/client'
 import { createAppRuntime } from '../../../src/server/runtime/app-session'
+import { TEST_VIEWER } from '../../helpers/viewers'
 
 function renderAt(
   path: string,
@@ -18,17 +19,15 @@ function renderAt(
 ) {
   window.localStorage.setItem('petbuddies.flags', JSON.stringify(flags))
 
-  const runtime = createAppRuntime()
+  const runtime = createAppRuntime(TEST_VIEWER)
   setupRuntime?.(runtime)
-  const { backend, mutations, session } = runtime
+  const { backend, mutations, viewer } = runtime
   const router = createAppRouter({
     context: {
       queryClient: createQueryClient(),
       backend,
       mutations,
-      viewerId: session.viewerId,
-      mockUser: session.mockUser,
-      moderatorId: session.moderatorId,
+      viewer,
     },
     initialEntries: [path],
   })
@@ -192,8 +191,8 @@ describe('app router shell', () => {
 
   it('refreshes saved route data after removing a saved listing', async () => {
     const user = userEvent.setup()
-    renderAt('/saved', undefined, ({ backend, session }) => {
-      backend.toggleSavedListing({ listingId: 'mishka', viewerId: session.viewerId })
+    renderAt('/saved', undefined, ({ backend, viewer }) => {
+      backend.toggleSavedListing({ listingId: 'mishka', viewerId: viewer.kind === 'user' ? viewer.id : '' })
     })
 
     await screen.findByRole('button', { name: 'View Mishka, cat in Maafannu, Malé' })
@@ -221,9 +220,9 @@ describe('app router shell', () => {
   })
 
   it('renders sent adoption inquiries from the you route loader', async () => {
-    renderAt('/you?view=inquiries', undefined, ({ backend, session }) => {
+    renderAt('/you?view=inquiries', undefined, ({ backend, viewer }) => {
       backend.createInquiry({
-        viewerId: session.viewerId,
+        viewerId: viewer.kind === 'user' ? viewer.id : '',
         request: {
           listingId: 'mishka',
           message: 'Could we visit Mishka this week?',
