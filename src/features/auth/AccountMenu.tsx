@@ -17,8 +17,24 @@ export function AccountMenu() {
   const navigate = useNavigate()
   const currentPath = useRouterState({ select: (state) => state.location.href })
   const [signingOut, setSigningOut] = useState(false)
+  const { data: session } = authClient.useSession()
 
-  if (viewer.kind !== 'user') {
+  /**
+   * The live session wins over the router context when it has one.
+   *
+   * Returning from Google is a client-side boot of an already-cached SPA
+   * shell, so `context.viewer` can still be the anonymous value resolved
+   * before sign-in — which showed "Sign in" to a user who had just
+   * authenticated, until they reloaded. The context is still the first-paint
+   * source on a fresh document load, where it is server-resolved and correct.
+   */
+  const account = session?.user
+    ? { displayName: session.user.name, email: session.user.email }
+    : viewer.kind === 'user'
+      ? { displayName: viewer.displayName, email: viewer.email }
+      : null
+
+  if (!account) {
     return (
       <Link
         to="/sign-in"
@@ -56,8 +72,8 @@ export function AccountMenu() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: colors.ink }}>{viewer.displayName}</div>
-        <div style={{ fontSize: 12, color: colors.textSecondary }}>{viewer.email}</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: colors.ink }}>{account.displayName}</div>
+        <div style={{ fontSize: 12, color: colors.textSecondary }}>{account.email}</div>
       </div>
       <button
         type="button"

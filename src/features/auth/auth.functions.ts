@@ -8,6 +8,14 @@ import type { Viewer } from '../../server/auth/resolve-viewer'
  * every route can read `context.viewer`. The result is UI hinting only — every
  * server function re-resolves and re-authorizes the viewer itself. See ADR 0010.
  */
-export const fetchViewer = createServerFn({ method: 'GET' }).handler(
+/**
+ * POST, not GET, deliberately — matching every other server function here.
+ *
+ * A GET response is cacheable, and identity is the one thing that must never
+ * be served from a cache: after signing in through Google the SPA re-resolves
+ * the viewer, and a stale anonymous GET response left the account menu showing
+ * "Sign in" until a manual reload.
+ */
+export const fetchViewer = createServerFn({ method: 'POST' }).handler(
   async (): Promise<Viewer> => resolveRequestViewer(),
 )

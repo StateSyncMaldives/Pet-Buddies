@@ -6,18 +6,20 @@ import { renderAppAt } from '../../../helpers/render-app'
 import { ANONYMOUS_VIEWER, TEST_VIEWER } from '../../../helpers/viewers'
 
 const signOut = vi.fn()
+let liveSession: { user: { name: string; email: string } } | null = null
 
 vi.mock('../../../../src/features/auth/auth-client', () => ({
   authClient: {
     signIn: { email: vi.fn(), social: vi.fn() },
     signUp: { email: vi.fn() },
     signOut: (...args: unknown[]) => signOut(...args),
-    useSession: () => ({ data: null }),
+    useSession: () => ({ data: liveSession }),
   },
 }))
 
 beforeEach(() => {
   signOut.mockReset().mockResolvedValue({ data: {}, error: null })
+  liveSession = null
 })
 
 afterEach(() => {
@@ -61,5 +63,30 @@ describe('account menu', () => {
     renderAppAt('/you?view=listings', { viewer: ANONYMOUS_VIEWER })
 
     expect(await screen.findByText(/sign in to list a pet/i)).toBeTruthy()
+  })
+
+  /**
+   * Returning from Google boots an already-cached SPA shell, so the router
+   * context can still hold the anonymous viewer resolved before sign-in. The
+   * live session has to win, or a user who just authenticated is shown
+   * "Sign in" until they reload — which is exactly what happened in staging.
+   */
+  it('shows the live session even when router context is still anonymous', async () => {
+    liveSession = { user: { name: 'Looth Ibrahim', email: 'hello@looth.xyz' } }
+
+    renderAppAt('/you', { viewer: ANONYMOUS_VIEWER })
+
+    expect(await screen.findByText('Looth Ibrahim')).toBeTruthy()
+    expect(screen.getByText('hello@looth.xyz')).toBeTruthy()
+    expect(screen.queryByRole('link', { name: /sign in/i })).toBeNull()
+  })
+
+  it('prefers the live session over a stale context identity', async () => {
+    liveSession = { user: { name: 'Looth Ibrahim', email: 'hello@looth.xyz' } }
+
+    renderAppAt('/you', { viewer: TEST_VIEWER })
+
+    expect(await screen.findByText('Looth Ibrahim')).toBeTruthy()
+    expect(screen.queryByText(TEST_VIEWER.email)).toBeNull()
   })
 })
