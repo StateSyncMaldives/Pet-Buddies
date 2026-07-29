@@ -55,11 +55,33 @@ export function AccountMenu() {
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: colors.ink }}>{account.displayName}</div>
         <div style={{ fontSize: 12, color: colors.textSecondary }}>{account.email}</div>
       </div>
+
+      {/* The desktop rail also links here, but it is desktop-only — without
+          this an administrator on a phone could not reach the screen at all. */}
+      {account.role === 'admin' && (
+        <Link
+          to="/admin/users"
+          style={{
+            padding: '9px 14px',
+            borderRadius: 11,
+            border: `1.5px solid ${colors.line}`,
+            background: '#fff',
+            fontSize: 13.5,
+            fontWeight: 600,
+            color: colors.ink,
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          User management
+        </Link>
+      )}
+
       <button
         type="button"
         onClick={signOut}

@@ -89,4 +89,38 @@ describe('account menu', () => {
     expect(await screen.findByText('Looth Ibrahim')).toBeTruthy()
     expect(screen.queryByText(TEST_VIEWER.email)).toBeNull()
   })
+
+  /**
+   * The desktop rail also links to /admin/users, but the rail is desktop-only.
+   * Without an entry here an administrator on a phone had no way to reach the
+   * screen except by typing the URL.
+   */
+  it('offers user management to an administrator', async () => {
+    renderAppAt('/you', { viewer: { ...TEST_VIEWER, role: 'admin' } })
+
+    const link = await screen.findByRole('link', { name: /user management/i })
+    expect(link.getAttribute('href')).toContain('/admin/users')
+  })
+
+  it('does not offer it to a moderator or a plain user', async () => {
+    renderAppAt('/you', { viewer: { ...TEST_VIEWER, role: 'moderator' } })
+    await screen.findByRole('button', { name: /sign out/i })
+    expect(screen.queryByRole('link', { name: /user management/i })).toBeNull()
+
+    cleanup()
+
+    renderAppAt('/you', { viewer: TEST_VIEWER })
+    await screen.findByRole('button', { name: /sign out/i })
+    expect(screen.queryByRole('link', { name: /user management/i })).toBeNull()
+  })
+
+  it('offers it on the strength of a live admin session over a stale context', async () => {
+    liveSession = {
+      user: { name: 'Looth Ibrahim', email: 'hello@looth.xyz', role: 'admin' },
+    } as typeof liveSession
+
+    renderAppAt('/you', { viewer: ANONYMOUS_VIEWER })
+
+    expect(await screen.findByRole('link', { name: /user management/i })).toBeTruthy()
+  })
 })
