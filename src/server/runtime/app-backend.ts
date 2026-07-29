@@ -39,7 +39,7 @@ export interface HydratedAppShell {
  */
 export interface AsyncAppBackend {
   // ---- reads ----
-  hydrateAppShell(input: { viewerId: string }): Promise<HydratedAppShell>
+  hydrateAppShell(input: { viewerId?: string }): Promise<HydratedAppShell>
   listClinics(): Promise<ApiResult<ListClinicsResponse>>
   listSavedListings(input: { viewerId: string }): Promise<ApiResult<ListSavedListingsResponse>>
   getYouReadModel(input: { viewerId: string }): Promise<ApiResult<GetYouReadModelResponse>>

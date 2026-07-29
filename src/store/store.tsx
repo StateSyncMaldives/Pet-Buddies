@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { DEMO_MODERATOR_ID } from '../server/runtime/demo-session'
+import { isSignedIn, type Viewer } from '../server/auth/resolve-viewer'
 import type { HydratedAppShell } from '../server/runtime/app-backend'
 import { MAX_LISTING_IMAGES } from '../server/domain/listings/create-listing'
 import type { MediaUploadKind } from '../server/domain/media/media-upload-policy'
@@ -17,7 +17,6 @@ import { toTagSlug } from '../router/browse-search'
 import { isBirdSpecies, type BirdSpecies } from '../server/contracts/api'
 import { createInquiryViewModel, mapClinicSummaryToClinic, mapListingDetailToListing } from './view-model-mappers'
 import type {
-  AuthIntent,
   Clinic,
   InboxView,
   Inquiry,
@@ -26,8 +25,6 @@ import type {
   Species,
   User,
 } from '../types'
-
-const DEFAULT_MODERATOR_ID = DEMO_MODERATOR_ID
 
 // Lost/found reports route to one of two fixed partner organisations (see
 // report-routing). Their display names for the receipt, resolved client-side
@@ -87,8 +84,6 @@ export interface AppState {
   overlay: Overlay
   detailId: string | null
   user: User | null
-  authIntent: AuthIntent
-  pendingApplyId: string | null
   inquiries: Inquiry[]
   inquiry: { listingId: string | null; message: string }
   inboxView: InboxView
@@ -166,8 +161,6 @@ function initialState(initialSaved: string[]): AppState {
     overlay: null,
     detailId: null,
     user: null,
-    authIntent: 'add',
-    pendingApplyId: null,
     inquiries: [],
     inquiry: { listingId: null, message: '' },
     inboxView: 'inquiries',
@@ -201,10 +194,6 @@ export interface Store {
   toggleSave: (id: string) => Promise<void>
   openDetail: (id: string) => void
   closeDetail: () => void
-  openAuth: (intent: AuthIntent, applyId?: string) => void
-  closeAuth: () => void
-  googleSignIn: () => void
-  signOut: () => void
   applyToAdopt: (id: string) => void
   setInquiryMessage: (msg: string) => void
   cancelInquiry: () => void
@@ -240,9 +229,13 @@ export interface Store {
 
 export interface StoreProviderProps {
   children: ReactNode
-  viewerId: string
-  mockUser: User
-  moderatorId?: string
+  /** Who is browsing, resolved from the real session by `__root` (ADR 0010). */
+  viewer: Viewer
+  /**
+   * Called instead of firing a gated action when nobody is signed in. `__root`
+   * points this at `/sign-in`, carrying the current path as `redirect`.
+   */
+  onRequireSignIn?: () => void
   /** Write seam (durable server functions on the client; in-memory in tests). */
   mutations: AppMutationAdapter
   /**
@@ -251,22 +244,30 @@ export interface StoreProviderProps {
    * mount — so the store cannot drift from the data the loaders read. Omitted in
    * tests that only exercise optimistic writes. See ADR 0008 / #8.
    */
-  hydrate?: (viewerId: string) => Promise<HydratedAppShell>
+  hydrate?: (viewerId?: string) => Promise<HydratedAppShell>
 }
 
 const StoreContext = createContext<Store | null>(null)
 
-export function StoreProvider({
-  children,
-  viewerId,
-  mockUser,
-  moderatorId = DEFAULT_MODERATOR_ID,
-  mutations,
-  hydrate,
-}: StoreProviderProps) {
+export function StoreProvider({ children, viewer, mutations, hydrate, onRequireSignIn }: StoreProviderProps) {
+  const viewerId = isSignedIn(viewer) ? viewer.id : undefined
+  // Moderation writes are attributed to the acting viewer; the server re-derives
+  // the actor from the session and enforces the moderate permission (B2).
+  const moderatorId = viewerId
+  const viewerUser = useMemo<User | null>(
+    () => (isSignedIn(viewer) ? { name: viewer.displayName, email: viewer.email } : null),
+    [viewer],
+  )
   const [state, setState] = useState<AppState>(() => initialState([]))
   const [listings, setListings] = useState<Listing[]>([])
   const [clinics, setClinics] = useState<Clinic[]>([])
+
+  // The signed-in user is the session viewer, not something the UI sets. Kept
+  // out of the initial state so SSR and the first client render agree; the
+  // viewer arrives through router context, which is resolved server-side.
+  useEffect(() => {
+    setState((s) => (s.user === viewerUser ? s : { ...s, user: viewerUser }))
+  }, [viewerUser])
 
   // Load persisted flags + drafts from localStorage after mount (client-only).
   // Kept out of the initial render so SSR and the first client render match —
@@ -365,6 +366,10 @@ export function StoreProvider({
 
   const transitionListing = useCallback(
     async (id: string, action: 'approved' | 'rejected' | 'adopted') => {
+      if (!moderatorId) {
+        showToast('Sign in to moderate listings.')
+        return null
+      }
       const result = await mutations.updateListingLifecycle({
         listingId: id,
         actorUserId: moderatorId,
@@ -427,6 +432,12 @@ export function StoreProvider({
         })),
       clearFilters: () => patch({ tags: [], query: '' }),
       toggleSave: async (id) => {
+        // Saving is viewer-owned, so an anonymous visitor goes to sign-in
+        // rather than firing a mutation the server would refuse.
+        if (!viewerUser) {
+          onRequireSignIn?.()
+          return
+        }
         // Optimistic toggle for instant feedback; reconcile / revert on the result.
         setState((s) => ({
           ...s,
@@ -448,39 +459,16 @@ export function StoreProvider({
       },
       openDetail: (id) => patch({ overlay: 'detail', detailId: id }),
       closeDetail: () => patch({ overlay: null, detailId: null }),
-      openAuth: (intent, applyId) => patch({ overlay: 'auth', authIntent: intent, pendingApplyId: applyId ?? null }),
-      closeAuth: () => patch({ overlay: null }),
-      googleSignIn: () =>
-        setState((s) => {
-          if (s.authIntent === 'apply' && s.pendingApplyId) {
-            const listing = listings.find((item) => item.id === s.pendingApplyId)
-            return {
-              ...s,
-              user: mockUser,
-              overlay: 'inquiry',
-              inquiry: { listingId: s.pendingApplyId, message: inquiryDraft(listing?.name ?? '') },
-              pendingApplyId: null,
-              authIntent: 'add',
-            }
-          }
-          return {
-            ...s,
-            user: mockUser,
-            overlay: 'add',
-            addDone: false,
-            addedName: '',
-            add: { ...emptyAdd },
-          }
-        }),
-      signOut: () => patch({ user: null, overlay: null }),
-      applyToAdopt: (id) =>
+      applyToAdopt: (id) => {
+        if (!viewerUser) {
+          onRequireSignIn?.()
+          return
+        }
         setState((s) => {
           const listing = listings.find((item) => item.id === id)
-          if (s.user) {
-            return { ...s, overlay: 'inquiry', inquiry: { listingId: id, message: inquiryDraft(listing?.name ?? '') } }
-          }
-          return { ...s, overlay: 'auth', authIntent: 'apply', pendingApplyId: id }
-        }),
+          return { ...s, overlay: 'inquiry', inquiry: { listingId: id, message: inquiryDraft(listing?.name ?? '') } }
+        })
+      },
       setInquiryMessage: (msg) => setState((s) => ({ ...s, inquiry: { ...s.inquiry, message: msg } })),
       cancelInquiry: () => setState((s) => ({ ...s, overlay: s.detailId ? 'detail' : null })),
       sendInquiry: async () => {
@@ -517,12 +505,13 @@ export function StoreProvider({
         showToast(`Inquiry sent to ${recipient}`)
       },
       reportListing: () => showToast('Listing reported — thank you'),
-      openAdd: () =>
-        setState((s) =>
-          s.user
-            ? { ...s, overlay: 'add', addDone: false, addedName: '', add: { ...emptyAdd } }
-            : { ...s, overlay: 'auth', authIntent: 'add' },
-        ),
+      openAdd: () => {
+        if (!viewerUser) {
+          onRequireSignIn?.()
+          return
+        }
+        setState((s) => ({ ...s, overlay: 'add', addDone: false, addedName: '', add: { ...emptyAdd } }))
+      },
       closeAdd: () => patch({ overlay: null, addDone: false }),
       patchAdd: setAdd,
       addListingImages: async (files) => {
@@ -686,7 +675,7 @@ export function StoreProvider({
       installDismiss: () => patch({ installDismissed: true }),
       showToast,
     }
-  }, [mockUser, state, listings, clinics, mutations, patch, showToast, syncListing, transitionListing])
+  }, [viewerUser, state, listings, clinics, mutations, patch, showToast, syncListing, transitionListing])
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>
 }

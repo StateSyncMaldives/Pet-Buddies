@@ -1,7 +1,8 @@
 import type { drizzle } from 'drizzle-orm/d1'
 
 import type { UserRecord } from '../../../../backend/contracts'
-import { DEMO_SEED_USERS } from '../../runtime/demo-identity'
+import type { createAuth } from '../../auth/auth'
+import { seedAuth, type BootstrapAccountSpec } from '../../auth/seed-auth'
 import { buildSeedListingAggregates } from '../../runtime/seed-listing-aggregates'
 import { seedClinicRecords } from '../repositories/drizzle-clinic-repository'
 import { seedListingAggregates } from '../repositories/drizzle-listing-repository'
@@ -14,18 +15,23 @@ function toUserInsert(user: UserRecord): typeof schema.users.$inferInsert {
     id: user.id,
     googleSub: user.googleSub,
     email: user.email,
+    emailVerified: user.emailVerified,
     displayName: user.displayName,
     avatarUrl: user.avatarUrl,
-    globalRole: user.globalRole,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
+    role: user.role,
+    banned: user.banned,
+    // users.createdAt/updatedAt are Better-Auth-managed integer/timestamp
+    // columns — drizzle expects native Date, while UserRecord keeps ISO
+    // strings at the app boundary.
+    createdAt: new Date(user.createdAt),
+    updatedAt: new Date(user.updatedAt),
   }
 }
 
 /**
  * Idempotently seeds the durable store's baseline data:
- *  - the demo Viewer and moderator User rows that Viewer-owned writes (saved
- *    listings, adoption inquiries, moderation events) reference by users.id;
+ *  - when an `auth` instance is supplied, the bootstrap administrator and
+ *    moderator accounts (real Better Auth credential accounts — see ADR 0010);
  *  - the seed listings and their owning organizations, owner users, and tags.
  *
  * Safe to run on every deploy — user rows use insert-or-ignore and the listing
@@ -33,11 +39,28 @@ function toUserInsert(user: UserRecord): typeof schema.users.$inferInsert {
  * Clinics are persisted here too; app reads must come from D1, not the
  * in-memory seed repository. See ADR 0008.
  */
-export async function seedDurableStore(input: { db: PetBuddiesDb }): Promise<void> {
-  for (const user of DEMO_SEED_USERS) {
-    await input.db.insert(schema.users).values(toUserInsert(user)).onConflictDoNothing().run()
+export async function seedDurableStore(input: {
+  db: PetBuddiesDb
+  auth?: ReturnType<typeof createAuth>
+  /**
+   * Bootstrap accounts to create. Omit to use the built-in test accounts;
+   * deployed callers pass the result of `resolveBootstrapAccounts`, which is
+   * `null` when the environment has no bootstrap secrets — in that case no
+   * account is created at all. Never fall back to the committed defaults here.
+   */
+  bootstrapAccounts?: BootstrapAccountSpec[] | null
+}): Promise<void> {
+  if (input.auth && input.bootstrapAccounts !== null) {
+    await seedAuth({
+      auth: input.auth,
+      database: input.db,
+      accounts: input.bootstrapAccounts ?? undefined,
+    })
   }
 
   await seedListingAggregates(input.db, buildSeedListingAggregates())
   await seedClinicRecords(input.db)
 }
+
+/** Exported for tests that need to plant a specific user row directly. */
+export { toUserInsert }

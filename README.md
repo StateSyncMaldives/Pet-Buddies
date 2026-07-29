@@ -26,7 +26,7 @@ The HTML prototype is built as a single "Design Component" (`.dc.html`) using a 
 - `pnpm test` — run the vitest suite
 - `pnpm typecheck` — type-check (`tsc --noEmit`)
 - Deploy: `pnpm build`, then `wrangler deploy --config dist/server/wrangler.json` (wrapped by the `pnpm deploy` script)
-- Live: https://pet-buddies.dev.statesync.mv
+- Live: https://pet-buddies.statesync.dev
 
 ---
 

@@ -4,9 +4,10 @@ import { colors } from '../theme'
 import { useStore } from '../store/store'
 import { reviewQueueQuery } from '../query/queries'
 import { ROUTE_PATHS, getTabFromPathname } from '../router/paths'
+import { useViewerIdentity } from '../features/auth/use-viewer-identity'
 import { LogoMark, Wordmark } from './Brand'
 import { NAV_DESTINATIONS, TabIcon } from './nav-model'
-import { PlusIcon, ShieldIcon } from './icons'
+import { PersonIcon, PlusIcon, ShieldIcon } from './icons'
 
 /** Desktop (>900px) app-shell rail: the five primary destinations plus the
  * Create listing action and the moderator Review queue entry. */
@@ -15,6 +16,9 @@ export function RailNav() {
   const activeTab = getTabFromPathname(pathname)
   const { backend } = useRouteContext({ from: '__root__' })
   const { openAdd, openMod } = useStore()
+  // Administrators only. The screen guards itself and every action re-checks
+  // server-side; hiding the link just keeps it out of the way for everyone else.
+  const isAdmin = useViewerIdentity().role === 'admin'
 
   // The review badge reads durable truth from the query cache (ADR 0009), not a
   // store mirror — keeps the count in step with the moderation queue.
@@ -69,6 +73,19 @@ export function RailNav() {
           </span>
           <span style={{ color: colors.ink }}>Review queue</span>
         </button>
+
+        {isAdmin && (
+          <Link
+            to="/admin/users"
+            preload="intent"
+            className="pb-rail-link"
+            aria-current={pathname.startsWith('/admin') ? 'page' : undefined}
+            data-active={pathname.startsWith('/admin') || undefined}
+          >
+            <PersonIcon size={20} stroke={colors.textSecondary} strokeWidth={2} />
+            <span style={{ color: colors.ink }}>User management</span>
+          </Link>
+        )}
       </div>
     </nav>
   )

@@ -11,6 +11,7 @@ import { Screen } from '../../layout/primitives'
 import { PetThumb } from '../../components/primitives'
 import { VerifiedBadge } from '../../components/Brand'
 import { GridIcon, PersonIcon } from '../../components/icons'
+import { AccountMenu } from '../auth/AccountMenu'
 
 function statusChip(status: NonNullable<Listing['status']>) {
   switch (status) {
@@ -27,7 +28,8 @@ function statusChip(status: NonNullable<Listing['status']>) {
 
 export function Inbox({ view }: { view?: InboxView }) {
   const navigate = useNavigate()
-  const { backend, viewerId } = useRouteContext({ from: '__root__' })
+  const { backend, viewer } = useRouteContext({ from: '__root__' })
+  const viewerId = viewer.kind === 'user' ? viewer.id : undefined
   const queryClient = useQueryClient()
   const { state, openAdd, markAdopted } = useStore()
   const selectedView = view ?? state.inboxView
@@ -40,7 +42,10 @@ export function Inbox({ view }: { view?: InboxView }) {
   const openListingDetail = (listingId: string) => navigate({ to: getDetailPath(listingId) })
   const setView = (nextView: InboxView) => navigate({ to: '/you', search: { view: nextView } })
 
-  const myListings = state.user && youReadModel ? youReadModel.ownedListings.map(mapListingDetailToListing) : []
+  // Owned listings belong to the signed-in viewer resolved from the session,
+  // not to the placeholder user the sign-in overlay used to set.
+  const signedIn = viewer.kind === 'user'
+  const myListings = signedIn && youReadModel ? youReadModel.ownedListings.map(mapListingDetailToListing) : []
   const inquiries = youReadModel ? youReadModel.sentAdoptionInquiries.map((inquiry): Inquiry => {
     const listing = youReadModel.ownedListings.find((item) => item.id === inquiry.listingId)
     const mappedListing = listing ? mapListingDetailToListing(listing) : undefined
@@ -62,6 +67,10 @@ export function Inbox({ view }: { view?: InboxView }) {
   return (
     <Screen title="You" maxWidth={760}>
       <div style={{ marginBottom: 22 }}>
+        <AccountMenu />
+      </div>
+
+      <div style={{ marginBottom: 22 }}>
         <Segmented
           options={['Inquiries', 'My listings']}
           activeIndex={showMine ? 1 : 0}
@@ -71,7 +80,7 @@ export function Inbox({ view }: { view?: InboxView }) {
       </div>
 
       {showMine ? (
-        !state.user ? (
+        !signedIn ? (
           <EmptyState
             icon={<PersonIcon size={46} stroke="#cfd4dc" strokeWidth={1.7} />}
             text="Sign in to list a pet and manage your listings."

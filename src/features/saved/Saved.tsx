@@ -12,7 +12,8 @@ import { HeartIcon } from '../../components/icons'
 
 export function Saved() {
   const navigate = useNavigate()
-  const { backend, viewerId } = useRouteContext({ from: '__root__' })
+  const { backend, viewer } = useRouteContext({ from: '__root__' })
+  const viewerId = viewer.kind === 'user' ? viewer.id : undefined
   const queryClient = useQueryClient()
   const { toggleSave } = useStore()
   // Saved listings read durable truth from the query cache (ADR 0009),

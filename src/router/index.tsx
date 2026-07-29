@@ -7,18 +7,22 @@ import {
 
 import { routeTree } from '../routeTree.gen'
 import { createQueryClient } from '../query/client'
-import { createDemoSession } from '../server/runtime/demo-session'
+import { fetchViewer } from '../features/auth/auth.functions'
+import { ANONYMOUS } from '../server/auth/resolve-viewer'
 import type { AppRouterContext } from './context'
 
 export type { AppRouterContext } from './context'
 
+/**
+ * The starting context. `viewer` is anonymous until `__root`'s beforeLoad
+ * resolves the real session through `loadViewer` — never assume a signed-in
+ * viewer from here.
+ */
 function createDefaultRouterContext(): AppRouterContext {
-  const session = createDemoSession()
   return {
     queryClient: createQueryClient(),
-    viewerId: session.viewerId,
-    mockUser: session.mockUser,
-    moderatorId: session.moderatorId,
+    viewer: ANONYMOUS,
+    loadViewer: () => fetchViewer(),
   }
 }
 

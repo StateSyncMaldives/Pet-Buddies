@@ -4,7 +4,6 @@ import { RailNav } from './components/RailNav'
 import { Toast } from './components/Toast'
 import { useViewportMode } from './layout/viewport-mode'
 import { DetailOverlay } from './features/listings/DetailOverlay'
-import { AuthOverlay } from './features/auth/AuthOverlay'
 import { AddOverlay } from './features/onboarding/AddOverlay'
 import { InquiryOverlay } from './features/inquiries/InquiryOverlay'
 import { ModOverlay } from './features/moderation/ModOverlay'
@@ -28,7 +27,6 @@ export function App() {
 
         <DetailOverlay />
         <AddOverlay />
-        <AuthOverlay />
         <InquiryOverlay />
         <ModOverlay />
         {mode === 'phone' && (

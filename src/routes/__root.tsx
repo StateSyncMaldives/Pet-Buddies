@@ -1,5 +1,11 @@
-import { useEffect, useMemo, type ReactNode } from 'react'
-import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
+import { useCallback, useEffect, useMemo, type ReactNode } from 'react'
+import {
+  HeadContent,
+  Scripts,
+  createRootRouteWithContext,
+  useNavigate,
+  useRouterState,
+} from '@tanstack/react-router'
 import { QueryClientProvider } from '@tanstack/react-query'
 
 import { App } from '../App'
@@ -40,7 +46,15 @@ function DefaultNotFound() {
 }
 
 function RootRouteComponent() {
-  const { queryClient, backend, mutations, viewerId, mockUser, moderatorId } = Route.useRouteContext()
+  const { queryClient, backend, mutations, viewer } = Route.useRouteContext()
+  const navigate = useNavigate()
+  const currentHref = useRouterState({ select: (state) => state.location.href })
+
+  // Gated actions (save, apply to adopt, list a pet) send an anonymous visitor
+  // here instead of firing a mutation the server would refuse. See ADR 0010.
+  const requireSignIn = useCallback(() => {
+    void navigate({ to: '/sign-in', search: { redirect: currentHref } })
+  }, [navigate, currentHref])
 
   useEffect(() => {
     if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return
@@ -53,7 +67,7 @@ function RootRouteComponent() {
   // cache (ADR 0009). It remains here until the remaining screens read durable
   // data through Query; the moderator Review queue already reads Query.
   const hydrate = useMemo(
-    () => (backend ? (id: string) => backend.hydrateAppShell({ viewerId: id }) : () => fetchAppShell()),
+    () => (backend ? (id?: string) => backend.hydrateAppShell({ viewerId: id }) : () => fetchAppShell()),
     [backend],
   )
 
@@ -61,11 +75,10 @@ function RootRouteComponent() {
     <RootDocument>
       <QueryClientProvider client={queryClient}>
         <StoreProvider
-          viewerId={viewerId}
-          mockUser={mockUser}
-          moderatorId={moderatorId}
+          viewer={viewer}
           mutations={storeMutations}
           hydrate={hydrate}
+          onRequireSignIn={requireSignIn}
         >
           <App />
         </StoreProvider>
@@ -89,6 +102,14 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 }
 
 export const Route = createRootRouteWithContext<AppRouterContext>()({
+  /**
+   * Resolves the real viewer once, at the top of every navigation, and puts it
+   * in context for route guards and the shell. Tests inject `viewer` directly
+   * and leave `loadViewer` unset. See ADR 0010.
+   */
+  beforeLoad: async ({ context }) => ({
+    viewer: context.loadViewer ? await context.loadViewer() : context.viewer,
+  }),
   head: () => ({
     meta: [
       { title: 'Pet Buddies MV' },

@@ -6,23 +6,84 @@ const timestamps = {
   updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 }
 
+// Better Auth's drizzle adapter always passes native JS `Date` objects for
+// every `type:"date"` field (createdAt, updatedAt, expiresAt, token
+// expiries, banExpires) and never sets `supportsDates:false` for the sqlite
+// provider — so these four tables (owned/written by Better Auth) use
+// integer/timestamp columns, not the shared `text` `timestamps` helper.
+// Every OTHER table in this file keeps text CURRENT_TIMESTAMP columns; the
+// app (not Better Auth) owns those and reads/writes them as ISO strings.
+const betterAuthTimestamps = {
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+}
+
 export const users = sqliteTable(
   'users',
   {
     id: text('id').primaryKey(),
-    googleSub: text('google_sub').notNull(),
+    googleSub: text('google_sub'), // legacy, nullable — provider identity now in `account`
     email: text('email').notNull(),
+    emailVerified: integer('email_verified', { mode: 'boolean' }).notNull().default(false),
     displayName: text('display_name').notNull(),
     avatarUrl: text('avatar_url'),
-    globalRole: text('global_role', { enum: ['user', 'moderator', 'admin'] }).notNull().default('user'),
-    ...timestamps,
+    role: text('role', { enum: ['user', 'moderator', 'admin'] }).notNull().default('user'),
+    banned: integer('banned', { mode: 'boolean' }).notNull().default(false),
+    banReason: text('ban_reason'),
+    banExpires: integer('ban_expires', { mode: 'timestamp' }),
+    ...betterAuthTimestamps,
   },
   (table) => [
-    uniqueIndex('users_google_sub_unique').on(table.googleSub),
     uniqueIndex('users_email_unique').on(table.email),
-    check('users_global_role_check', sql`${table.globalRole} in ('user', 'moderator', 'admin')`),
+    check('users_role_check', sql`${table.role} in ('user', 'moderator', 'admin')`),
   ],
 )
+
+export const session = sqliteTable(
+  'session',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    token: text('token').notNull(),
+    expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    impersonatedBy: text('impersonated_by'),
+    ...betterAuthTimestamps,
+  },
+  (table) => [uniqueIndex('session_token_unique').on(table.token)],
+)
+
+export const account = sqliteTable('account', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  idToken: text('id_token'),
+  accessTokenExpiresAt: integer('access_token_expires_at', { mode: 'timestamp' }),
+  refreshTokenExpiresAt: integer('refresh_token_expires_at', { mode: 'timestamp' }),
+  scope: text('scope'),
+  password: text('password'),
+  ...betterAuthTimestamps,
+})
+
+export const verification = sqliteTable('verification', {
+  id: text('id').primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  ...betterAuthTimestamps,
+})
 
 export const organizations = sqliteTable(
   'organizations',

@@ -118,9 +118,11 @@ export function createCreateListingUseCase(dependencies: CreateListingDependenci
               id: input.actorUserId,
               googleSub: `sub-${input.actorUserId}`,
               email: `${input.actorUserId}@example.com`,
+              emailVerified: false,
               displayName: input.actorUserId,
               avatarUrl: null,
-              globalRole: 'user',
+              role: 'user',
+              banned: false,
               createdAt: now,
               updatedAt: now,
             }

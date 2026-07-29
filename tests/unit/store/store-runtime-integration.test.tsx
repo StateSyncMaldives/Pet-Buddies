@@ -7,13 +7,19 @@ import { MAX_LISTING_IMAGES } from '../../../src/server/domain/listings/create-l
 import { createRuntimeMutationAdapter, type AppMutationAdapter } from '../../../src/server/mutations/mutation-adapter'
 import { createInMemoryAsyncBackend } from '../../../src/server/runtime/app-backend'
 import { createPrototypeBackend, type PrototypeBackend } from '../../../src/server/runtime/prototype-backend'
+import type { Viewer } from '../../../src/server/auth/resolve-viewer'
 import { StoreProvider, useStore, type StoreProviderProps } from '../../../src/store/store'
-import type { User } from '../../../src/types'
 import { jpegFile } from '../../helpers/media-fixtures'
 
-const TEST_USER: User = {
-  name: 'Test Adopter',
-  email: 'test-adopter@example.com',
+function signedInViewer(id: string): Viewer {
+  return {
+    kind: 'user',
+    id,
+    email: 'test-adopter@example.com',
+    displayName: 'Test Adopter',
+    role: 'user',
+    banned: false,
+  }
 }
 
 function createMutationAdapter(overrides: Partial<AppMutationAdapter> = {}): AppMutationAdapter {
@@ -28,25 +34,20 @@ function createMutationAdapter(overrides: Partial<AppMutationAdapter> = {}): App
   }
 }
 
-function createWrapper(props: Partial<StoreProviderProps> & { backend?: PrototypeBackend } = {}) {
+function createWrapper(
+  props: Partial<StoreProviderProps> & { backend?: PrototypeBackend; viewerId?: string } = {},
+) {
   const backend = props.backend ?? createPrototypeBackend()
-  const viewerId = props.viewerId ?? 'viewer-test'
-  const mockUser = props.mockUser ?? TEST_USER
-  const moderatorId = props.moderatorId ?? 'moderator-test'
+  const viewer = props.viewer ?? signedInViewer(props.viewerId ?? 'viewer-test')
+  const viewerId = viewer.kind === 'user' ? viewer.id : undefined
   const asyncBackend = createInMemoryAsyncBackend(backend)
   const mutations =
-    props.mutations ?? createRuntimeMutationAdapter({ backend: asyncBackend, viewerId, moderatorId })
-  const hydrate = props.hydrate ?? ((id: string) => asyncBackend.hydrateAppShell({ viewerId: id }))
+    props.mutations ?? createRuntimeMutationAdapter({ backend: asyncBackend, viewerId, moderatorId: viewerId })
+  const hydrate = props.hydrate ?? ((id?: string) => asyncBackend.hydrateAppShell({ viewerId: id }))
 
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <StoreProvider
-        viewerId={viewerId}
-        mockUser={mockUser}
-        moderatorId={moderatorId}
-        mutations={mutations}
-        hydrate={hydrate}
-      >
+      <StoreProvider viewer={viewer} mutations={mutations} hydrate={hydrate}>
         {children}
       </StoreProvider>
     )
@@ -112,7 +113,7 @@ describe('StoreProvider runtime integration', () => {
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
 
     act(() => {
-      result.current.googleSignIn()
+      result.current.openAdd()
     })
 
     act(() => {
@@ -146,10 +147,6 @@ describe('StoreProvider runtime integration', () => {
 
     await waitFor(() => {
       expect(result.current.listings.some((listing) => listing.id === 'mishka')).toBe(true)
-    })
-
-    act(() => {
-      result.current.googleSignIn()
     })
 
     act(() => {
@@ -352,7 +349,7 @@ describe('StoreProvider runtime integration', () => {
     const { result } = renderHook(() => useStore(), { wrapper: createWrapper() })
 
     act(() => {
-      result.current.googleSignIn()
+      result.current.openAdd()
     })
 
     await act(async () => {

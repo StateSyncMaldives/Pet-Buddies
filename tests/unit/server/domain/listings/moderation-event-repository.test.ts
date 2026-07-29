@@ -15,9 +15,11 @@ const moderator = {
   id: 'moderator-1',
   googleSub: 'sub-moderator-1',
   email: 'moderator@example.com',
+  emailVerified: true,
   displayName: 'Moderator',
   avatarUrl: null,
-  globalRole: 'moderator',
+  role: 'moderator',
+  banned: false,
   createdAt: '2026-06-01T08:00:00.000Z',
   updatedAt: '2026-06-01T08:00:00.000Z',
 } as const
@@ -87,7 +89,13 @@ const createMiniflareD1 = useMiniflareD1('pet-buddies-moderation-event-repositor
 
 async function createMiniflareRepository() {
   const { db } = await createMiniflareD1()
-  await db.insert(schema.users).values(moderator).run()
+  // users.createdAt/updatedAt are Better-Auth-managed integer/timestamp
+  // columns (native Date), while this fixture keeps ISO strings for parity
+  // with UserRecord — convert at the insert boundary.
+  await db
+    .insert(schema.users)
+    .values({ ...moderator, createdAt: new Date(moderator.createdAt), updatedAt: new Date(moderator.updatedAt) })
+    .run()
   await createDrizzleListingRepository({ db }).create(listing)
 
   return createDrizzleModerationEventRepository({ db })

@@ -63,7 +63,6 @@ export const shadow = {
 export const z = {
   detail: 20,
   add: 20,
-  auth: 22,
   inquiry: 23,
   mod: 24,
   install: 28,

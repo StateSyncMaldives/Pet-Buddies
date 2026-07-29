@@ -76,9 +76,29 @@ _Avoid_: Dogs, all pets, every animal
 The moderator-facing list of listings awaiting a moderation decision.
 _Avoid_: Mod panel, admin screen, pending list
 
+**Session**:
+An authenticated Better Auth session backing a signed-in user, carried in an httpOnly cookie and resolved server-side on every request. The durable form of what the demo seam faked.
+_Avoid_: Token, login
+
+**Account**:
+The link between a signed-in user and a sign-in provider — `google` or `credential`. Where provider identity and the password hash live.
+_Avoid_: Login, credentials row
+
 **Global role**:
-The platform-wide authorization level of a signed-in user — user, moderator, or administrator. Distinct from organization membership roles.
+The platform-wide authorization level of a signed-in user — user, moderator, or administrator — stored in `users.role`. Distinct from organization membership roles.
 _Avoid_: Permission flag, org role, access level
+
+**Global permission**:
+A capability a global role carries under the access-control policy: `listing:moderate`, `user:setRole`, `user:ban`, `org:verify`. The enforceable unit — authorization checks ask for a permission, not a role name.
+_Avoid_: Scope, claim
+
+**Ban**:
+An administrator action suspending a signed-in user's write access, recorded on the user record with an optional reason and expiry. A banned user still has a session and can read; they cannot write.
+_Avoid_: Block, mute
+
+**Bootstrap administrator**:
+The seeded administrator that exists so the first real administrator can sign in at all — granting the administrator role otherwise requires an administrator. Ships with a placeholder password meant to be rotated on first deploy.
+_Avoid_: Root, superuser
 
 **Moderator**:
 A signed-in user whose global role grants review-queue decisions. Moderators do not use the admin screen.

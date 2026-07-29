@@ -4,6 +4,14 @@
 interface __BaseEnv_Env {
 	MEDIA_BUCKET: R2Bucket;
 	DB: D1Database;
+	BETTER_AUTH_SECRET: string;
+	BETTER_AUTH_URL: string;
+	GOOGLE_CLIENT_ID: string;
+	GOOGLE_CLIENT_SECRET: string;
+	BOOTSTRAP_ADMIN_EMAIL?: string;
+	BOOTSTRAP_ADMIN_PASSWORD?: string;
+	BOOTSTRAP_MODERATOR_EMAIL?: string;
+	BOOTSTRAP_MODERATOR_PASSWORD?: string;
 }
 declare namespace Cloudflare {
 	interface Env extends __BaseEnv_Env {}

@@ -6,6 +6,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createAppRouter } from '../../../src/router'
 import { createQueryClient } from '../../../src/query/client'
 import { createAppRuntime } from '../../../src/server/runtime/app-session'
+import { TEST_VIEWER } from '../../helpers/viewers'
 
 function renderAt(
   path: string,
@@ -18,17 +19,15 @@ function renderAt(
 ) {
   window.localStorage.setItem('petbuddies.flags', JSON.stringify(flags))
 
-  const runtime = createAppRuntime()
+  const runtime = createAppRuntime(TEST_VIEWER)
   setupRuntime?.(runtime)
-  const { backend, mutations, session } = runtime
+  const { backend, mutations, viewer } = runtime
   const router = createAppRouter({
     context: {
       queryClient: createQueryClient(),
       backend,
       mutations,
-      viewerId: session.viewerId,
-      mockUser: session.mockUser,
-      moderatorId: session.moderatorId,
+      viewer,
     },
     initialEntries: [path],
   })
@@ -192,8 +191,8 @@ describe('app router shell', () => {
 
   it('refreshes saved route data after removing a saved listing', async () => {
     const user = userEvent.setup()
-    renderAt('/saved', undefined, ({ backend, session }) => {
-      backend.toggleSavedListing({ listingId: 'mishka', viewerId: session.viewerId })
+    renderAt('/saved', undefined, ({ backend, viewer }) => {
+      backend.toggleSavedListing({ listingId: 'mishka', viewerId: viewer.kind === 'user' ? viewer.id : '' })
     })
 
     await screen.findByRole('button', { name: 'View Mishka, cat in Maafannu, Malé' })
@@ -221,9 +220,9 @@ describe('app router shell', () => {
   })
 
   it('renders sent adoption inquiries from the you route loader', async () => {
-    renderAt('/you?view=inquiries', undefined, ({ backend, session }) => {
+    renderAt('/you?view=inquiries', undefined, ({ backend, viewer }) => {
       backend.createInquiry({
-        viewerId: session.viewerId,
+        viewerId: viewer.kind === 'user' ? viewer.id : '',
         request: {
           listingId: 'mishka',
           message: 'Could we visit Mishka this week?',
@@ -236,29 +235,25 @@ describe('app router shell', () => {
     expect(screen.getByText('"Could we visit Mishka this week?"')).toBeTruthy()
   })
 
-  it('resumes add-listing after signed-out users complete sign-in', async () => {
+  // Signed-in viewers reach these flows directly; anonymous ones are routed to
+  // /sign-in instead (see tests/unit/features/auth/gated-actions.test.tsx).
+  it('opens add-listing for a signed-in viewer', async () => {
     const user = userEvent.setup()
     renderAt('/browse')
 
     await screen.findByText('Find a buddy')
     await user.click(screen.getByRole('button', { name: 'Add a listing' }))
-    expect(await screen.findByRole('heading', { name: 'Sign in to list a pet' })).toBeTruthy()
-
-    await user.click(screen.getByRole('button', { name: 'Continue with Google' }))
 
     expect(await screen.findByText('Posting as')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Submit for review' })).toBeTruthy()
   })
 
-  it('resumes adoption inquiry after signed-out users complete sign-in', async () => {
+  it('opens the adoption inquiry for a signed-in viewer', async () => {
     const user = userEvent.setup()
     renderAt('/browse/listings/mishka')
 
     await screen.findByRole('heading', { name: 'Mishka' })
     await user.click(screen.getByRole('button', { name: 'Apply to adopt' }))
-    expect(await screen.findByRole('heading', { name: 'Sign in to list a pet' })).toBeTruthy()
-
-    await user.click(screen.getByRole('button', { name: 'Continue with Google' }))
 
     expect(await screen.findByText('Your message')).toBeTruthy()
     expect(screen.getByDisplayValue(/interested in adopting Mishka/)).toBeTruthy()
@@ -285,7 +280,6 @@ describe('app router shell', () => {
 
     await screen.findByText('Find a buddy')
     await user.click(screen.getByRole('button', { name: 'Add a listing' }))
-    await user.click(await screen.findByRole('button', { name: 'Continue with Google' }))
     await user.type(await screen.findByPlaceholderText('e.g. Mishka'), 'Sunny')
     await user.type(screen.getByPlaceholderText('e.g. 8 months'), '10 months')
     await user.type(screen.getByPlaceholderText('e.g. Maafannu'), 'Maafannu, Malé')

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { createDurableBackend } from '../../../../src/server/runtime/durable-backend'
 import { seedDurableStore } from '../../../../src/server/infra/db/seed-durable-store'
-import { DEMO_MODERATOR_USER, DEMO_VIEWER_USER } from '../../../../src/server/runtime/demo-identity'
+import { insertTestUsers, TEST_MODERATOR_USER, TEST_VIEWER_USER } from '../../../helpers/seed-users'
 import { useMiniflareD1 } from '../../../helpers/miniflare-d1'
 
 const createMiniflareD1 = useMiniflareD1('pet-buddies-durable-backend-test-db')
@@ -15,6 +15,7 @@ describe('createDurableBackend', () => {
   it('browses the seeded live listings from D1', async () => {
     const { db } = await createMiniflareD1()
     await seedDurableStore({ db })
+    await insertTestUsers(db)
 
     const backend = createBackend(db)
     const cats = await backend.browseListings({ query: { species: 'cat' } })
@@ -26,7 +27,8 @@ describe('createDurableBackend', () => {
 
   it('lists only durably-pending listings in the review queue', async () => {
     const { db } = await createMiniflareD1()
-    await seedDurableStore({ db }) // includes the seeded pending listing 'pending-simba'
+    await seedDurableStore({ db })
+    await insertTestUsers(db) // includes the seeded pending listing 'pending-simba'
 
     const backend = createBackend(db)
     const queue = await backend.listReviewQueue()
@@ -40,13 +42,14 @@ describe('createDurableBackend', () => {
   it('drops a listing from the review queue and surfaces it in browse after approval', async () => {
     const { db } = await createMiniflareD1()
     await seedDurableStore({ db })
+    await insertTestUsers(db)
     const backend = createBackend(db)
 
     expect((await backend.listReviewQueue()).ok).toBe(true)
 
     const result = await backend.moderateListing({
       listingId: 'pending-simba',
-      actorUserId: DEMO_MODERATOR_USER.id,
+      actorUserId: TEST_MODERATOR_USER.id,
       request: { action: 'approved' },
     })
     expect(result.ok).toBe(true)
@@ -62,11 +65,12 @@ describe('createDurableBackend', () => {
   it('drops a listing from the review queue after rejection', async () => {
     const { db } = await createMiniflareD1()
     await seedDurableStore({ db })
+    await insertTestUsers(db)
     const backend = createBackend(db)
 
     const result = await backend.moderateListing({
       listingId: 'pending-simba',
-      actorUserId: DEMO_MODERATOR_USER.id,
+      actorUserId: TEST_MODERATOR_USER.id,
       request: { action: 'rejected' },
     })
     expect(result.ok).toBe(true)
@@ -78,22 +82,24 @@ describe('createDurableBackend', () => {
   it('persists a save so a fresh backend still lists it', async () => {
     const { db } = await createMiniflareD1()
     await seedDurableStore({ db })
+    await insertTestUsers(db)
 
     const backend = createBackend(db)
-    const toggled = await backend.toggleSavedListing({ listingId: 'mishka', viewerId: DEMO_VIEWER_USER.id })
+    const toggled = await backend.toggleSavedListing({ listingId: 'mishka', viewerId: TEST_VIEWER_USER.id })
     expect(toggled.ok && toggled.data.saved).toBe(true)
 
     const fresh = createBackend(db)
-    const saved = await fresh.listSavedListings({ viewerId: DEMO_VIEWER_USER.id })
+    const saved = await fresh.listSavedListings({ viewerId: TEST_VIEWER_USER.id })
     expect(saved.ok && saved.data.items.map((item) => item.id)).toEqual(['mishka'])
   }, 15_000)
 
   it('hydrates the app shell with durable listings and D1 clinics', async () => {
     const { db } = await createMiniflareD1()
     await seedDurableStore({ db })
+    await insertTestUsers(db)
 
     const backend = createBackend(db)
-    const shell = await backend.hydrateAppShell({ viewerId: DEMO_VIEWER_USER.id })
+    const shell = await backend.hydrateAppShell({ viewerId: TEST_VIEWER_USER.id })
     expect(shell.listings.some((listing) => listing.id === 'mishka')).toBe(true)
     expect(shell.clinics.length).toBeGreaterThan(0)
   }, 15_000)
@@ -101,9 +107,10 @@ describe('createDurableBackend', () => {
   it('persists a created listing so a fresh backend sees it in the owner read model', async () => {
     const { db } = await createMiniflareD1()
     await seedDurableStore({ db })
+    await insertTestUsers(db)
 
     const created = await createBackend(db).createListing({
-      actorUserId: DEMO_VIEWER_USER.id,
+      actorUserId: TEST_VIEWER_USER.id,
       request: {
         species: 'cat',
         name: 'Nala',
@@ -117,22 +124,23 @@ describe('createDurableBackend', () => {
     })
     expect(created.ok).toBe(true)
 
-    const you = await createBackend(db).getYouReadModel({ viewerId: DEMO_VIEWER_USER.id })
+    const you = await createBackend(db).getYouReadModel({ viewerId: TEST_VIEWER_USER.id })
     expect(you.ok && you.data.ownedListings.map((listing) => listing.name)).toContain('Nala')
 
     // The create fabricates a synthetic owner record from the actor id; persisting
     // it must NOT overwrite the seeded viewer's real profile.
     const nala = you.ok ? you.data.ownedListings.find((listing) => listing.name === 'Nala') : undefined
-    expect(nala?.listedBy.displayName).toBe(DEMO_VIEWER_USER.displayName)
+    expect(nala?.listedBy.displayName).toBe(TEST_VIEWER_USER.displayName)
   }, 15_000)
 
   it('persists a moderation transition so a fresh backend reads the new status', async () => {
     const { db } = await createMiniflareD1()
-    await seedDurableStore({ db }) // includes the seeded pending listing 'pending-simba'
+    await seedDurableStore({ db })
+    await insertTestUsers(db) // includes the seeded pending listing 'pending-simba'
 
     const result = await createBackend(db).moderateListing({
       listingId: 'pending-simba',
-      actorUserId: DEMO_MODERATOR_USER.id,
+      actorUserId: TEST_MODERATOR_USER.id,
       request: { action: 'approved' },
     })
     expect(result.ok).toBe(true)
@@ -144,20 +152,22 @@ describe('createDurableBackend', () => {
   it('persists an adoption inquiry visible in the sender read model', async () => {
     const { db } = await createMiniflareD1()
     await seedDurableStore({ db })
+    await insertTestUsers(db)
 
     const sent = await createBackend(db).createInquiry({
-      viewerId: DEMO_VIEWER_USER.id,
+      viewerId: TEST_VIEWER_USER.id,
       request: { listingId: 'mishka', message: 'Could we visit Mishka this week?' },
     })
     expect(sent.ok).toBe(true)
 
-    const you = await createBackend(db).getYouReadModel({ viewerId: DEMO_VIEWER_USER.id })
+    const you = await createBackend(db).getYouReadModel({ viewerId: TEST_VIEWER_USER.id })
     expect(you.ok && you.data.sentAdoptionInquiries.map((inquiry) => inquiry.listingId)).toContain('mishka')
   }, 15_000)
 
   it('persists a lost/found report with a routed organization and reference code', async () => {
     const { db } = await createMiniflareD1()
     await seedDurableStore({ db })
+    await insertTestUsers(db)
 
     const result = await createBackend(db).createReport({
       request: {

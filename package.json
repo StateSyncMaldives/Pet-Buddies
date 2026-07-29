@@ -14,13 +14,14 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply pet-buddies-mv-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply pet-buddies-mv-db --remote",
-    "deploy": "pnpm build && wrangler deploy --config dist/server/wrangler.json",
+    "deploy": "CLOUDFLARE_ENV=production pnpm build && wrangler deploy --config dist/server/wrangler.json",
     "test": "vitest --run"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",
     "@tanstack/react-router": "^1.170.17",
     "@tanstack/react-start": "^1.168.27",
+    "better-auth": "^1.6.25",
     "drizzle-orm": "^0.45.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

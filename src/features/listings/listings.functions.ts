@@ -1,8 +1,17 @@
 import { createServerFn } from '@tanstack/react-start'
 
 import { toTagSlug } from '../../router/browse-search'
-import { createListingInputSchema } from '../../server/mutations/mutation-schemas'
+import { requireOrgRole, requireViewer } from '../../server/auth/guards'
+import { resolveRequestViewer } from '../../server/auth/request-viewer'
+import type { Viewer } from '../../server/auth/resolve-viewer'
+import {
+  createListingInputSchema,
+  type CreateListingMutationInput,
+} from '../../server/mutations/mutation-schemas'
 import { createDurableServerMutationAdapter } from '../../server/mutations/durable-mutation-adapter'
+import type { AppMutationAdapter } from '../../server/mutations/mutation-adapter'
+import type { PetBuddiesDrizzleDatabase } from '../../server/infra/db/d1-drizzle'
+import { resolveRequestDatabase } from '../../server/infra/db/request-database'
 import { parseMediaUploadFormData } from '../../server/mutations/media-upload-form'
 import { createUploadMediaUseCase } from '../../server/domain/media/upload-media'
 import { getWorkerEnv } from '../../server/infra/cloudflare/worker-env'
@@ -59,11 +68,30 @@ export const fetchListingDetail = createServerFn({ method: 'POST' })
     return result.data
   })
 
+/**
+ * Creating a listing requires a signed-in viewer. Listing it *under an
+ * organization* additionally requires the `listing_manager` role in that
+ * organization, so a member cannot publish in the organization's name.
+ */
+export async function createListingForViewer(
+  deps: { viewer: Viewer; mutations?: AppMutationAdapter; database?: PetBuddiesDrizzleDatabase },
+  input: CreateListingMutationInput,
+) {
+  requireViewer(deps.viewer)
+
+  const organizationId = input.request.organizationId
+  if (organizationId) {
+    const database = deps.database ?? (await resolveRequestDatabase())
+    await requireOrgRole({ database }, deps.viewer, organizationId, 'listing_manager')
+  }
+
+  const mutations = deps.mutations ?? (await createDurableServerMutationAdapter(deps.viewer))
+  return mutations.createListing(input)
+}
+
 export const createListing = createServerFn({ method: 'POST' })
   .validator(createListingInputSchema)
-  .handler(async ({ data }) => {
-    return (await createDurableServerMutationAdapter()).createListing(data)
-  })
+  .handler(async ({ data }) => createListingForViewer({ viewer: await resolveRequestViewer() }, data))
 
 export const uploadMedia = createServerFn({ method: 'POST' })
   .validator((formData: FormData) => formData)

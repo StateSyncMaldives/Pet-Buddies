@@ -5,10 +5,10 @@ Backend data model for the Pet Buddies fullstack migration. Originally drafted a
 
 ## Stack
 - **frontend/fullstack framework:** TanStack Start (wired)
-- **deployment:** Cloudflare Workers (deployed; live at https://pet-buddies.dev.statesync.mv)
+- **deployment:** Cloudflare Workers (deployed; live at https://pet-buddies.statesync.dev)
 - **database:** relational SQL, **D1-compatible** (Drizzle schema + Miniflare-tested D1 repositories; durable runtime composition still pending)
 - **file storage:** R2 for listing/report images (implemented; see ADR 0005–0007)
-- **auth:** Google sign-in (not yet wired; the app still runs on the demo Viewer identity)
+- **auth:** Better Auth over D1 — Google OAuth + email/password, with role-based access control (wired; the demo Viewer identity is gone). See [ADR 0010](../adr/0010-better-auth-over-d1-adapt-existing-users.md)
 
 If we later switch to external Postgres, the domain model still holds; only the SQL dialect and migration tooling need to change.
 
@@ -77,11 +77,17 @@ Needed for:
 
 Key fields:
 - `id`
-- `google_sub`
+- `google_sub` — legacy and nullable; provider identity lives in `account` (ADR 0010)
 - `email`
+- `email_verified`
 - `display_name`
 - `avatar_url`
-- `global_role`
+- `role` — the global role (renamed from `global_role` in ADR 0010)
+- `banned`, `ban_reason`, `ban_expires`
+
+Better Auth adds `session`, `account` and `verification` alongside this table; the
+`users` table itself is adapted rather than duplicated, so every existing foreign
+key still points at it. See [ADR 0010](../adr/0010-better-auth-over-d1-adapt-existing-users.md).
 
 ---
 

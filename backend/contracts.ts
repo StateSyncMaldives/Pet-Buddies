@@ -54,11 +54,19 @@ export type {
 
 export interface UserRecord {
   id: string
-  googleSub: string
+  googleSub: string | null
   email: string
+  emailVerified: boolean
   displayName: string
   avatarUrl?: string | null
-  globalRole: GlobalRole
+  role: GlobalRole
+  banned: boolean
+  /**
+   * ISO 8601 strings at this boundary. The underlying `users` table stores
+   * these as Better-Auth-managed integer/timestamp columns (native `Date` in
+   * drizzle) — repository mappers convert `Date` <-> ISO string at the edge
+   * so the rest of the app keeps working with plain strings.
+   */
   createdAt: string
   updatedAt: string
 }
