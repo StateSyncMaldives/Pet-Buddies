@@ -35,24 +35,28 @@ async function stateCookieFor(baseUrl: string): Promise<string> {
 }
 
 /**
- * The OAuth state cookie must come back when Google redirects the browser to
- * the callback. SameSite=Lax rides only top-level navigations, and Google's
- * silent re-auth can return in a context where it is dropped — the callback
- * then fails `state_mismatch` despite a correctly written verification row.
- * This is exactly what broke Google sign-in on the deployed origin while
- * localhost kept working.
+ * The OAuth state cookie must come back when Google redirects to the callback.
+ *
+ * It stays on SameSite=Lax deliberately. Lax IS sent on cross-site *top-level*
+ * navigations — exactly what the return from Google is — while SameSite=None
+ * is classed as a third-party cookie and blocked by Chrome's default incognito
+ * settings, breaking sign-in in the very mode people test with. This test
+ * exists so nobody "fixes" an OAuth problem by loosening it again; the failure
+ * that tempted us there was a cached callback response, handled by
+ * Cache-Control: no-store on the /api/auth route.
  */
 describe('OAuth state cookie', () => {
-  it('is SameSite=None and Secure on an https origin', async () => {
+  it('is SameSite=Lax and Secure on an https origin', async () => {
     const cookie = await stateCookieFor('https://pet-buddies.statesync.dev')
 
-    expect(cookie).toMatch(/SameSite=None/i)
+    expect(cookie).toMatch(/SameSite=Lax/i)
+    expect(cookie).not.toMatch(/SameSite=None/i)
     expect(cookie).toMatch(/Secure/i)
     // The __Secure- prefix requires the Secure attribute; both must agree.
     expect(cookie).toContain('__Secure-')
   })
 
-  it('stays SameSite=Lax over http, where a Secure cookie would never be stored', async () => {
+  it('is SameSite=Lax over http, without Secure (never stored on localhost)', async () => {
     const cookie = await stateCookieFor('http://localhost:5173')
 
     expect(cookie).toMatch(/SameSite=Lax/i)
@@ -78,8 +82,8 @@ describe('OAuth state cookie', () => {
       .find((part) => part.includes('session_token='))
 
     expect(sessionCookie).toBeDefined()
-    // Relaxing this one too (via defaultCookieAttributes) would be a real
-    // security regression — the narrow per-cookie override exists to avoid it.
+    // Relaxing this via defaultCookieAttributes would be a real security
+    // regression, and would not have fixed the OAuth problem anyway.
     expect(sessionCookie).toMatch(/SameSite=Lax/i)
     expect(sessionCookie).not.toMatch(/SameSite=None/i)
   })
