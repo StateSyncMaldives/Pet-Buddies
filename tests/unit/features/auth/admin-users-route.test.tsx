@@ -11,6 +11,7 @@ const listOrganizations = vi.fn()
 const setUserRole = vi.fn()
 const banUser = vi.fn()
 const verifyOrganization = vi.fn()
+const listModerationEvents = vi.fn()
 
 vi.mock('../../../../src/features/auth/admin.functions', () => ({
   listUsers: (...args: unknown[]) => listUsers(...args),
@@ -20,6 +21,7 @@ vi.mock('../../../../src/features/auth/admin.functions', () => ({
   unbanUser: vi.fn(),
   verifyOrganization: (...args: unknown[]) => verifyOrganization(...args),
   unverifyOrganization: vi.fn(),
+  listModerationEvents: (...args: unknown[]) => listModerationEvents(...args),
 }))
 
 const ADMIN_VIEWER = { ...TEST_VIEWER, role: 'admin' as const }
@@ -45,6 +47,7 @@ beforeEach(() => {
   setUserRole.mockReset().mockResolvedValue({ user: {} })
   banUser.mockReset().mockResolvedValue({ user: {} })
   verifyOrganization.mockReset().mockResolvedValue({ organization: {} })
+  listModerationEvents.mockReset().mockResolvedValue({ items: [] })
 })
 
 afterEach(() => {
@@ -151,5 +154,60 @@ describe('/admin/users guard with a stale router context', () => {
 
     await waitFor(() => expect(router.state.location.pathname).not.toBe('/admin/users'))
     expect(listUsers).not.toHaveBeenCalled()
+  })
+})
+
+describe('/admin/users moderation audit log', () => {
+  it('explains the empty state rather than showing a bare table', async () => {
+    renderAppAt('/admin/users', { viewer: ADMIN_VIEWER })
+
+    expect(await screen.findByText(/no moderation activity yet/i)).toBeTruthy()
+  })
+
+  it('renders each entry with action, listing, actor and reason', async () => {
+    listModerationEvents.mockResolvedValue({
+      items: [
+        {
+          id: 'evt-1',
+          action: 'rejected',
+          reason: 'Photos do not show the pet',
+          listingId: 'pending-simba',
+          listingName: 'Simba',
+          actorEmail: 'mod@petbuddies.mv',
+          actorDisplayName: 'Pet Buddies Moderator',
+          createdAt: '2026-07-29T10:00:00.000Z',
+        },
+      ],
+    })
+
+    renderAppAt('/admin/users', { viewer: ADMIN_VIEWER })
+
+    expect(await screen.findByText('rejected')).toBeTruthy()
+    expect(screen.getByText('Simba')).toBeTruthy()
+    expect(screen.getByText('Pet Buddies Moderator')).toBeTruthy()
+    expect(screen.getByText('Photos do not show the pet')).toBeTruthy()
+  })
+
+  it('falls back to the listing id and a dash when details are missing', async () => {
+    listModerationEvents.mockResolvedValue({
+      items: [
+        {
+          id: 'evt-2',
+          action: 'approved',
+          reason: null,
+          listingId: 'listing-gone',
+          listingName: null,
+          actorEmail: null,
+          actorDisplayName: null,
+          createdAt: '2026-07-29T10:00:00.000Z',
+        },
+      ],
+    })
+
+    renderAppAt('/admin/users', { viewer: ADMIN_VIEWER })
+
+    expect(await screen.findByText('listing-gone')).toBeTruthy()
+    expect(screen.getByText('Unknown')).toBeTruthy()
+    expect(screen.getByText('—')).toBeTruthy()
   })
 })

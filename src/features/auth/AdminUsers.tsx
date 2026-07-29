@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { Screen } from '../../layout/primitives'
-import { adminOrganizationsQuery, adminUsersQuery, queryKeys } from '../../query/queries'
+import {
+  adminModerationEventsQuery,
+  adminOrganizationsQuery,
+  adminUsersQuery,
+  queryKeys,
+} from '../../query/queries'
 import type { GlobalRole } from '../../server/contracts/api'
 import { colors, shadow } from '../../theme'
 import { banUser, setUserRole, unbanUser, unverifyOrganization, verifyOrganization } from './admin.functions'
@@ -18,6 +23,25 @@ function errorMessage(error: unknown): string {
 
 const cellStyle = { padding: '10px 8px', fontSize: 13.5, color: colors.ink, textAlign: 'left' } as const
 
+function actionChip(action: string) {
+  switch (action) {
+    case 'approved':
+      return { color: colors.adoptedText, bg: colors.adoptedBg }
+    case 'rejected':
+      return { color: colors.rejectText, bg: colors.rejectBg }
+    case 'adopted':
+      return { color: colors.liveText, bg: colors.liveBg }
+    default:
+      return { color: colors.pendingText, bg: colors.pendingBg }
+  }
+}
+
+/** Stored as an ISO/SQL timestamp; shown in the reader's own locale. */
+function formatWhen(value: string): string {
+  const parsed = new Date(value.includes('T') ? value : `${value.replace(' ', 'T')}Z`)
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString()
+}
+
 /**
  * Administrator user management. Every control here calls a server function
  * that re-checks the permission — the screen being reachable is never what
@@ -27,6 +51,7 @@ export function AdminUsers() {
   const queryClient = useQueryClient()
   const users = useQuery(adminUsersQuery())
   const organizations = useQuery(adminOrganizationsQuery())
+  const auditLog = useQuery(adminModerationEventsQuery())
 
   const roleMutation = useMutation({
     mutationFn: (input: { userId: string; role: GlobalRole }) => setUserRole({ data: input }),
@@ -210,6 +235,77 @@ export function AdminUsers() {
               </button>
             </div>
           ))
+        )}
+      </section>
+
+      <section
+        style={{
+          background: '#fff',
+          borderRadius: 16,
+          boxShadow: shadow.cardSm,
+          padding: 14,
+          marginTop: 18,
+        }}
+      >
+        <h2 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: colors.ink }}>
+          Moderation audit log
+        </h2>
+        <p style={{ margin: '0 0 12px', fontSize: 12.5, color: colors.textSecondary }}>
+          Every listing decision, newest first. Entries are immutable — they are never edited or
+          removed, so this is the record of who did what.
+        </p>
+
+        {auditLog.isPending ? (
+          <p style={{ fontSize: 13.5, color: colors.textSecondary }}>Loading activity…</p>
+        ) : (auditLog.data?.items ?? []).length === 0 ? (
+          <p style={{ fontSize: 13.5, color: colors.textSecondary }}>
+            No moderation activity yet. Approving or rejecting a listing from the review queue will
+            record an entry here.
+          </p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['When', 'Action', 'Listing', 'By', 'Reason'].map((heading) => (
+                  <th key={heading} scope="col" style={{ ...cellStyle, color: colors.textSecondary }}>
+                    {heading}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(auditLog.data?.items ?? []).map((entry) => {
+                const chip = actionChip(entry.action)
+                return (
+                  <tr key={entry.id} style={{ borderTop: `1px solid ${colors.lineAlt}` }}>
+                    <td style={{ ...cellStyle, whiteSpace: 'nowrap', color: colors.textSecondary }}>
+                      {formatWhen(entry.createdAt)}
+                    </td>
+                    <td style={cellStyle}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: chip.color,
+                          background: chip.bg,
+                          padding: '3px 9px',
+                          borderRadius: 7,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {entry.action}
+                      </span>
+                    </td>
+                    <td style={cellStyle}>{entry.listingName ?? entry.listingId}</td>
+                    <td style={cellStyle}>
+                      {entry.actorDisplayName ?? entry.actorEmail ?? 'Unknown'}
+                    </td>
+                    <td style={{ ...cellStyle, color: colors.textSecondary }}>{entry.reason ?? '—'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         )}
       </section>
     </Screen>

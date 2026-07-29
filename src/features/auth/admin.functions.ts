@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, eq, ne } from 'drizzle-orm'
+import { and, desc, eq, ne } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { AuthzError } from '../../server/auth/authz-error'
@@ -259,6 +259,62 @@ export async function setOrganizationVerificationForAdmin(
 
   return { organization: row }
 }
+
+export interface ModerationEventEntry {
+  id: string
+  action: 'submitted' | 'approved' | 'rejected' | 'adopted' | 'restored'
+  reason: string | null
+  listingId: string
+  listingName: string | null
+  actorEmail: string | null
+  actorDisplayName: string | null
+  createdAt: string
+}
+
+/**
+ * The moderation audit trail: who actioned which listing, when, and why.
+ *
+ * Guarded by `listing:moderate` rather than a user-administration permission,
+ * because this is the moderation record — a moderator has a legitimate claim
+ * to it. The only screen rendering it today is admin-only, so in practice that
+ * is the narrower of the two checks.
+ *
+ * Events are immutable and never edited, so a plain descending read is the
+ * whole story. `limit` keeps the payload bounded as history accumulates.
+ */
+export async function listModerationEventsForAdmin(
+  deps: AdminDeps,
+  input: { limit?: number } = {},
+): Promise<{ items: ModerationEventEntry[] }> {
+  requireGlobalPermission(deps.viewer, 'listing', 'moderate')
+  const database = await databaseFor(deps)
+
+  const limit = Math.min(Math.max(input.limit ?? 50, 1), 200)
+
+  const rows = await database
+    .select({
+      id: schema.moderationEvents.id,
+      action: schema.moderationEvents.action,
+      reason: schema.moderationEvents.reason,
+      listingId: schema.moderationEvents.listingId,
+      listingName: schema.listings.name,
+      actorEmail: schema.users.email,
+      actorDisplayName: schema.users.displayName,
+      createdAt: schema.moderationEvents.createdAt,
+    })
+    .from(schema.moderationEvents)
+    .leftJoin(schema.listings, eq(schema.listings.id, schema.moderationEvents.listingId))
+    .leftJoin(schema.users, eq(schema.users.id, schema.moderationEvents.actorUserId))
+    .orderBy(desc(schema.moderationEvents.createdAt))
+    .limit(limit)
+    .all()
+
+  return { items: rows }
+}
+
+export const listModerationEvents = createServerFn({ method: 'POST' }).handler(async () =>
+  listModerationEventsForAdmin({ viewer: await resolveRequestViewer() }),
+)
 
 export const listUsers = createServerFn({ method: 'POST' }).handler(async () =>
   listUsersForAdmin({ viewer: await resolveRequestViewer() }),
