@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Link, useNavigate, useRouteContext, useRouterState } from '@tanstack/react-router'
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 
 import { colors } from '../../theme'
 import { authClient } from './auth-client'
+import { useViewerIdentity } from './use-viewer-identity'
 
 /**
  * Shows who is signed in and offers a way out; offers a way in when nobody is.
@@ -13,28 +14,12 @@ import { authClient } from './auth-client'
  * server-side on every request. See ADR 0010.
  */
 export function AccountMenu() {
-  const { viewer } = useRouteContext({ from: '__root__' })
   const navigate = useNavigate()
   const currentPath = useRouterState({ select: (state) => state.location.href })
   const [signingOut, setSigningOut] = useState(false)
-  const { data: session } = authClient.useSession()
+  const account = useViewerIdentity()
 
-  /**
-   * The live session wins over the router context when it has one.
-   *
-   * Returning from Google is a client-side boot of an already-cached SPA
-   * shell, so `context.viewer` can still be the anonymous value resolved
-   * before sign-in — which showed "Sign in" to a user who had just
-   * authenticated, until they reloaded. The context is still the first-paint
-   * source on a fresh document load, where it is server-resolved and correct.
-   */
-  const account = session?.user
-    ? { displayName: session.user.name, email: session.user.email }
-    : viewer.kind === 'user'
-      ? { displayName: viewer.displayName, email: viewer.email }
-      : null
-
-  if (!account) {
+  if (!account.signedIn) {
     return (
       <Link
         to="/sign-in"

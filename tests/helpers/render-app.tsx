@@ -19,12 +19,15 @@ export function renderAppAt(
   options: {
     flags?: { onboarded: boolean; installed: boolean; installDismissed: boolean }
     viewer?: Viewer
+    /** Mirrors production's fresh-resolve seam; leave unset to use `viewer`. */
+    loadViewer?: () => Promise<Viewer>
     setupRuntime?: (runtime: ReturnType<typeof createAppRuntime>) => void
   } = {},
 ) {
   const {
     flags = { onboarded: true, installed: true, installDismissed: true },
     viewer = TEST_VIEWER,
+    loadViewer,
     setupRuntime,
   } = options
   window.localStorage.setItem('petbuddies.flags', JSON.stringify(flags))
@@ -38,6 +41,7 @@ export function renderAppAt(
       backend,
       mutations,
       viewer,
+      loadViewer,
     },
     initialEntries: [path],
   })

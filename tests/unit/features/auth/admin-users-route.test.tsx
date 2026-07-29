@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { renderAppAt } from '../../../helpers/render-app'
 import { ANONYMOUS_VIEWER, TEST_MODERATOR_VIEWER, TEST_VIEWER } from '../../../helpers/viewers'
+import type { Viewer } from '../../../../src/server/auth/resolve-viewer'
 
 const listUsers = vi.fn()
 const listOrganizations = vi.fn()
@@ -120,5 +121,35 @@ describe('/admin/users actions', () => {
     expect((await screen.findByRole('alert')).textContent).toContain(
       'Promote another administrator first.',
     )
+  })
+})
+
+/**
+ * The guard must resolve the viewer freshly rather than trusting router
+ * context. Returning from Google boots an already-cached SPA shell, so the
+ * context can still hold the pre-sign-in anonymous viewer — which bounced
+ * freshly signed-in administrators back to /sign-in.
+ */
+describe('/admin/users guard with a stale router context', () => {
+  const adminViewer: Viewer = { ...TEST_VIEWER, role: 'admin' }
+
+  it('admits an administrator even when the context is still anonymous', async () => {
+    const router = renderAppAt('/admin/users', {
+      viewer: ANONYMOUS_VIEWER,
+      loadViewer: async () => adminViewer,
+    })
+
+    expect(await screen.findByText('Someone')).toBeTruthy()
+    expect(router.state.location.pathname).toBe('/admin/users')
+  })
+
+  it('still turns away a non-admin whose context wrongly claims admin', async () => {
+    const router = renderAppAt('/admin/users', {
+      viewer: adminViewer,
+      loadViewer: async () => TEST_VIEWER,
+    })
+
+    await waitFor(() => expect(router.state.location.pathname).not.toBe('/admin/users'))
+    expect(listUsers).not.toHaveBeenCalled()
   })
 })
