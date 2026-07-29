@@ -30,6 +30,10 @@ export async function resolveAuthDeps(): Promise<{ database: PetBuddiesDrizzleDa
 
 export function createAuth(deps: { database: PetBuddiesDrizzleDatabase; secrets: AuthSecrets }) {
   const { database, secrets } = deps
+  // `Secure` cookies are not stored over plain http, so the SameSite=None
+  // treatment below can only apply where the origin is https.
+  const isSecureOrigin = secrets.BETTER_AUTH_URL.startsWith('https://')
+
   return betterAuth({
     baseURL: secrets.BETTER_AUTH_URL,
     secret: secrets.BETTER_AUTH_SECRET,
@@ -52,6 +56,30 @@ export function createAuth(deps: { database: PetBuddiesDrizzleDatabase; secrets:
     },
     account: {
       accountLinking: { enabled: true, trustedProviders: ['google'] },
+    },
+    advanced: {
+      cookies: {
+        /**
+         * The OAuth state cookie has to survive the cross-site return from
+         * Google. Better Auth defaults it to SameSite=Lax, which browsers send
+         * only on *top-level* navigations — and Google's silent re-auth
+         * (`prompt=none`, seen when the user has several accounts signed in)
+         * can come back in a context where a Lax cookie is dropped. The
+         * callback then finds no state and fails with `state_mismatch`, even
+         * though the verification row was written correctly.
+         *
+         * SameSite=None is sent in every context, which is what an OAuth
+         * round-trip actually needs. Scoped to this one cookie deliberately:
+         * `defaultCookieAttributes` would also relax the *session* cookie, and
+         * SameSite=Lax there is a real layer of CSRF defence worth keeping.
+         *
+         * Only applied on https — a `Secure` cookie is never stored over
+         * http://localhost, so local dev keeps the Lax default.
+         */
+        ...(isSecureOrigin
+          ? { state: { attributes: { sameSite: 'none' as const, secure: true } } }
+          : {}),
+      },
     },
     plugins: [admin({ ac, roles, defaultRole: 'user', adminRoles: ['admin'] })],
   })
