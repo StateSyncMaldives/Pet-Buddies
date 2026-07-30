@@ -1,6 +1,8 @@
+import { and, eq, isNotNull } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 
 import { createDurableBackend } from '../../../../src/server/runtime/durable-backend'
+import * as schema from '../../../../src/server/infra/db/schema'
 import { seedDurableStore } from '../../../../src/server/infra/db/seed-durable-store'
 import { insertTestUsers, TEST_MODERATOR_USER, TEST_VIEWER_USER } from '../../../helpers/seed-users'
 import { useMiniflareD1 } from '../../../helpers/miniflare-d1'
@@ -162,6 +164,71 @@ describe('createDurableBackend', () => {
 
     const you = await createBackend(db).getYouReadModel({ viewerId: TEST_VIEWER_USER.id })
     expect(you.ok && you.data.sentAdoptionInquiries.map((inquiry) => inquiry.listingId)).toContain('mishka')
+  }, 15_000)
+
+  /**
+   * The reported bug: an inquiry reached D1 addressed to the listing owner and
+   * then had no read path, so the owner never saw it. `mishka` is seeded as
+   * owned by a user, so the inquiry is user-addressed.
+   */
+  it('shows an inquiry to the listing owner who received it', async () => {
+    const { db } = await createMiniflareD1()
+    await seedDurableStore({ db })
+    await insertTestUsers(db)
+    const backend = createBackend(db)
+
+    // Seed listings are a mix of org-owned and user-owned; a user-addressed
+    // inquiry needs one with an owning user.
+    const owned = await db
+      .select({ id: schema.listings.id, ownerId: schema.listings.listedByUserId })
+      .from(schema.listings)
+      .where(and(eq(schema.listings.status, 'live'), isNotNull(schema.listings.listedByUserId)))
+      .get()
+    expect(owned?.ownerId).toBeTruthy()
+    const { id: listingId, ownerId } = owned!
+
+    await backend.createInquiry({
+      viewerId: TEST_VIEWER_USER.id,
+      request: { listingId, message: 'Could we visit this week?' },
+    })
+
+    const ownerView = await backend.getYouReadModel({ viewerId: ownerId! })
+    expect(ownerView.ok).toBe(true)
+    if (!ownerView.ok) return
+
+    expect(ownerView.data.receivedAdoptionInquiries).toHaveLength(1)
+    expect(ownerView.data.receivedAdoptionInquiries[0]).toMatchObject({
+      listingId,
+      message: 'Could we visit this week?',
+      senderDisplayName: TEST_VIEWER_USER.displayName,
+      senderEmail: TEST_VIEWER_USER.email,
+      status: 'awaiting_reply',
+    })
+    // The owner did not send it.
+    expect(ownerView.data.sentAdoptionInquiries).toHaveLength(0)
+  }, 15_000)
+
+  it('does not show the sender their own inquiry as received', async () => {
+    const { db } = await createMiniflareD1()
+    await seedDurableStore({ db })
+    await insertTestUsers(db)
+    const backend = createBackend(db)
+
+    const owned = await db
+      .select({ id: schema.listings.id })
+      .from(schema.listings)
+      .where(and(eq(schema.listings.status, 'live'), isNotNull(schema.listings.listedByUserId)))
+      .get()
+
+    await backend.createInquiry({
+      viewerId: TEST_VIEWER_USER.id,
+      request: { listingId: owned!.id, message: 'Could we visit this week?' },
+    })
+
+    const senderView = await backend.getYouReadModel({ viewerId: TEST_VIEWER_USER.id })
+    expect(senderView.ok && senderView.data.sentAdoptionInquiries).toHaveLength(1)
+    // This is the authorization property: received is scoped to the recipient.
+    expect(senderView.ok && senderView.data.receivedAdoptionInquiries).toHaveLength(0)
   }, 15_000)
 
   it('persists a lost/found report with a routed organization and reference code', async () => {

@@ -5,7 +5,7 @@ import { getDetailPath } from '../../router/paths'
 import { mapListingDetailToListing } from '../../store/view-model-mappers'
 import { queryKeys, youReadModelQuery } from '../../query/queries'
 import { useStore } from '../../store/store'
-import type { InboxView, Inquiry, Listing } from '../../types'
+import type { InboxView, Inquiry, Listing, ReceivedInquiry } from '../../types'
 import { Segmented } from '../../components/Segmented'
 import { Screen } from '../../layout/primitives'
 import { PetThumb } from '../../components/primitives'
@@ -26,16 +26,18 @@ function statusChip(status: NonNullable<Listing['status']>) {
   }
 }
 
+/** Tab order; the index the Segmented control reports maps through this. */
+const INBOX_VIEWS: InboxView[] = ['sent', 'received', 'listings']
+
 export function Inbox({ view }: { view?: InboxView }) {
   const navigate = useNavigate()
   const { backend, viewer } = useRouteContext({ from: '__root__' })
   const viewerId = viewer.kind === 'user' ? viewer.id : undefined
   const queryClient = useQueryClient()
-  const { state, openAdd, markAdopted } = useStore()
+  const { state, listings, openAdd, markAdopted } = useStore()
   const selectedView = view ?? state.inboxView
-  const showMine = selectedView === 'listings'
 
-  // Owned listings and sent inquiries read durable truth from the query cache
+  // Owned listings and inquiries read durable truth from the query cache
   // (ADR 0009), prefetched by the route loader.
   const { data: youReadModel } = useQuery(youReadModelQuery(backend, viewerId))
 
@@ -46,9 +48,13 @@ export function Inbox({ view }: { view?: InboxView }) {
   // not to the placeholder user the sign-in overlay used to set.
   const signedIn = viewer.kind === 'user'
   const myListings = signedIn && youReadModel ? youReadModel.ownedListings.map(mapListingDetailToListing) : []
+
   const inquiries = youReadModel ? youReadModel.sentAdoptionInquiries.map((inquiry): Inquiry => {
-    const listing = youReadModel.ownedListings.find((item) => item.id === inquiry.listingId)
-    const mappedListing = listing ? mapListingDetailToListing(listing) : undefined
+    // A SENT inquiry is about someone else's listing, so it is never in
+    // `ownedListings` — resolving it there always missed, which silently
+    // rendered every sent card as a cat. The store's app-shell listings carry
+    // every listing the viewer has seen, which is the right place to look.
+    const mappedListing = listings.find((item) => item.id === inquiry.listingId)
     return {
       key: inquiry.id,
       listingId: inquiry.listingId,
@@ -62,7 +68,28 @@ export function Inbox({ view }: { view?: InboxView }) {
       status: inquiry.status === 'awaiting_reply' ? 'Awaiting reply' : inquiry.status,
     }
   }) : []
+
+  const received = youReadModel ? youReadModel.receivedAdoptionInquiries.map((inquiry): ReceivedInquiry => {
+    // A RECEIVED inquiry is about the viewer's own listing, so this lookup is
+    // correct by definition.
+    const listing = youReadModel.ownedListings.find((item) => item.id === inquiry.listingId)
+    const mappedListing = listing ? mapListingDetailToListing(listing) : undefined
+    return {
+      key: inquiry.id,
+      listingId: inquiry.listingId,
+      name: inquiry.listingName,
+      from: inquiry.senderDisplayName,
+      fromEmail: inquiry.senderEmail,
+      message: inquiry.message,
+      isCat: mappedListing?.species !== 'bird',
+      isBird: mappedListing?.species === 'bird',
+      tint: mappedListing?.tint ?? '#FBE3EC',
+      status: inquiry.status === 'awaiting_reply' ? 'Awaiting reply' : inquiry.status,
+    }
+  }) : []
+
   const nInq = inquiries.length
+  const nReceived = received.length
 
   return (
     <Screen title="You" maxWidth={760}>
@@ -72,14 +99,14 @@ export function Inbox({ view }: { view?: InboxView }) {
 
       <div style={{ marginBottom: 22 }}>
         <Segmented
-          options={['Inquiries', 'My listings']}
-          activeIndex={showMine ? 1 : 0}
-          onSelect={(i) => setView(i === 0 ? 'inquiries' : 'listings')}
+          options={['Sent', 'Received', 'My listings']}
+          activeIndex={INBOX_VIEWS.indexOf(selectedView)}
+          onSelect={(i) => setView(INBOX_VIEWS[i] ?? 'sent')}
           fontSize={14}
         />
       </div>
 
-      {showMine ? (
+      {selectedView === 'listings' ? (
         !signedIn ? (
           <EmptyState
             icon={<PersonIcon size={46} stroke="#cfd4dc" strokeWidth={1.7} />}
@@ -157,6 +184,67 @@ export function Inbox({ view }: { view?: InboxView }) {
             )
           })
         )
+      ) : selectedView === 'received' ? (
+        <>
+          <p style={{ fontSize: 13, color: colors.faint, margin: '-6px 0 18px' }}>
+            {nReceived
+              ? `${nReceived} ${nReceived === 1 ? 'inquiry' : 'inquiries'} received.`
+              : 'No inquiries received yet.'}
+          </p>
+          {nReceived === 0 ? (
+            <EmptyState
+              icon={
+                <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#cfd4dc" strokeWidth="1.7" strokeLinejoin="round">
+                  <rect x="3" y="5" width="18" height="14" rx="2.5" />
+                  <path d="M3.5 7l8.5 6 8.5-6" />
+                </svg>
+              }
+              text="When someone applies to adopt one of your pets, their inquiry shows up here."
+              pad={88}
+            />
+          ) : (
+            received.map((q) => (
+              <div
+                key={q.key}
+                onClick={() => openListingDetail(q.listingId)}
+                onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openListingDetail(q.listingId) } }}
+                role="button"
+                tabIndex={0}
+                aria-label={`View inquiry about ${q.name} from ${q.from}`}
+                style={{ background: '#fff', borderRadius: 16, boxShadow: shadow.cardSm, padding: 14, marginBottom: 12, cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <PetThumb species={q.isCat ? 'cat' : 'bird'} size={50} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: colors.ink }}>{q.name}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: colors.pendingText, background: colors.pendingBg, padding: '3px 9px', borderRadius: 7, whiteSpace: 'nowrap' }}>
+                        {q.status}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12.5, color: colors.textSecondaryAlt, marginTop: 3 }}>
+                      From {q.from}
+                    </div>
+                    {/* There is no in-app reply yet, so the address is the
+                        only way the owner can actually respond. */}
+                    {q.fromEmail && (
+                      <a
+                        href={`mailto:${q.fromEmail}?subject=${encodeURIComponent(`Your inquiry about ${q.name}`)}`}
+                        onClick={(event) => event.stopPropagation()}
+                        style={{ fontSize: 12.5, color: colors.deepBlue, textDecoration: 'none' }}
+                      >
+                        {q.fromEmail}
+                      </a>
+                    )}
+                  </div>
+                </div>
+                <p style={{ fontSize: 13, color: '#6b7280', lineHeight: 1.5, margin: '11px 0 0', background: '#F0F2F6', borderRadius: 10, padding: '10px 12px' }}>
+                  "{q.message}"
+                </p>
+              </div>
+            ))
+          )}
+        </>
       ) : (
         <>
           <p style={{ fontSize: 13, color: colors.faint, margin: '-6px 0 18px' }}>

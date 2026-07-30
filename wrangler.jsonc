@@ -40,6 +40,12 @@
     // environment while generating dist/server/wrangler.json, so the switch is
     // CLOUDFLARE_ENV=production (see the `deploy` script), not
     // `wrangler deploy --env production`.
+    //
+    // The `build` script DEFAULTS CLOUDFLARE_ENV to production, because
+    // Cloudflare Workers Builds runs a plain `pnpm run build` and would
+    // otherwise ship the local shape — no route and a localhost
+    // BETTER_AUTH_URL — over the live Worker. Build the local shape
+    // explicitly with `CLOUDFLARE_ENV= pnpm run build`.
     "production": {
       // Pinned so the deployed Worker stays `pet-buddies-mv` rather than
       // becoming `pet-buddies-mv-production` under wrangler's legacy env

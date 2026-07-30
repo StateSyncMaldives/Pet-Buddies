@@ -23,6 +23,7 @@ import { createDrizzleSavedListingRepository } from '../infra/repositories/drizz
 import { slugify } from './seed-listing-aggregates'
 import type * as schema from '../infra/db/schema'
 import type { AsyncAppBackend } from './app-backend'
+import { toReceivedAdoptionInquirySummary } from '../../features/inquiries/received-inquiry-projection'
 
 type PetBuddiesDb = ReturnType<typeof drizzle<typeof schema>>
 
@@ -83,8 +84,10 @@ export function createDurableBackend(input: { database: PetBuddiesDb }): AsyncAp
       })
     },
     async getYouReadModel({ viewerId }) {
-      const [inquiries, owned] = await Promise.all([
+      // Received inquiries join the same round trip rather than adding one.
+      const [inquiries, received, owned] = await Promise.all([
         inquiryRepository.listSentBySender(viewerId),
+        inquiryRepository.listReceivedByRecipient(viewerId),
         listingRepository.listAll(viewerId),
       ])
       return apiResultOk({
@@ -97,6 +100,7 @@ export function createDurableBackend(input: { database: PetBuddiesDb }): AsyncAp
           status: inquiry.status,
           createdAt: inquiry.createdAt,
         })),
+        receivedAdoptionInquiries: received.map(toReceivedAdoptionInquirySummary),
         ownedListings: owned
           .filter((aggregate) => aggregate.listing.listedByUserId === viewerId)
           .map((aggregate) => toListingDetail(aggregate)),

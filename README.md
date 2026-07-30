@@ -25,8 +25,31 @@ The HTML prototype is built as a single "Design Component" (`.dc.html`) using a 
 - `pnpm dev` — run the app locally
 - `pnpm test` — run the vitest suite
 - `pnpm typecheck` — type-check (`tsc --noEmit`)
-- Deploy: `pnpm build`, then `wrangler deploy --config dist/server/wrangler.json` (wrapped by the `pnpm deploy` script)
 - Live: https://pet-buddies.statesync.dev
+
+### Deployment
+
+**Cloudflare Workers Builds owns deploys — do not deploy by hand.** Push the
+branch and CI builds and ships it. Two deploy paths race, and the loser is
+whichever ran first, so a manual deploy can silently overwrite what CI shipped.
+
+Notes for anyone changing the build:
+
+- `CLOUDFLARE_ENV` selects the wrangler environment at **build** time, because
+  `@cloudflare/vite-plugin` resolves it while generating
+  `dist/server/wrangler.json`. `wrangler deploy --env production` does nothing —
+  the generated config is flat and declares no environments.
+- `pnpm run build` therefore **defaults** `CLOUDFLARE_ENV` to `production`. CI
+  runs a bare `pnpm run build`, and without that default it produced the local
+  shape — no route, `BETTER_AUTH_URL=http://localhost:5173` — which on deploy
+  would point OAuth callbacks at localhost and drop the custom domain.
+  Build the local shape deliberately with `CLOUDFLARE_ENV= pnpm run build`.
+- The build applies D1 migrations locally first: prerendering crawls `/` →
+  `/browse`, whose loader queries D1, so a fresh checkout otherwise fails with
+  `no such table: listings`.
+- Secrets are per-environment and are not set by CI: `BETTER_AUTH_SECRET`,
+  `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and optionally
+  `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD`.
 
 ---
 

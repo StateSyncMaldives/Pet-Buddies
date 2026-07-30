@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 import type { drizzle } from 'drizzle-orm/d1'
 
 import type { AdoptionInquiryRecord } from '../../../../backend/contracts'
@@ -35,6 +35,25 @@ export function createDrizzleAdoptionInquiryRepository(input: {
       return rows
         .map(toInquiryRecord)
         .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    },
+    async listReceivedByRecipient(recipientUserId) {
+      // Ordered in SQL rather than in JS so this rides
+      // idx_adoption_inquiries_recipient_user_created, which has existed since
+      // the initial schema for exactly this read. Joined to `users` because the
+      // inquiry row snapshots the recipient's name but never the sender's.
+      const rows = await db
+        .select({ inquiry: schema.adoptionInquiries, sender: schema.users })
+        .from(schema.adoptionInquiries)
+        .innerJoin(schema.users, eq(schema.users.id, schema.adoptionInquiries.senderUserId))
+        .where(eq(schema.adoptionInquiries.recipientUserId, recipientUserId))
+        .orderBy(desc(schema.adoptionInquiries.createdAt))
+        .all()
+
+      return rows.map((row) => ({
+        ...toInquiryRecord(row.inquiry),
+        senderDisplayName: row.sender.displayName,
+        senderEmail: row.sender.email,
+      }))
     },
   }
 }

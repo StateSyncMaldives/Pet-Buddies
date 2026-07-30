@@ -65,6 +65,59 @@ const listing: ListingAggregate = {
   savedByViewer: false,
 }
 
+/** The listing owner an inquiry is addressed to. */
+const recipient = {
+  id: 'user-recipient',
+  googleSub: 'sub-recipient',
+  email: 'recipient@example.com',
+  emailVerified: true,
+  displayName: 'Recipient Owner',
+  avatarUrl: null,
+  role: 'user',
+  banned: false,
+  createdAt: '2026-06-01T08:00:00.000Z',
+  updatedAt: '2026-06-01T08:00:00.000Z',
+} as const
+
+/** User-owned, so inquiries about it are addressed to a user, not an org. */
+const ownedListing: ListingAggregate = {
+  ...listing,
+  listing: {
+    ...listing.listing,
+    id: 'listing-2',
+    slug: 'mishka',
+    species: 'cat',
+    birdSpecies: null,
+    name: 'Mishka',
+    listedByUserId: recipient.id,
+    organizationId: null,
+  },
+  organization: null,
+  listedByUser: recipient,
+}
+
+const receivedOlder: AdoptionInquiryRecord = {
+  id: 'inquiry-received-1',
+  listingId: 'listing-2',
+  senderUserId: sender.id,
+  recipientUserId: recipient.id,
+  recipientOrganizationId: null,
+  recipientDisplayNameSnapshot: 'Recipient Owner',
+  listingNameSnapshot: 'Mishka',
+  message: 'Is Mishka good with children?',
+  status: 'awaiting_reply',
+  createdAt: '2026-07-04T08:00:00.000Z',
+  updatedAt: '2026-07-04T08:00:00.000Z',
+}
+
+const receivedNewer: AdoptionInquiryRecord = {
+  ...receivedOlder,
+  id: 'inquiry-received-2',
+  message: 'Could we meet this weekend?',
+  createdAt: '2026-07-05T08:00:00.000Z',
+  updatedAt: '2026-07-05T08:00:00.000Z',
+}
+
 const firstInquiry: AdoptionInquiryRecord = {
   id: 'inquiry-1',
   listingId: 'listing-1',
@@ -94,11 +147,15 @@ async function createMiniflareRepository() {
   // users.createdAt/updatedAt are Better-Auth-managed integer/timestamp
   // columns (native Date), while this fixture keeps ISO strings for parity
   // with UserRecord — convert at the insert boundary.
-  await db
-    .insert(schema.users)
-    .values({ ...sender, createdAt: new Date(sender.createdAt), updatedAt: new Date(sender.updatedAt) })
-    .run()
-  await createDrizzleListingRepository({ db }).create(listing)
+  for (const user of [sender, recipient]) {
+    await db
+      .insert(schema.users)
+      .values({ ...user, createdAt: new Date(user.createdAt), updatedAt: new Date(user.updatedAt) })
+      .run()
+  }
+  const listings = createDrizzleListingRepository({ db })
+  await listings.create(listing)
+  await listings.create(ownedListing)
 
   return createDrizzleAdoptionInquiryRepository({ db })
 }
@@ -106,7 +163,7 @@ async function createMiniflareRepository() {
 describe.each([
   {
     name: 'in-memory adoption inquiry adapter',
-    createRepository: async () => createInMemoryAsyncAdoptionInquiryRepository(),
+    createRepository: async () => createInMemoryAsyncAdoptionInquiryRepository({ users: [sender, recipient] }),
   },
   {
     name: 'Drizzle D1 adoption inquiry adapter',
@@ -128,5 +185,55 @@ describe.each([
       status: 'awaiting_reply',
     })
     expect(await repository.listSentBySender('other-user')).toEqual([])
+  }, 15_000)
+
+  /**
+   * The gap behind "the listing owner never sees the inquiry": inquiries were
+   * written with the correct recipient_user_id and then never read back by it.
+   */
+  it('lists inquiries received by a recipient, newest-first', async () => {
+    const repository: AsyncAdoptionInquiryRepository = await createRepository()
+
+    await repository.save(receivedOlder)
+    await repository.save(receivedNewer)
+
+    const received = await repository.listReceivedByRecipient(recipient.id)
+
+    expect(received.map((inquiry) => inquiry.id)).toEqual([
+      'inquiry-received-2',
+      'inquiry-received-1',
+    ])
+    expect(received[0]).toMatchObject({
+      listingId: 'listing-2',
+      listingNameSnapshot: 'Mishka',
+      message: 'Could we meet this weekend?',
+      status: 'awaiting_reply',
+    })
+  }, 15_000)
+
+  it('resolves who sent it, so the owner knows who is asking', async () => {
+    const repository: AsyncAdoptionInquiryRepository = await createRepository()
+
+    await repository.save(receivedOlder)
+    const [received] = await repository.listReceivedByRecipient(recipient.id)
+
+    // AdoptionInquiryRecord stores no sender snapshot, so this is resolved
+    // from the sender's current user row.
+    expect(received).toMatchObject({
+      senderDisplayName: 'Sender',
+      senderEmail: 'sender@example.com',
+    })
+  }, 15_000)
+
+  it('never leaks an inquiry to anyone but its recipient', async () => {
+    const repository: AsyncAdoptionInquiryRepository = await createRepository()
+
+    await repository.save(receivedOlder)
+    // firstInquiry is addressed to an organization, not to a user at all.
+    await repository.save(firstInquiry)
+
+    expect(await repository.listReceivedByRecipient('user-someone-else')).toEqual([])
+    // The sender of an inquiry has not *received* it.
+    expect(await repository.listReceivedByRecipient(sender.id)).toEqual([])
   }, 15_000)
 })

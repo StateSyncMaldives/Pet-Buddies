@@ -150,6 +150,7 @@ describe('server api transport contracts', () => {
           createdAt: '2026-07-02T08:00:00.000Z',
         },
       ],
+      receivedAdoptionInquiries: [],
       ownedListings: [detailResponse.item],
     }
 

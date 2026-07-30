@@ -36,6 +36,28 @@ export interface Clinic {
   note: string
 }
 
+/**
+ * An inquiry someone sent about the viewer's own listing.
+ *
+ * A sibling of `Inquiry` rather than an optional `from` on it: `Inquiry.to` is
+ * sender-framed by construction (the mapper prefixes "Listed by …"), so one
+ * shape covering both directions would leave half its fields lying.
+ */
+export interface ReceivedInquiry {
+  key: string
+  listingId: string
+  name: string
+  /** Who sent it, e.g. "Aishath Ali". */
+  from: string
+  /** How to reach them — there is no in-app reply yet. */
+  fromEmail: string
+  message: string
+  isCat: boolean
+  isBird: boolean
+  tint: string
+  status: string
+}
+
 export interface Inquiry {
   key: string
   listingId: string
@@ -57,4 +79,4 @@ export interface User {
 
 export type Tab = 'browse' | 'report' | 'vets' | 'inbox' | 'saved'
 export type Overlay = 'detail' | 'add' | 'inquiry' | 'mod' | null
-export type InboxView = 'inquiries' | 'listings'
+export type InboxView = 'sent' | 'received' | 'listings'
