@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "build": "tsc && pnpm db:migrate:local && vite build && node scripts/generate-sw.mjs",
+    "build": "tsc && pnpm db:migrate:local && CLOUDFLARE_ENV=${CLOUDFLARE_ENV-production} vite build && node scripts/generate-sw.mjs",
     "preview": "vite preview",
     "cf-typegen": "wrangler types",
     "typecheck": "tsc --noEmit",
