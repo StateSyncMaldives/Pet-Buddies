@@ -28,6 +28,7 @@ import type {
   UpdateListingModerationResponse,
 } from '../contracts/api'
 import { apiResultOk } from '../contracts/api'
+import { toReceivedAdoptionInquirySummary } from '../../features/inquiries/received-inquiry-projection'
 import { createSeedClinicRepository } from '../../features/clinics/clinic-repository'
 import { createClinicService } from '../../features/clinics/clinic-service'
 import { createCreateInquiryUseCase } from '../../features/inquiries/create-inquiry'
@@ -231,6 +232,21 @@ export function createPrototypeBackend(deps: PrototypeBackendDeps = {}): Prototy
     return organization
   }
 
+  /**
+   * Resolves a user by id for the received-inquiry projection. Listings created
+   * in-session fabricate their owner inside the use case rather than through
+   * `ensureUser`, so fall back to scanning listing owners before giving up.
+   */
+  function findUserById(userId: string): UserRecord | null {
+    for (const user of usersByName.values()) {
+      if (user.id === userId) return user
+    }
+    for (const aggregate of listingRepository.listAll()) {
+      if (aggregate.listedByUser?.id === userId) return aggregate.listedByUser
+    }
+    return null
+  }
+
   function ensureUser(displayName: string): UserRecord {
     const existing = usersByName.get(displayName)
     if (existing) return existing
@@ -300,6 +316,17 @@ export function createPrototypeBackend(deps: PrototypeBackendDeps = {}): Prototy
             status: inquiry.status,
             createdAt: inquiry.createdAt,
           })),
+        receivedAdoptionInquiries: inquiries
+          .filter((inquiry) => inquiry.recipientUserId === input.viewerId)
+          .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+          .map((inquiry) => {
+            const sender = findUserById(inquiry.senderUserId)
+            return toReceivedAdoptionInquirySummary({
+              ...inquiry,
+              senderDisplayName: sender?.displayName ?? '',
+              senderEmail: sender?.email ?? '',
+            })
+          }),
         ownedListings: listingRepository
           .listAll(input.viewerId)
           .filter((aggregate) => aggregate.listing.listedByUserId === input.viewerId)

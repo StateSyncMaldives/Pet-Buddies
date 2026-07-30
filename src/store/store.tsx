@@ -163,7 +163,7 @@ function initialState(initialSaved: string[]): AppState {
     user: null,
     inquiries: [],
     inquiry: { listingId: null, message: '' },
-    inboxView: 'inquiries',
+    inboxView: 'sent',
     onboarded: false,
     obStep: 0,
     installed: false,

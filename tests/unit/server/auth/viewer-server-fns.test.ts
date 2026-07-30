@@ -27,6 +27,7 @@ describe('server functions without a session', () => {
     await runAnonymous(async ({ viewer, backend }) => {
       await expect(getYouReadModelForViewer({ viewer, backend })).resolves.toEqual({
         sentAdoptionInquiries: [],
+        receivedAdoptionInquiries: [],
         ownedListings: [],
       })
     })

@@ -216,8 +216,32 @@ export interface SentAdoptionInquirySummary {
   createdAt: string
 }
 
+/**
+ * An inquiry someone sent about the viewer's own listing.
+ *
+ * Carries `senderDisplayName`/`senderEmail` where the sent summary carries
+ * `recipientDisplayName` — the two directions name different parties, so they
+ * are separate types rather than one shape with optional fields.
+ *
+ * The sender is resolved from their user row at read time rather than
+ * snapshotted: `sender_user_id` is NOT NULL and cascades on delete, so an
+ * inquiry cannot outlive its sender and there is no history to preserve. (The
+ * recipient snapshot exists precisely because `recipient_user_id` is SET NULL.)
+ */
+export interface ReceivedAdoptionInquirySummary {
+  id: string
+  listingId: string
+  listingName: string
+  senderDisplayName: string
+  senderEmail: string
+  message: string
+  status: InquiryStatus
+  createdAt: string
+}
+
 export interface GetYouReadModelResponse {
   sentAdoptionInquiries: SentAdoptionInquirySummary[]
+  receivedAdoptionInquiries: ReceivedAdoptionInquirySummary[]
   ownedListings: ListingDetail[]
 }
 

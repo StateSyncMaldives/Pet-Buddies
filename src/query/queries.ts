@@ -94,7 +94,12 @@ export const youReadModelQuery = (backend?: AsyncAppBackend, viewerId?: string) 
     queryKey: queryKeys.you,
     queryFn: () => {
       if (!backend) return fetchYouReadModel()
-      if (!viewerId) return Promise.resolve({ sentAdoptionInquiries: [], ownedListings: [] })
+      if (!viewerId)
+        return Promise.resolve({
+          sentAdoptionInquiries: [],
+          receivedAdoptionInquiries: [],
+          ownedListings: [],
+        })
       return unwrap(backend.getYouReadModel({ viewerId }))
     },
   })

@@ -18,7 +18,8 @@ export async function getYouReadModelForViewer(deps: {
 }): Promise<GetYouReadModelResponse> {
   // An anonymous visitor has sent no inquiries and owns no listings. This is a
   // read, so it answers empty rather than refusing.
-  if (deps.viewer.kind !== 'user') return { sentAdoptionInquiries: [], ownedListings: [] }
+  if (deps.viewer.kind !== 'user')
+    return { sentAdoptionInquiries: [], receivedAdoptionInquiries: [], ownedListings: [] }
 
   const backend = deps.backend ?? (await createServerBackend())
   const result = await backend.getYouReadModel({ viewerId: deps.viewer.id })

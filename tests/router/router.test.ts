@@ -134,7 +134,7 @@ describe('createAppRouter', () => {
     })
   })
 
-  it('validates you route view search params with an inquiries default', async () => {
+  it('validates you route view search params, defaulting to sent', async () => {
     const listingsRouter = createAppRouter({ context: testContext(), initialEntries: ['/you?view=listings'] })
     await listingsRouter.load()
 
@@ -145,7 +145,20 @@ describe('createAppRouter', () => {
     await invalidRouter.load()
 
     const invalidMatch = invalidRouter.state.matches.find((match) => match.routeId === '/you')
-    expect(invalidMatch?.search).toEqual({ view: 'inquiries' })
+    expect(invalidMatch?.search).toEqual({ view: 'sent' })
+
+    const receivedRouter = createAppRouter({ context: testContext(), initialEntries: ['/you?view=received'] })
+    await receivedRouter.load()
+    expect(receivedRouter.state.matches.find((match) => match.routeId === '/you')?.search).toEqual({
+      view: 'received',
+    })
+
+    // `inquiries` was the old name for the sent tab; existing links must survive.
+    const legacyRouter = createAppRouter({ context: testContext(), initialEntries: ['/you?view=inquiries'] })
+    await legacyRouter.load()
+    expect(legacyRouter.state.matches.find((match) => match.routeId === '/you')?.search).toEqual({
+      view: 'sent',
+    })
   })
 
   it('loads sent adoption inquiries through the you route loader for the current viewer', async () => {
